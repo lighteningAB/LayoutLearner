@@ -1,9 +1,14 @@
 import { ReactNode } from "react";
+import { ChakraProvider } from '@chakra-ui/react';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ChakraProvider>
+          {children}
+        </ChakraProvider>
+      </body>
     </html>
   );
 }
