@@ -20,7 +20,6 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
         let nextWidth: number | undefined = undefined;
         for (let i = 0; i < row.length; i++) {
           const item = row[i];
-          // If item is an object with only 'w', store width and skip rendering
           if (
             typeof item === "object" &&
             item !== null &&

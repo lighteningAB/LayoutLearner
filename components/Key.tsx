@@ -13,7 +13,15 @@ export function Key({ label = "", width = 1, height = 1, highlight = false} : Ke
         className={`key ${highlight ? "highlight" : ""}`}
         >
         {label.split("<br>").map((line, i) => (
-            <Box key={i} border='1px' height = {height*100} width = {width*100} padding = "10px" borderRadius="5px">
+            <Box 
+                key={i} 
+                border='1px' 
+                height = {`${height*5}vw`} 
+                width = {`${width*5}vw`} 
+                padding = "10px" 
+                borderRadius="5px" 
+                fontSize="clamp(0.3vw, .8vw, 1.5vw)"
+                overflow="hidden">
             {line}
             </Box>
         ))}

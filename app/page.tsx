@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Keyboard } from "../components/Keyboard";
 import { Heading, Textarea, Flex, Button } from "@chakra-ui/react";
 import safeEval from "safe-eval";
+import { useRouter } from "next/navigation"
+import LZString from "lz-string";
 
 export default function Home() {
   const [jsonInput, setJsonInput] = useState(
@@ -23,9 +25,20 @@ export default function Home() {
     }
   };
 
+  const router = useRouter();
+
+  const handleGoToPractice = () => {
+    const compressed = LZString.compressToEncodedURIComponent(jsonInput);
+    router.push(`/practice?layout=${compressed}`);
+  };
+
   return (
     <div>
-      <Heading >Keyboard Layout Viewer</Heading>
+      <Flex justifyContent = "space-between" direction="row" w = "80%" alignItems="center" mx="auto" paddingTop="5">
+        <Heading>Keyboard Layout Viewer</Heading>
+        
+        <Button onClick={handleGoToPractice}>Go To Practice</Button>
+      </Flex>
       <br />
       <Flex w = '100%' align="center" justify-content="center" direction="column">
         <Textarea
