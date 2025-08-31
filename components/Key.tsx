@@ -21,7 +21,8 @@ export function Key({ label = "", width = 1, height = 1, highlight = false} : Ke
                 padding = "10px" 
                 borderRadius="5px" 
                 fontSize="clamp(0.3vw, .8vw, 1.5vw)"
-                overflow="hidden">
+                overflow="hidden"
+                color = {highlight? "red" : "black"}>
             {line}
             </Box>
         ))}

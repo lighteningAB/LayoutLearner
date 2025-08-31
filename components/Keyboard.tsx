@@ -42,7 +42,7 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
             nextWidth = undefined;
           }
           keys.push(
-            <Key key={i} label={label} width={width} />
+            <Key key={i} label={label} width={width} highlight={highlightKey && highlightKey.toUpperCase() === label.toUpperCase()}/>
           );
         }
         return (
