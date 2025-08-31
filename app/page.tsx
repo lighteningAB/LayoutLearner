@@ -6,6 +6,8 @@ import { Heading, Textarea, Flex, Button } from "@chakra-ui/react";
 import safeEval from "safe-eval";
 import { useRouter } from "next/navigation"
 import LZString from "lz-string";
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function Home() {
   const [jsonInput, setJsonInput] = useState(
@@ -31,6 +33,21 @@ export default function Home() {
     const compressed = LZString.compressToEncodedURIComponent(jsonInput);
     router.push(`/practice?layout=${compressed}`);
   };
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const layoutParam = searchParams.get("layout");
+    if (layoutParam) {
+      try {
+        const decoded = LZString.decompressFromEncodedURIComponent(layoutParam);
+        setJsonInput(decoded);
+        setLayout(safeEval(decoded));
+      } catch {
+        // handle error
+      }
+    }
+  }, [searchParams]);
 
   return (
     <div>

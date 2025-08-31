@@ -23,7 +23,11 @@ export default function PracticePage() {
 
 
   const handleGoToLayout = () => {
-    router.push(`/`);
+    if (layoutParam) {
+      router.push(`/?layout=${encodeURIComponent(layoutParam)}`);
+    } else {
+      router.push(`/`);
+    }
   };
 
   return(
