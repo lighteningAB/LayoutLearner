@@ -49,6 +49,10 @@ export default function PracticePage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Meta") {
+        e.preventDefault(); // Suppress default Meta key behavior
+        return;
+      }
       setPressedKey(e.key);
       if (e.key.toUpperCase() === targetKey.toUpperCase()) {
         setShowCorrect(true);
