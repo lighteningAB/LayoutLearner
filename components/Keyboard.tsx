@@ -16,23 +16,29 @@ interface KeyboardProps {
 }
 
 export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
+  const rowMaxHeights: number[] = [];
+
   return(
     <Flex direction="column">
       {layout.map((row, rowIndex) => {
         const keys = [];
         let nextWidth: number | undefined = undefined;
         let nextHeight: number | undefined = undefined;
+        let maxHeight = 1;
         for (let i = 0; i < row.length; i++) {
           const item = row[i];
-          // Handle blank key with "x"
+          let height: number | undefined;
+           // Handle blank key with "x"
           if (
             typeof item === "object" &&
             item !== null &&
             "x" in item
           ) {
+            height = item.h ?? 1;
             keys.push(
-              <Key label = "" space = {true} width = {item.x} height={item.h ?? 1}/>
+              <Key label = "" space = {true} width = {item.x} height={height}/>
             );
+            if (height > maxHeight) maxHeight = height;
             continue;
           }
           // Handle vertical space with "y"
@@ -41,10 +47,11 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
             item !== null &&
             "y" in item
           ) {
+            height = item.y;
             keys.push(
-              <Key key={`blank-y-${i}`} label="" space={true} width={1} height={item.y} />
+              <Key key={`blank-y-${i}`} label="" space={true} width={1} height={height} />
             );
-            // End this row early and start a new row after this key
+            if (height > maxHeight) maxHeight = height;
             break;
           }
           // Handle width-only or height-only object
@@ -60,7 +67,6 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
           // If item is a string, treat as label
           let label: string | undefined;
           let width: number | undefined;
-          let height: number | undefined;
           if (typeof item === "string") {
             label = item;
             width = nextWidth;
@@ -74,18 +80,28 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
             nextWidth = undefined;
             nextHeight = undefined;
           }
+          if (height && height > maxHeight) maxHeight = height;
           keys.push(
             <Key 
               key={i} 
               label={label} 
               width={width} 
               height={height} 
-              highlight={highlightKey && highlightKey.toUpperCase() === label.toUpperCase()}
+              highlight={highlightKey && highlightKey.toUpperCase() === label?.toUpperCase()}
             />
           );
         }
+
+        rowMaxHeights[rowIndex] = maxHeight;
+
+        let marginTop = 0;
+        if (rowIndex > 0 && rowMaxHeights[rowIndex - 1] > 1) {
+          // Adjust this value as needed for your key sizing
+          marginTop = -(rowMaxHeights[rowIndex - 1] - 1) * 3; // 32px is example key height
+        }
+
         return (
-          <Flex key={rowIndex} direction="row" justifyContent="flex-start">
+          <Flex key={rowIndex} direction="row" justifyContent="flex-start" style={marginTop ? { marginTop: `${marginTop}vw` } : undefined}>
             {keys}
           </Flex>
         );
