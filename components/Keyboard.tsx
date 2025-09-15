@@ -64,11 +64,13 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
           if (typeof item === "string") {
             label = item;
             width = nextWidth;
+            height = nextHeight;
             nextWidth = undefined;
             nextHeight = undefined;
           } else if (typeof item === "object" && item !== null) {
             label = item.label;
             width = item.w ?? nextWidth;
+            height = item.h ?? nextHeight;
             nextWidth = undefined;
             nextHeight = undefined;
           }
