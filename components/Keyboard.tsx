@@ -96,8 +96,7 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
 
         let marginTop = 0;
         if (rowIndex > 0 && rowMaxHeights[rowIndex - 1] > 1) {
-          // Adjust this value as needed for your key sizing
-          marginTop = -(rowMaxHeights[rowIndex - 1] - 1) * 3; // 32px is example key height
+          marginTop = -(rowMaxHeights[rowIndex - 1] - 1) * 3;
         }
 
         return (

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 import LZString from "lz-string";
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import presets from "./presets/presets";
 
 export default function Home() {
@@ -53,35 +54,38 @@ export default function Home() {
   };
 
   return (
-    <div>
-      <Flex justifyContent = "space-between" direction="row" w = "80%" alignItems="center" mx="auto" paddingTop="5">
-        <Heading>Keyboard Layout Viewer</Heading>
-        <Button onClick={handleGoToPractice}>Go To Practice</Button>
-      </Flex>
-      <Flex w = "80%" mx = "auto" paddingTop = "1vw" paddingBottom="1vw">
-        <Select width = "10%" onChange={handlePresetChange}>
-            <option selected hidden disabled value="">Presets</option>
-          {Object.keys(presets).map((label) =>(
-            <option key = {label} value = {label}>
-              {label}
-            </option>
-          ))}
-        </Select>
-      </Flex>
-      <Flex w = '100%' align="center" justify-content="center" direction="column">
-        <Textarea
-          value={jsonInput}
-          onChange={(e) => setJsonInput(e.target.value)}
-          rows={10}
-          cols={40}
-          width={'80%'}
-        />
-        <br />
-        <Button onClick={handleRender}>Render Keyboard</Button>
-        <br />
-        {layout.length > 0 && <Keyboard layout={layout} />}
-      </Flex>
+    <Suspense fallback={<div>Loading...</div>}>
+      <div>
+        <Flex justifyContent = "space-between" direction="row" w = "80%" alignItems="center" mx="auto" paddingTop="5">
+          <Heading>Keyboard Layout Viewer</Heading>
+          <Button onClick={handleGoToPractice}>Go To Practice</Button>
+        </Flex>
+        <Flex w = "80%" mx = "auto" paddingTop = "1vw" paddingBottom="1vw">
+          <Select width = "10%" onChange={handlePresetChange}>
+              <option selected hidden disabled value="">Presets</option>
+            {Object.keys(presets).map((label) =>(
+              <option key = {label} value = {label}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </Flex>
+        <Flex w = '100%' align="center" justify-content="center" direction="column">
+          <Textarea
+            value={jsonInput}
+            onChange={(e) => setJsonInput(e.target.value)}
+            rows={10}
+            cols={40}
+            width={'80%'}
+          />
+          <br />
+          <Button onClick={handleRender}>Render Keyboard</Button>
+          <br />
+          {layout.length > 0 && <Keyboard layout={layout} />}
+        </Flex>
 
-    </div>
+      </div>
+    </Suspense>
+
   );
 }
