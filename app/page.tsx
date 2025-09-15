@@ -11,7 +11,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import presets from "./presets/presets";
 
-export default function Home() {
+function KeyboardLayoutViewer() {
   const [jsonInput, setJsonInput] = useState(Object.values(presets)[0] || "");
   const [layout, setLayout] = useState<any[][]>([]);
 
@@ -54,7 +54,6 @@ export default function Home() {
   };
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
       <div>
         <Flex justifyContent = "space-between" direction="row" w = "80%" alignItems="center" mx="auto" paddingTop="5">
           <Heading>Keyboard Layout Viewer</Heading>
@@ -83,9 +82,14 @@ export default function Home() {
           <br />
           {layout.length > 0 && <Keyboard layout={layout} />}
         </Flex>
-
       </div>
-    </Suspense>
+  );
+}
 
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <KeyboardLayoutViewer />
+    </Suspense>
   );
 }

@@ -9,7 +9,7 @@ import LZString from "lz-string";
 import { useState, useEffect } from "react"; 
 import { Suspense } from "react";
 
-export default function PracticePage() {
+function PracticePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const layoutParam = searchParams.get("layout");
@@ -88,7 +88,6 @@ export default function PracticePage() {
   console.log(pressedKey)
   
   return(
-    <Suspense fallback={<div>Loading...</div>}>
       <div>
           <Flex justifyContent = "space-between" direction="row" w = "80%" alignItems="center" mx="auto" paddingTop="5">
             <Heading>Keyboard Practice</Heading>
@@ -110,6 +109,13 @@ export default function PracticePage() {
             )}
           </Flex>
       </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PracticePage />
     </Suspense>
   );
 }
