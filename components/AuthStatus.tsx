@@ -1,5 +1,6 @@
 import { useSession, signIn, signOut } from "next-auth/react";
-import { Button, Flex } from "@chakra-ui/react";
+import { Button, HStack, Text} from "@chakra-ui/react";
+
 
 export function AuthStatus() {
   const { data: session, status } = useSession();
@@ -7,10 +8,14 @@ export function AuthStatus() {
   if (!session)
     return <Button onClick={() => signIn()}>Sign in</Button>;
   return (
-    <Flex direction="row">
-      Signed in as {session.user?.email || session.user?.name}
-      <Button onClick={() => signOut()} ml = "0.5vw">Sign out</Button>
-    </Flex>
+    <HStack spacing={3} align="center">
+      <Text fontSize="sm" color="gray.600" maxW="20vw" isTruncated>
+        Signed in as {session.user?.email || session.user?.name}
+      </Text>
+      <Button onClick={() => signOut()}>
+        Sign out
+      </Button>
+    </HStack>
   );
 }
 
