@@ -77,6 +77,11 @@ function PracticePage() {
       setTimeout(() => setShowCorrect(false), 1000);
       pickRandomKey(targetKey);
     }
+    if (pressed === "CONTROL" && legends.some(l => l.toUpperCase() === "CTRL")) {
+      setShowCorrect(true);
+      setTimeout(() => setShowCorrect(false), 1000);
+      pickRandomKey(targetKey);
+    }
   };
   window.addEventListener("keydown", handleKeyDown);
   return () => window.removeEventListener("keydown", handleKeyDown);
