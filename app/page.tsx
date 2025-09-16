@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Keyboard } from "../components/Keyboard";
-import { Heading, Textarea, Flex, Button, Select, Box } from "@chakra-ui/react";
+import { Heading, Textarea, Flex, Button, Select } from "@chakra-ui/react";
 import safeEval from "safe-eval";
 import { useRouter } from "next/navigation"
 import LZString from "lz-string";
