@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Keyboard } from "../components/Keyboard";
-import { Heading, Textarea, Flex, Button, Select } from "@chakra-ui/react";
+import { Heading, Textarea, Flex, Button, Select, Box } from "@chakra-ui/react";
 import safeEval from "safe-eval";
 import { useRouter } from "next/navigation"
 import LZString from "lz-string";
@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import presets from "./presets/presets";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 function KeyboardLayoutViewer() {
   const [jsonInput, setJsonInput] = useState(Object.values(presets)[0] || "");
@@ -23,6 +24,19 @@ function KeyboardLayoutViewer() {
       alert("Invalid JSON");
     }
   };
+
+function AuthStatus() {
+  const { data: session, status } = useSession();
+  if (status === "loading") return <div>Loading...</div>;
+  if (!session)
+    return <Button onClick={() => signIn()}>Sign in</Button>;
+  return (
+    <div>
+      Signed in as {session.user?.email || session.user?.name}
+      <Button onClick={() => signOut()}>Sign out</Button>
+    </div>
+  );
+}
 
   const router = useRouter();
 
@@ -57,7 +71,10 @@ function KeyboardLayoutViewer() {
       <div>
         <Flex justifyContent = "space-between" direction="row" w = "80%" alignItems="center" mx="auto" paddingTop="5">
           <Heading>Keyboard Layout Viewer</Heading>
-          <Button onClick={handleGoToPractice}>Go To Practice</Button>
+          <Box>
+            <AuthStatus></AuthStatus>
+            <Button onClick={handleGoToPractice} ml="0.5vw">Go To Practice</Button>
+          </Box>
         </Flex>
         <Flex w = "80%" mx = "auto" paddingTop = "1vw" paddingBottom="1vw">
           <Select width = "10%" onChange={handlePresetChange}>
