@@ -7,7 +7,7 @@ export function AuthStatus() {
   if (!session)
     return <Button onClick={() => signIn()}>Sign in</Button>;
   return (
-    <Flex dir="row">
+    <Flex direction="row">
       Signed in as {session.user?.email || session.user?.name}
       <Button onClick={() => signOut()} ml = "0.5vw">Sign out</Button>
     </Flex>

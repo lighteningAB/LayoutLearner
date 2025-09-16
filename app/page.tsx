@@ -58,10 +58,10 @@ function KeyboardLayoutViewer() {
       <div>
         <Flex justifyContent = "space-between" direction="row" w = "80%" alignItems="center" mx="auto" paddingTop="5">
           <Heading>Keyboard Layout Viewer</Heading>
-          <Box>
+          <Flex direction="row" alignItems="center">
             <AuthStatus></AuthStatus>
             <Button onClick={handleGoToPractice} ml="0.5vw">Go To Practice</Button>
-          </Box>
+          </Flex>
         </Flex>
         <Flex w = "80%" mx = "auto" paddingTop = "1vw" paddingBottom="1vw">
           <Select width = "10%" onChange={handlePresetChange}>
