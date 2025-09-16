@@ -10,7 +10,7 @@ import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import presets from "./presets/presets";
-import { useSession, signIn, signOut } from "next-auth/react";
+import AuthStatus from "../components/AuthStatus";
 
 function KeyboardLayoutViewer() {
   const [jsonInput, setJsonInput] = useState(Object.values(presets)[0] || "");
@@ -24,19 +24,6 @@ function KeyboardLayoutViewer() {
       alert("Invalid JSON");
     }
   };
-
-function AuthStatus() {
-  const { data: session, status } = useSession();
-  if (status === "loading") return <div>Loading...</div>;
-  if (!session)
-    return <Button onClick={() => signIn()}>Sign in</Button>;
-  return (
-    <div>
-      Signed in as {session.user?.email || session.user?.name}
-      <Button onClick={() => signOut()}>Sign out</Button>
-    </div>
-  );
-}
 
   const router = useRouter();
 
