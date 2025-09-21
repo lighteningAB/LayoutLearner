@@ -1,12 +1,12 @@
 import { Flex } from "@chakra-ui/react";
-import Key from "./Key"
+import Key from "./Key";
 
 interface KeyData {
   label?: string;
-  w?: number;  // width multiplier
-  h?: number;  // height multiplier
-  a?: number;  // alignment, optional
-  x?: number;  // x space
+  w?: number; // width multiplier
+  h?: number; // height multiplier
+  a?: number; // alignment, optional
+  x?: number; // x space
   y?: number;
 }
 
@@ -15,10 +15,10 @@ interface KeyboardProps {
   highlightKey?: string;
 }
 
-export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
+export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
   const rowMaxHeights: number[] = [];
 
-  return(
+  return (
     <Flex direction="column">
       {layout.map((row, rowIndex) => {
         const keys = [];
@@ -28,28 +28,26 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
         for (let i = 0; i < row.length; i++) {
           const item = row[i];
           let height: number | undefined;
-           // Handle blank key with "x"
-          if (
-            typeof item === "object" &&
-            item !== null &&
-            "x" in item
-          ) {
+          // Handle blank key with "x"
+          if (typeof item === "object" && item !== null && "x" in item) {
             height = item.h ?? 1;
             keys.push(
-              <Key label = "" space = {true} width = {item.x} height={height}/>
+              <Key label="" space={true} width={item.x} height={height} />
             );
             if (height > maxHeight) maxHeight = height;
             continue;
           }
           // Handle vertical space with "y"
-          if (
-            typeof item === "object" &&
-            item !== null &&
-            "y" in item
-          ) {
+          if (typeof item === "object" && item !== null && "y" in item) {
             height = item.y;
             keys.push(
-              <Key key={`blank-y-${i}`} label="" space={true} width={1} height={height} />
+              <Key
+                key={`blank-y-${i}`}
+                label=""
+                space={true}
+                width={1}
+                height={height}
+              />
             );
             if (height > maxHeight) maxHeight = height;
             break;
@@ -58,7 +56,8 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
           if (
             typeof item === "object" &&
             item !== null &&
-            (Object.keys(item).length === 1 && ("w" in item || "h" in item))
+            Object.keys(item).length === 1 &&
+            ("w" in item || "h" in item)
           ) {
             if ("w" in item) nextWidth = item.w;
             if ("h" in item) nextHeight = item.h;
@@ -82,12 +81,15 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
           }
           if (height && height > maxHeight) maxHeight = height;
           keys.push(
-            <Key 
-              key={i} 
-              label={label} 
-              width={width} 
-              height={height} 
-              highlight={highlightKey && highlightKey.toUpperCase() === label?.toUpperCase()}
+            <Key
+              key={i}
+              label={label}
+              width={width}
+              height={height}
+              highlight={
+                highlightKey &&
+                highlightKey.toUpperCase() === label?.toUpperCase()
+              }
             />
           );
         }
@@ -96,11 +98,16 @@ export function Keyboard({ layout = [[]], highlightKey = ""} : KeyboardProps){
 
         let marginTop = 0;
         if (rowIndex > 0 && rowMaxHeights[rowIndex - 1] > 1) {
-          marginTop = -(rowMaxHeights[rowIndex - 1] - 1) * 3;
+          marginTop = -(rowMaxHeights[rowIndex - 1] - 1) * 6;
         }
 
         return (
-          <Flex key={rowIndex} direction="row" justifyContent="flex-start" style={marginTop ? { marginTop: `${marginTop}vw` } : undefined}>
+          <Flex
+            key={rowIndex}
+            direction="row"
+            justifyContent="flex-start"
+            style={marginTop ? { marginTop: `${marginTop}rem` } : undefined}
+          >
             {keys}
           </Flex>
         );
