@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ChakraProvider } from '@chakra-ui/react';
+import { ChakraProvider } from "@chakra-ui/react";
 import SessionProviderWrapper from "./SessionProviderWrapper";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -7,9 +7,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <SessionProviderWrapper>
-          <ChakraProvider>
-            {children}
-          </ChakraProvider>
+          <ChakraProvider>{children}</ChakraProvider>
         </SessionProviderWrapper>
       </body>
     </html>
