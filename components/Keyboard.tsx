@@ -84,7 +84,7 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
         renderedRows.push(
           <Key label="" space={true} width={largestWidth} height={item.y} />
         );
-        break;
+        return;
       }
       // Handle width-only or height-only object
       if (
@@ -148,7 +148,6 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
     }
     renderedRows.push(
       <Flex
-        border="1px solid red"
         key={rowIndex}
         direction="row"
         justifyContent="flex-start"
