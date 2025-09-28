@@ -1,4 +1,5 @@
 import { Flex } from "@chakra-ui/react";
+import React, { useState, useEffect } from "react";
 import Key from "./Key";
 
 interface KeyData {
@@ -8,6 +9,7 @@ interface KeyData {
   a?: number; // alignment, optional
   x?: number; // x space
   y?: number;
+  unitSize?: number;
 }
 
 interface KeyboardProps {
@@ -16,10 +18,12 @@ interface KeyboardProps {
 }
 
 export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
-  // Step 1: Calculate the width of each row
+  // Calculate largest row width and total height units (including y spacings)
+  let totalHeightUnits = 0;
   const rowWidths = layout.map((row) => {
     let width = 0;
     let nextWidth: number | undefined = undefined;
+    let maxHeight = 1;
     for (let i = 0; i < row.length; i++) {
       const item = row[i];
       if (typeof item === "object" && item !== null && "x" in item) {
@@ -31,26 +35,43 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
         continue;
       }
       if (typeof item === "object" && item !== null && "y" in item) {
-        // y space is treated as a new row, not counted here
+        totalHeightUnits += item.y;
         continue;
       }
       let w = 1;
+      let h = 1;
       if (typeof item === "string") {
         w = nextWidth ?? 1;
         nextWidth = undefined;
       } else if (typeof item === "object" && item !== null) {
         w = item.w ?? nextWidth ?? 1;
+        h = item.h ?? 1;
         nextWidth = undefined;
       }
       width += w;
+      if (h > maxHeight) maxHeight = h;
     }
+    totalHeightUnits += maxHeight;
     return width;
   });
-
-  // Step 2: Find the largest width
   const largestWidth = Math.max(...rowWidths);
 
-  // Step 3: Render rows, pad with blank spaces if needed
+  // Responsive unit size state
+  const getUnitSize = () => {
+    const containerWidthPx = window.innerWidth * 0.8;
+    return containerWidthPx / largestWidth;
+  };
+  const [unitSize, setUnitSize] = useState(getUnitSize());
+
+  useEffect(() => {
+    const handleResize = () => {
+      setUnitSize(getUnitSize());
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [largestWidth]);
+
+  // Render rows, pad with blank spaces if needed
   const rowMaxHeights: number[] = [];
   let renderedRows: React.ReactNode[] = [];
   layout.forEach((row, rowIndex) => {
@@ -71,6 +92,7 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
             space={true}
             width={item.x}
             height={height}
+            unitSize={unitSize}
             key={`x-${i}`}
           />
         );
@@ -82,7 +104,13 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
       if (typeof item === "object" && item !== null && "y" in item) {
         // Treat as a new row with largest width
         renderedRows.push(
-          <Key label="" space={true} width={largestWidth} height={item.y} />
+          <Key
+            label=""
+            space={true}
+            width={largestWidth}
+            height={item.y}
+            unitSize={unitSize}
+          />
         );
         return;
       }
@@ -120,6 +148,7 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
           label={label}
           width={width}
           height={height}
+          unitSize={unitSize}
           highlight={
             highlightKey && highlightKey.toUpperCase() === label?.toUpperCase()
           }
@@ -137,6 +166,7 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
           space={true}
           width={largestWidth - rowWidth}
           height={1}
+          unitSize={unitSize}
         />
       );
     }
@@ -144,19 +174,26 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
     rowMaxHeights[rowIndex] = maxHeight;
     let marginTop = 0;
     if (rowIndex > 0 && rowMaxHeights[rowIndex - 1] > 1) {
-      marginTop = -(rowMaxHeights[rowIndex - 1] - 1) * 6;
+      marginTop = -(rowMaxHeights[rowIndex - 1] - 1) * unitSize;
     }
     renderedRows.push(
       <Flex
         key={rowIndex}
         direction="row"
         justifyContent="flex-start"
-        style={marginTop ? { marginTop: `${marginTop}rem` } : undefined}
+        style={marginTop ? { marginTop: `${marginTop}px` } : undefined}
       >
         {keys}
       </Flex>
     );
   });
 
-  return <Flex direction="column">{renderedRows}</Flex>;
+  // Set container height based on totalHeightUnits
+  const containerHeightPx = totalHeightUnits * unitSize;
+
+  return (
+    <Flex direction="column" w="80vw" h={`${containerHeightPx}px`}>
+      {renderedRows}
+    </Flex>
+  );
 }
