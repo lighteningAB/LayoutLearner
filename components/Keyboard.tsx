@@ -57,19 +57,21 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
   const largestWidth = Math.max(...rowWidths);
 
   // Responsive unit size state
-  const getUnitSize = () => {
+  const [unitSize, setUnitSize] = useState(() => {
     const containerWidthPx = window.innerWidth * 0.8;
     return containerWidthPx / largestWidth;
-  };
-  const [unitSize, setUnitSize] = useState(getUnitSize());
+  });
 
   useEffect(() => {
-    const handleResize = () => {
-      setUnitSize(getUnitSize());
+    const calculateUnitSize = () => {
+      const containerWidthPx = window.innerWidth * 0.8;
+      setUnitSize(containerWidthPx / largestWidth);
     };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [largestWidth]);
+    // Recalculate on resize and layout/largestWidth changes
+    window.addEventListener("resize", calculateUnitSize);
+    calculateUnitSize(); // recalc on mount and whenever effect runs
+    return () => window.removeEventListener("resize", calculateUnitSize);
+  }, [layout, largestWidth]);
 
   // Render rows, pad with blank spaces if needed
   const rowMaxHeights: number[] = [];
@@ -112,7 +114,7 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
             unitSize={unitSize}
           />
         );
-        return;
+        continue;
       }
       // Handle width-only or height-only object
       if (
@@ -192,7 +194,12 @@ export function Keyboard({ layout = [[]], highlightKey = "" }: KeyboardProps) {
   const containerHeightPx = totalHeightUnits * unitSize;
 
   return (
-    <Flex direction="column" w="80vw" h={`${containerHeightPx}px`}>
+    <Flex
+      direction="column"
+      w="80vw"
+      h={`${containerHeightPx}px`}
+      justifyContent={"center"}
+    >
       {renderedRows}
     </Flex>
   );

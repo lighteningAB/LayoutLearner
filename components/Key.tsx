@@ -17,14 +17,12 @@ export function Key({
   space = false,
   unitSize,
 }: KeyData) {
-  const keyHeight = `${height * unitSize}px`;
-  const keyWidth = `${width * unitSize}px`;
   return (
     <Box
       className={`key ${highlight ? "highlight" : ""}`}
       border={space ? undefined : "1px"}
-      height={keyHeight}
-      width={keyWidth}
+      height={`${height * unitSize}px`}
+      width={`${width * unitSize}px`}
       padding="10px"
       borderRadius="5px"
       fontSize="clamp(0.3vw, .8vw, 1.5vw)"
