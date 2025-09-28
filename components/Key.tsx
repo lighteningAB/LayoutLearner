@@ -6,6 +6,7 @@ interface KeyData {
   height?: number;
   highlight?: boolean;
   space?: boolean;
+  unitSize?: number;
 }
 
 export function Key({
@@ -14,13 +15,14 @@ export function Key({
   height = 1,
   highlight = false,
   space = false,
+  unitSize,
 }: KeyData) {
   return (
     <Box
       className={`key ${highlight ? "highlight" : ""}`}
       border={space ? undefined : "1px"}
-      height={`${height * 6}rem`}
-      width={`${width * 6}rem`}
+      height={`${height * unitSize}px`}
+      width={`${width * unitSize}px`}
       padding="10px"
       borderRadius="5px"
       fontSize="clamp(0.3vw, .8vw, 1.5vw)"
