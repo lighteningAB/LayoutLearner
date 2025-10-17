@@ -1,18 +1,18 @@
-#Layout Learner
+# Layout Learner
 
 Layout learner is a web application designed to help teach anyone alternate keyboard layouts and shortcuts.
 
-##Local Development
+## Local Development
 
 In order to run locally:
 
-###clone the repository
+### clone the repository
 
 ```bash
 git clone https://github.com/lighteningAB/LayoutLearner.git
 ```
 
-###setup npm and yarn (skip if already done)
+### setup npm and yarn (skip if already done)
 
 Linux
 
@@ -30,7 +30,7 @@ brew install node
 sudo npm install -g yarn
 ```
 
-###navigate to repository root, download dependencies, build app for development
+### navigate to repository root, download dependencies, build app for development
 
 ```bash
 yarn install
@@ -38,15 +38,15 @@ yarn build
 yarn dev
 ```
 
-##Contribution Guide
+## Contribution Guide
 
 Pull requests to make changes or contributions to this project are welcome. For major new features or large codebase changes please open an issue before.
 
-##Build Status
+## Build Status
 
 ![Vercel Deploy](https://deploy-badge.vercel.app/vercel/Layout-Learner)
 
-##Roadmap
+## Roadmap
 
 1. Add in handling of different layers to key press test
 
@@ -60,10 +60,10 @@ Pull requests to make changes or contributions to this project are welcome. For 
 
 6. Processing of uploaded pictures in order to automatically generate layout JSON from a photo of a keyboard
 
-##Acknowledgements
+## Acknowledgements
 
 Thank you to [ijprest](https://github.com/ijprest/keyboard-layout-editor) for providing inspiration to this project
 
-##License
+## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
