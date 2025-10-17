@@ -2,7 +2,7 @@
 
 Layout learner is a web application designed to help teach anyone alternate keyboard layouts and shortcuts.
 
-![alt text](https://github.com/LighteningAB/LayoutLearner/blob/main/app/public/layoutLearnerHomepage.png)
+![alt text](https://github.com/lighteningAB/LayoutLearner/blob/main/public/layoutLearnerHomepage.png)
 
 ## Local Development
 
