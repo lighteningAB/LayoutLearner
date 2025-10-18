@@ -46,7 +46,7 @@ Pull requests to make changes or contributions to this project are welcome. For 
 
 ## Build Status
 
-![Vercel Deploy](https://deploy-badge.vercel.app/vercel/Layout-Learner)
+[![Vercel Deploy](https://deploy-badge.vercel.app/vercel/Layout-Learner)](https://layout-learner.vercel.app/)
 
 ## Roadmap
 
