@@ -1,55 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Keyboard } from "../components/Keyboard";
 import { Heading, Flex, Button, Select } from "@chakra-ui/react";
 import safeEval from "safe-eval";
 import { useRouter } from "next/navigation";
-import LZString from "lz-string";
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import presets from "./presets/presets";
 import AuthStatus from "../components/AuthStatus";
 import AceEditor from "react-ace";
+import { useJsonInput, useJsonInputActions } from "../components/json-context";
 
 import "ace-builds/src-noconflict/mode-json";
 import "ace-builds/src-noconflict/theme-textmate";
 
 function KeyboardLayoutViewer() {
-  const [jsonInput, setJsonInput] = useState(Object.values(presets)[0] || "");
-  const [layout, setLayout] = useState<any[][]>([]);
 
   const handleRender = () => {
     try {
-      const parsed = safeEval(jsonInput);
-      setLayout(parsed);
+      setLayout(safeEval(jsonInput));
     } catch {
       alert("Invalid JSON");
     }
   };
 
+  const jsonInput = useJsonInput();
+  const { setJsonInput } = useJsonInputActions() as {
+    setJsonInput: React.Dispatch<React.SetStateAction<string>>;
+  };
+
+  const [layout, setLayout] = useState<any[][]>([]);
+
   const router = useRouter();
 
   const handleGoToPractice = () => {
-    const compressed = LZString.compressToEncodedURIComponent(jsonInput);
-    router.push(`/practice?layout=${compressed}`);
+    router.push(`/practice`);
   };
 
-  const searchParams = useSearchParams();
-
   useEffect(() => {
-    const layoutParam = searchParams.get("layout");
-    if (layoutParam) {
-      try {
-        const decoded = LZString.decompressFromEncodedURIComponent(layoutParam);
-        setJsonInput(decoded);
-        setLayout(safeEval(decoded));
-      } catch {
-        // handle error
-      }
+    try {
+      setLayout(safeEval(jsonInput));
     }
-  }, [searchParams]);
+    catch {
+      //handle blank or errors
+    }
+  }, [jsonInput]);
 
   const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const presetName = e.target.value;
@@ -77,10 +73,7 @@ function KeyboardLayoutViewer() {
         </Flex>
       </Flex>
       <Flex w="80%" mx="auto" paddingTop="1vw" paddingBottom="1vw">
-        <Select width="10%" onChange={handlePresetChange}>
-          <option selected hidden disabled value="">
-            Presets
-          </option>
+        <Select width="10%" placeholder="Presets" onChange={handlePresetChange}>
           {Object.keys(presets).map((label) => (
             <option key={label} value={label}>
               {label}
