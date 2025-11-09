@@ -1,28 +1,25 @@
 "use client";
-import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
 import safeEval from "safe-eval";
 import { Flex, Heading, Button, Alert, AlertIcon } from "@chakra-ui/react";
 import { Keyboard } from "../../components/Keyboard";
 import { useRouter } from "next/navigation";
-import LZString from "lz-string";
 import { useState, useEffect } from "react"; 
 import { Suspense } from "react";
+import { useJsonInput } from "../../components/json-context";
 
 function PracticePage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const layoutParam = searchParams.get("layout");
-  const layout = useMemo(() => {
-      if (!layoutParam) return null;
-      try {
-          const decoded = LZString.decompressFromEncodedURIComponent(layoutParam);
-          return safeEval(decoded);
-      } catch {
-          return null;
-      }
-  }, [layoutParam]);
+  const jsonInput = useJsonInput();
+  const [layout, setLayout] = useState<any[][]>([]);
 
+  useEffect(() => {
+    try {
+      setLayout(safeEval(jsonInput));
+    } catch {
+      setLayout([]);
+    }
+  }, [jsonInput]);
+  
   const [targetKey, setTargetKey] = useState("")
   const [pressedKey, setPressedKey] = useState("");
   const [showCorrect, setShowCorrect] = useState(false);
@@ -88,11 +85,7 @@ function PracticePage() {
 }, [targetKey, layout]);
   
   const handleGoToLayout = () => {
-    if (layoutParam) {
-      router.push(`/?layout=${encodeURIComponent(layoutParam)}`);
-    } else {
-      router.push(`/`);
-    }
+    router.push(`/`);
   };
 
   console.log(pressedKey)
