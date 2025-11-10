@@ -47,6 +47,18 @@ function PracticePage() {
     pickRandomKey(targetKey);
   };
 
+  const SPECIALS: Record<string, string[]> = {
+    ESCAPE: ["Esc"],
+    CAPSLOCK: ["Caps Lock"],
+    CONTROL: ["CTRL"],
+    ARROWRIGHT: ["→", "ARROW RIGHT", "RIGHT ARROW", "ARROWRIGHT"],
+    ARROWLEFT:  ["←", "ARROW LEFT",  "LEFT ARROW",  "ARROWLEFT"],
+    ARROWUP:    ["↑", "ARROW UP",    "UP ARROW",    "ARROWUP"],
+    ARROWDOWN:  ["↓", "ARROW DOWN",  "DOWN ARROW",  "ARROWDOWN"],
+    PAGEDOWN:   ["PageDown", "PgDn"],
+    PAGEUP:     ["PageUp",   "PgUp"],
+    };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Meta") {
@@ -56,33 +68,24 @@ function PracticePage() {
       setPressedKey(e.key);
 
       const legends = targetKey ? getLegends(targetKey) : [];
+      const legendSet = new Set(legends.map(l => l.toUpperCase()));
       const pressed = e.key.toUpperCase();
 
-      if (legends.some(l => l.toUpperCase() === pressed)) {
-      setShowCorrect(true);
-      setTimeout(() => setShowCorrect(false), 1000);
-      pickRandomKey(targetKey);
-    }
-    // Special case for ESC
-    if (pressed === "ESCAPE" && legends.some(l => l.toUpperCase() === "ESC")) {
-      setShowCorrect(true);
-      setTimeout(() => setShowCorrect(false), 1000);
-      pickRandomKey(targetKey);
-    }
-    if (pressed === "CAPSLOCK" && legends.some(l => l.toUpperCase() === "CAPS LOCK")) {
-      setShowCorrect(true);
-      setTimeout(() => setShowCorrect(false), 1000);
-      pickRandomKey(targetKey);
-    }
-    if (pressed === "CONTROL" && legends.some(l => l.toUpperCase() === "CTRL")) {
-      setShowCorrect(true);
-      setTimeout(() => setShowCorrect(false), 1000);
-      pickRandomKey(targetKey);
-    }
-  };
-  window.addEventListener("keydown", handleKeyDown);
-  return () => window.removeEventListener("keydown", handleKeyDown);
-}, [targetKey, layout]);
+      const direct = legendSet.has(pressed);
+      const synonyms = SPECIALS[pressed] ?? [];
+      const special = synonyms.some(s => legendSet.has(s.toUpperCase()));
+
+      if (direct || special) {
+        setShowCorrect(true);
+        setTimeout(() => setShowCorrect(false), 1000);
+        pickRandomKey(targetKey);
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [targetKey, layout]);
   
   const handleGoToLayout = () => {
     router.push(`/`);
