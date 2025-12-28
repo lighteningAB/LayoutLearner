@@ -4,6 +4,10 @@ Layout learner is a web application designed to help teach anyone alternate keyb
 
 ![alt text](https://github.com/lighteningAB/LayoutLearner/blob/main/public/layoutLearnerHomepage.png)
 
+## Build Status
+
+[![Vercel Deploy](https://deploy-badge.vercel.app/vercel/Layout-Learner)](https://layout-learner.vercel.app/)
+
 ## Local Development
 
 In order to run locally:
@@ -43,10 +47,6 @@ yarn dev
 ## Contribution Guide
 
 Pull requests to make changes or contributions to this project are welcome. For major new features or large codebase changes please open an issue before.
-
-## Build Status
-
-[![Vercel Deploy](https://deploy-badge.vercel.app/vercel/Layout-Learner)](https://layout-learner.vercel.app/)
 
 ## Roadmap
 
