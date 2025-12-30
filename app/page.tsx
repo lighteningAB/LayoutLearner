@@ -11,6 +11,7 @@ import presets from "./presets/presets";
 import AuthStatus from "../components/AuthStatus";
 import AceEditor from "react-ace";
 import { useJsonInput, useJsonInputActions } from "../components/json-context";
+import HandOverlay from "./overlay"
 
 import "ace-builds/src-noconflict/mode-json";
 import "ace-builds/src-noconflict/theme-textmate";
@@ -103,6 +104,7 @@ export default function Home() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <KeyboardLayoutViewer />
+      <HandOverlay/>
     </Suspense>
   );
 }
