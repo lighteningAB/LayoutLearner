@@ -17,3 +17,6 @@ build/
 # Verification screenshots
 .verify/
 tsconfig.tsbuildinfo
+
+# Agent worktrees
+.claude/worktrees/

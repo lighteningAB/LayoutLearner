@@ -70,54 +70,6 @@ const QWERTY_ORTHO = kle([
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
-/** How far each column of a 3x6 half sits below the middle-finger column, outer column first. */
-const SPLIT_3X6_STAGGER = [0.375, 0.375, 0.125, 0, 0.125, 0.25];
-
-/**
- * 3x6 + 3 thumb keys per half, columnar stagger, halves 3u apart (Corne-style geometry).
- * `rows` = three rows of 12 legends, left to right. `thumbs` = six legends, left to right:
- * left outer, left middle, left inner (1.5u tall), right inner (1.5u tall), right middle, right outer.
- * Columns are staggered with KLE y offsets; the two inner thumb keys of each half are rotated
- * 15 and 30 degrees about their own corners with r / rx / ry so the cluster fans inwards.
- */
-function split3x6(rows: [string, string, string], thumbs: string): string {
-  const t = thumbs.split(" ");
-  const out: Item[][] = [];
-  let y = 0; // KLE's running y: offsets accumulate along a row, then each row adds 1
-  rows.forEach((spec, r) => {
-    const row: Item[] = [];
-    legends(spec).forEach((legend, c) => {
-      const stagger = c < 6 ? SPLIT_3X6_STAGGER[c] : SPLIT_3X6_STAGGER[11 - c];
-      const props: Record<string, number> = {};
-      const dy = r3(r + stagger - y);
-      if (dy !== 0) props.y = dy;
-      if (c === 6) props.x = 3;
-      if (Object.keys(props).length > 0) row.push(props);
-      row.push(legend);
-      y = r + stagger;
-    });
-    out.push(row);
-    y += 1;
-  });
-  // Outer thumb keys are not rotated; they sit half a key in from the middle-finger column.
-  out.push([{ y: r3(3.4 - y), x: 3.5 }, t[0], { x: 6 }, t[5]]);
-  out.push([{ r: 15, rx: 4.5, ry: 3.4 }, t[1]]);
-  out.push([{ r: 30, rx: 5.98, ry: 3.33, h: 1.5 }, t[2]]);
-  out.push([{ r: -15, rx: 10.5, ry: 3.4, x: -1 }, t[4]]);
-  out.push([{ r: -30, rx: 9.02, ry: 3.33, x: -1, h: 1.5 }, t[3]]);
-  return kle(out);
-}
-
-const SPLIT_THUMBS = "Ctrl Space Lower Raise Enter Alt";
-const QWERTY_SPLIT = split3x6(
-  ["Tab Q W E R T Y U I O P Bksp", "Esc A S D F G H J K L :; \"'", "Shift Z X C V B N M <, >. ?/ Shift"],
-  SPLIT_THUMBS,
-);
-const COLEMAK_DH_SPLIT = split3x6(
-  ["Tab Q W F P B J L U Y :; Bksp", "Esc A R S T G M N E I O \"'", "Shift Z X C D V K H <, >. ?/ Shift"],
-  SPLIT_THUMBS,
-);
-
 // ---------------------------------------------------------------------------
 // More split boards. These are generated from key positions in key units (centre of each
 // key, rotation about that centre) and serialised to the same KLE raw data a hand-written
@@ -209,11 +161,22 @@ interface HalfKey {
   row?: number;
 }
 
+/** A rigid group of keys (an ErgoDox thumb cluster) rotated as a whole about a pivot. */
+interface HalfBlock {
+  /** Pivot in key units, left half; the right half pivots about its mirror image. */
+  rx: number;
+  ry: number;
+  /** Degrees clockwise on the left half; the right half gets the opposite angle. */
+  r: number;
+  /** Keys as top-left corners relative to the pivot, in the unrotated block frame. */
+  keys: { l: string; rl: string; x: number; y: number; w?: number; h?: number }[];
+}
+
 /**
  * Two mirrored halves `width` units wide in total. Keys with a row id are written together on
- * a KLE row; rotated keys turn about their own centre.
+ * a KLE row; rotated keys turn about their own centre; `blocks` turn about a shared pivot.
  */
-function mirrored(width: number, items: HalfKey[]): string {
+function mirrored(width: number, items: HalfKey[], blocks: HalfBlock[] = []): string {
   const make = (it: HalfKey, right: boolean): PKey => {
     const w = it.w ?? 1;
     const h = it.h ?? 1;
@@ -227,7 +190,18 @@ function mirrored(width: number, items: HalfKey[]): string {
     } else if (it.row !== undefined) k.row = it.row;
     return k;
   };
-  return kleKeys([...items.map((i) => make(i, false)), ...items.map((i) => make(i, true))]);
+  const out = [...items.map((i) => make(i, false)), ...items.map((i) => make(i, true))];
+  for (const b of blocks) {
+    for (const right of [false, true]) {
+      const rx = right ? width - b.rx : b.rx;
+      b.keys.forEach((k, i) => {
+        const w = k.w ?? 1;
+        const x = right ? rx - (k.x + w) : rx + k.x;
+        out.push({ l: right ? k.rl : k.l, x: r3(x), y: r3(b.ry + k.y), w, h: k.h ?? 1, r: right ? -b.r : b.r, rx: r3(rx), ry: b.ry, row: right ? 1000 + i : 2000 + i });
+      });
+    }
+  }
+  return kleKeys(out);
 }
 
 /**
@@ -295,29 +269,53 @@ function tiltedHalves(mid: number, pivot: { x: number; y: number }, angle: numbe
   }
   return kleKeys(keys);
 }
+// ---------------------------------------------------------------------------
+// Column stagger tables: how far each column sits below the middle-finger column, outer column
+// first. Taken from QMK's key data (x/y in key units) for each board.
+// ---------------------------------------------------------------------------
 
-const S6 = SPLIT_3X6_STAGGER;
+/** Corne (crkbd), Iris, Moonlander and ErgoDox: QMK lists 0.3 / 0.1 / 0.2, rounded from these. */
+const S6 = [0.375, 0.375, 0.125, 0, 0.125, 0.25];
+/** Lily58 (QMK lily58/rev1): the pinky column hangs half a key lower. */
+const S_LILY = [0.5, 0.375, 0.125, 0, 0.125, 0.25];
+/** Sofle (QMK sofle, converted from its 16 x 12 pixel grid). */
+const S_SOFLE = [0.417, 0.417, 0.167, 0, 0.167, 0.25];
+/** Kyria (QMK splitkb/kyria/rev1): a much more pronounced bowl. */
+const S_KYRIA = [0.75, 0.75, 0.25, 0, 0.25, 0.5];
+/** Ferris (QMK ferris/0_2): pinky, ring, middle, index, inner index. */
+const S_FERRIS = [0.93, 0.31, 0, 0.28, 0.42];
 
-// Corne 3x5+3: the 42-key Corne without its outer columns (36 keys), same thumb fan.
-function corne36(left: string[], right: string[]): string {
-  return mirrored(13, [
-    ...fingerBlock(S6.slice(1), left, right),
-    THUMB("Ctrl", "Alt", 3.0, 3.9),
-    THUMB("Space", "Enter", 4.15, 4.1, 15),
-    THUMB("Lower", "Raise", 5.35, 4.4, 30, 1.5),
+/**
+ * Corne (crkbd) 3x6 + 3 thumb keys per half, halves 3u apart. Thumb keys per QMK crkbd: the
+ * first sits under the index column, the next two step inwards and fan 15 / 30 degrees, the
+ * innermost being 1.5u tall. `left` / `right`: three rows of six legends each, left to right.
+ */
+function corne(left: string[], right: string[], outer: boolean): string {
+  const stagger = outer ? S6 : S6.slice(1);
+  const dx = outer ? 0 : -1;
+  return mirrored(outer ? 15 : 13, [
+    ...fingerBlock(stagger, left, right),
+    THUMB("Win", "Alt", 4.5 + dx, 4.15),
+    THUMB("Lower", "Raise", 5.63 + dx, 4.3, 15),
+    THUMB("Space", "Enter", 6.69 + dx, 4.74, 30, 1.5),
   ]);
 }
-const CORNE_35_QWERTY = corne36(["Q W E R T", "A S D F G", "Z X C V B"], ["Y U I O P", "H J K L :;", "N M <, >. ?/"]);
-const CORNE_35_COLEMAK_DH = corne36(["Q W F P B", "A R S T G", "Z X C D V"], ["J L U Y :;", "M N E I O", "K H <, >. ?/"]);
+const SPLIT_QWERTY_L = ["Tab Q W E R T", "Esc A S D F G", "Shift Z X C V B"];
+const SPLIT_QWERTY_R = ["Y U I O P Bksp", "H J K L :; \"'", "N M <, >. ?/ Shift"];
+const SPLIT_COLEMAK_L = ["Tab Q W F P B", "Esc A R S T G", "Shift Z X C D V"];
+const SPLIT_COLEMAK_R = ["J L U Y :; Bksp", "M N E I O \"'", "K H <, >. ?/ Shift"];
+const QWERTY_SPLIT = corne(SPLIT_QWERTY_L, SPLIT_QWERTY_R, true);
+const COLEMAK_DH_SPLIT = corne(SPLIT_COLEMAK_L, SPLIT_COLEMAK_R, true);
+const CORNE_35_QWERTY = corne(["Q W E R T", "A S D F G", "Z X C V B"], ["Y U I O P", "H J K L :;", "N M <, >. ?/"], false);
+const CORNE_35_COLEMAK_DH = corne(["Q W F P B", "A R S T G", "Z X C D V"], ["J L U Y :;", "M N E I O", "K H <, >. ?/"], false);
 const BSP = "Bksp";
 
-// Ferris Sweep: 3x5 + two thumbs, flat unrotated thumbs hanging a little below the index columns.
+// Ferris Sweep: 3x5 + two thumbs, unrotated, the second a quarter key lower (QMK ferris/0_2).
 function ferris(left: string[], right: string[]): string {
-  const stagger = [0.25, 0.125, 0, 0.125, 0.25];
   return mirrored(13, [
-    ...fingerBlock(stagger, left, right),
-    THUMB("Lower", "Raise", 3.55, 3.95),
-    THUMB("Space", "Enter", 4.65, 4.05),
+    ...fingerBlock(S_FERRIS, left, right),
+    THUMB("Lower", "Raise", 4.0, 4.25),
+    THUMB("Space", "Enter", 5.0, 4.5),
   ]);
 }
 const FERRIS_QWERTY = ferris(["Q W E R T", "A S D F G", "Z X C V B"], ["Y U I O P", "H J K L :;", "N M <, >. ?/"]);
@@ -343,43 +341,69 @@ const ATREUS = (() => {
 })();
 
 const NUM_L = "Esc !1 @2 #3 $4 %5";
-const ROWS_L = ["Tab Q W E R T", "Ctrl A S D F G", "Shift Z X C V B"];
-const ROWS_R = ["Y U I O P Bksp", "H J K L :; \"'", "N M <, >. ?/ Shift"];
 
-// Lily58: number row + 3x6 per half (an extra inner key on the bottom row) and a four-key thumb arc.
+// Lily58: number row + 3x6 per half (an extra key at the inner edge) and four thumb keys in a
+// shallow arc, the innermost 1.5u tall (QMK lily58/rev1).
 const LILY58 = mirrored(15, [
-  ...fingerBlock(S6, [NUM_L, ...ROWS_L], ["^6 &7 *8 (9 )0 ~`", ...ROWS_R]),
-  { l: lg("{["), rl: lg("}]"), cx: 6.5, cy: 3.75, row: 3 },
-  ...thumbFan(3.1, 4.8, [0, 8, 16, 24], 1.12, "Alt Win Lower Space", "Alt Win Raise Enter"),
-]);
-
-// Sofle: the same 4x6 block, five thumb keys per half fanning inwards (inner one 1.5u tall).
-const SOFLE = mirrored(15, [
-  ...fingerBlock(S6, [NUM_L, ...ROWS_L], ["^6 &7 *8 (9 )0 ~`", ...ROWS_R]),
-  ...thumbFan(2.2, 4.95, [0, 0, 8, 18, 30], 1.1, "Win Alt Ctrl Lower Space", "Win Alt Del Raise Enter", 1),
-]);
-
-// Kyria: 3x6 + two extra inner keys per half and a five-key thumb arc.
-const KYRIA = mirrored(16, [
   ...fingerBlock(
-    S6,
+    S_LILY,
+    [NUM_L, "Tab Q W E R T", "Ctrl A S D F G", "Shift Z X C V B"],
+    ["^6 &7 *8 (9 )0 ~`", "Y U I O P _-", "H J K L :; \"'", "N M <, >. ?/ Shift"],
+  ),
+  { l: lg("{["), rl: lg("}]"), cx: 6.5, cy: 3.25, row: 3 },
+  THUMB("Alt", "Win", 3.0, 4.65),
+  THUMB("Win", "Bksp", 4.07, 4.71, 6),
+  THUMB("Lower", "Raise", 5.13, 4.88, 12),
+  THUMB("Space", "Enter", 6.17, 5.16, 18, 1.5),
+]);
+
+// Sofle: 4x6 block and five thumb keys, flat outside and fanning inwards (QMK sofle).
+const SOFLE = mirrored(16, [
+  ...fingerBlock(
+    S_SOFLE,
+    [NUM_L, "Tab Q W E R T", "Ctrl A S D F G", "Shift Z X C V B"],
+    ["^6 &7 *8 (9 )0 ~`", "Y U I O P _-", "H J K L :; \"'", "N M <, >. ?/ Shift"],
+  ),
+  THUMB("Win", "Alt", 2.5, 4.77),
+  THUMB("Alt", "Win", 3.52, 4.77),
+  THUMB("Ctrl", "Bksp", 4.59, 4.83, 6),
+  THUMB("Lower", "Raise", 5.67, 5.03, 15),
+  THUMB("Space", "Enter", 6.73, 5.47, 30),
+]);
+
+// Kyria: 3x6 with a pronounced bowl, two extra keys per half beside the thumb arc and a five-key
+// arc of thumbs (QMK splitkb/kyria/rev1).
+const KYRIA = mirrored(18, [
+  ...fingerBlock(
+    S_KYRIA,
     ["Tab Q W E R T", "Esc A S D F G", "Shift Z X C V B"],
     ["Y U I O P Bksp", "H J K L :; \"'", "N M <, >. ?/ Shift"],
   ),
-  { l: lg("{["), rl: lg("}]"), cx: 6.5, cy: 1.75, row: 1 },
-  { l: "Ctrl", rl: "Ctrl", cx: 6.5, cy: 2.75, row: 2 },
-  ...thumbFan(2.8, 4.0, [0, 7, 14, 22, 30], 1.1, "Win Alt Space Lower Del", "Win Alt Enter Raise Menu"),
+  THUMB("Ctrl", "Alt", 6.5, 3.3),
+  THUMB("Fn", "Menu", 7.5, 3.5),
+  THUMB("Win", "Alt", 3.0, 3.75),
+  THUMB("Alt", "Win", 4.08, 3.82, 7),
+  THUMB("Space", "Enter", 5.17, 4.06, 18),
+  THUMB("Lower", "Raise", 6.18, 4.47, 26),
+  THUMB("Bksp", "Del", 7.1, 4.92, 26),
 ]);
 
-// Iris: 4x6 per half and a four-key thumb cluster, the two inner keys 1.5u tall.
+// Iris: number row + 3x6 per half and four thumb keys (QMK keebio/iris): three in an arc plus
+// one raised key at the inner edge.
 const IRIS = mirrored(15, [
-  ...fingerBlock(S6, [NUM_L, ...ROWS_L], ["^6 &7 *8 (9 )0 _-", ...ROWS_R]),
-  ...thumbFan(3.2, 4.8, [4, 12, 22, 32], 1.12, "Win Alt Lower Space", "Win Alt Raise Enter", 2),
+  ...fingerBlock(
+    S6,
+    [NUM_L, "Tab Q W E R T", "Ctrl A S D F G", "Shift Z X C V B"],
+    ["^6 &7 *8 (9 )0 _-", "Y U I O P Bksp", "H J K L :; \"'", "N M <, >. ?/ Shift"],
+  ),
+  THUMB("Win", "Alt", 4.0, 4.8, 4),
+  THUMB("Lower", "Raise", 5.08, 4.95, 12),
+  THUMB("Space", "Enter", 6.14, 5.27, 22),
+  THUMB("Alt", "Menu", 6.65, 4.25, 22),
 ]);
 
-// Moonlander: 5 rows per half (number row, three letter rows, a short bottom row), a 7th inner
-// column on the top three rows, and a thumb cluster of four keys (Space, Lower, Alt and the red
-// one) turned 20 degrees as a block.
+// Moonlander: 7 columns on the top three rows, six on the fourth, five on the bottom row, and a
+// thumb cluster of four keys (Space, Lower, Alt and the red one) turned 20 degrees as a block.
 const MOONLANDER = (() => {
   const items: HalfKey[] = [
     ...fingerBlock(
@@ -397,40 +421,63 @@ const MOONLANDER = (() => {
   const angle = 20;
   const [sin, cos] = [Math.sin((angle * Math.PI) / 180), Math.cos((angle * Math.PI) / 180)];
   const place = (l: string, rl: string, dx: number, dy: number) =>
-    THUMB(l, rl, r3(6 + dx * cos - dy * sin), r3(5.75 + dx * sin + dy * cos), angle);
+    THUMB(l, rl, r3(6.2 + dx * cos - dy * sin), r3(5.9 + dx * sin + dy * cos), angle);
   items.push(place("Space", "Enter", -0.55, -0.5), place("Lower", "Raise", 0.55, -0.5), place("Alt", "Alt", -0.55, 0.55), place("Red", "Red", 0.55, 0.55));
-  return mirrored(17.5, items);
+  return mirrored(17, items);
 })();
 
-// 76-key split with a number row, an extra inner column and six-key thumb clusters rotated
-// 30 degrees (ErgoDox-style geometry). Written the way keyboard-layout-editor.com exports
-// columnar boards: one KLE row per pair of columns, stepping back up with negative y.
-const QWERTY_SPLIT_76 = `[{x:3.5},"#\\n3",{x:10.5},"*\\n8"],
-[{y:-0.875,x:2.5},"@\\n2",{x:1},"$\\n4",{x:8.5},"&\\n7",{x:1},"(\\n9"],
-[{y:-0.875,x:5.5},"%\\n5","Lower",{x:4.5},"Raise","^\\n6"],
-[{y:-0.875,w:1.5},"+\\n=","!\\n1",{x:14.5},")\\n0",{w:1.5},"_\\n-"],
-[{y:-0.375,x:3.5},"E",{x:10.5},"I"],
-[{y:-0.875,x:2.5},"W",{x:1},"R",{x:8.5},"U",{x:1},"O"],
-[{y:-0.875,x:5.5},"T",{h:1.5},"{\\n[",{x:4.5,h:1.5},"}\\n]","Y"],
-[{y:-0.875,w:1.5},"Tab","Q",{x:14.5},"P",{w:1.5},"|\\n\\\\"],
-[{y:-0.375,x:3.5},"D",{x:10.5},"K"],
-[{y:-0.875,x:2.5},"S",{x:1},"F",{x:8.5},"J",{x:1},"L"],
-[{y:-0.875,x:5.5},"G",{x:6.5},"H"],
-[{y:-0.875,w:1.5},"Esc","A",{x:14.5},":\\n;",{w:1.5},"\\"\\n'"],
-[{y:-0.625,x:6.5,h:1.5},"Hyper",{x:4.5,h:1.5},"Meh"],
-[{y:-0.75,x:3.5},"C",{x:10.5},"<\\n,"],
-[{y:-0.875,x:2.5},"X",{x:1},"V",{x:8.5},"M",{x:1},">\\n."],
-[{y:-0.875,x:5.5},"B",{x:6.5},"N"],
-[{y:-0.875,w:1.5},"Shift","Z",{x:14.5},"?\\n/",{w:1.5},"Shift"],
-[{y:-0.375,x:3.5},"←",{x:10.5},"↑"],
-[{y:-0.875,x:2.5},"Alt",{x:1},"→",{x:8.5},"↓",{x:1},"Alt"],
-[{y:-0.75,x:0.5},"Ctrl","~\\n\`",{x:14.5},"Fn","Ctrl"],
-[{r:30,rx:6.5,ry:4.25,y:-1,x:1},"Menu","Win"],
-[{h:2},"Bksp",{h:2},"Del","Home"],
-[{x:2},"End"],
-[{r:-30,rx:13,y:-1,x:-3},"Win","Ins"],
-[{x:-3},"PgUp",{h:2},"Enter",{h:2},"Space"],
-[{x:-3},"PgDn"]`;
+// ErgoDox: QMK's LAYOUT_ergodox key data (a 1.5u outer column, seven columns, two 1.5u-tall inner
+// keys) with the six-key thumb cluster turned 30 degrees about its top-left tall key, as on
+// the real board. The halves are separate pieces; they are drawn 5u apart so the clusters clear.
+const ERGODOX = (() => {
+  const cols = [0.75, 2, 3, 4, 5, 6, 7]; // key centres: 1.5u outer column, then 1u columns
+  const stag = [0.375, 0.375, 0.125, 0, 0.125, 0.25, 0.25];
+  const w = (c: number) => (c === 0 ? 1.5 : 1);
+  const rowsL = [
+    ["+= !1 @2 #3 $4 %5 ←"],
+    ["Del Q W E R T Fn"],
+    ["Esc A S D F G"],
+    ["Shift Z X C V B Hyper"],
+  ].map((r) => toks(r[0]));
+  const rowsR = [
+    ["→ ^6 &7 *8 (9 )0 _-"],
+    ["Fn Y U I O P |\\"],
+    ["H J K L :; \"'"],
+    ["Meh N M <, >. ?/ Shift"],
+  ].map((r) => toks(r[0]));
+  const items: HalfKey[] = [];
+  rowsL.forEach((row, r) => {
+    row.forEach((l, c) => {
+      // Right half, outer to inner: the mirror of this column.
+      const rrow = rowsR[r];
+      const rl = rrow[rrow.length - 1 - c];
+      const inner = c === 6;
+      const cy = inner ? (r === 1 ? 2.0 : r === 3 ? 3.5 : r + 0.5 + stag[c]) : r + 0.5 + stag[c];
+      if (r === 2 && inner) return;
+      items.push({ l, rl: rl ?? "", cx: cols[c], cy, w: w(c), h: inner && (r === 1 || r === 3) ? 1.5 : 1, row: r });
+    });
+  });
+  // The right half's row 2 has six keys and no tall inner key, like the left.
+  ["Ctrl", "~`", "Fn", "←", "→"].forEach((l, c) => {
+    const rl = ["Fn", "}]", "{[", "↓", "↑"][c];
+    items.push({ l: lg(l), rl: lg(rl), cx: c + 1, cy: 4.5 + stag[c], row: 4 });
+  });
+  const block: HalfBlock = {
+    rx: 6.5,
+    ry: 4.25,
+    r: 30,
+    keys: [
+      { l: "Alt", rl: "Menu", x: 1, y: -1 },
+      { l: "Win", rl: "Ctrl", x: 2, y: -1 },
+      { l: "Space", rl: "Enter", x: 0, y: 0, h: 2 },
+      { l: "Bksp", rl: "Tab", x: 1, y: 0, h: 2 },
+      { l: "Home", rl: "PgUp", x: 2, y: 0 },
+      { l: "End", rl: "PgDn", x: 2, y: 1 },
+    ],
+  };
+  return mirrored(20, items, [block]);
+})();
+const QWERTY_SPLIT_76 = ERGODOX;
 
 export const PRESETS: LayoutPreset[] = [
   {
@@ -548,7 +595,7 @@ export const PRESETS: LayoutPreset[] = [
   {
     id: "lily58",
     name: "Lily58",
-    description: "58-key Lily58: number row, 3×6 letters, an extra inner key on the bottom row and four thumb keys per half.",
+    description: "58-key Lily58: number row, 3×6 letters, an extra inner key beside the home row and four thumb keys per half, the inner one 1.5u.",
     family: "split",
     source: LILY58,
   },
