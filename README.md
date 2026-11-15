@@ -20,8 +20,9 @@ Live site: https://layout-learner.vercel.app
 - **Board types**: ANSI 60%, full size with numpad, ortholinear, and split or ergonomic boards (columnar stagger, rotated thumb clusters), including Corne (3x5 and 3x6), Ferris Sweep, Atreus, Kyria, Iris, Lily58, Sofle, Moonlander and ErgoDox. See `lib/layout/presets.ts` for the current list. Board geometry is approximated from the real boards.
 - **Themes and settings**: six themes (Tide, Paper, Dusk, Moss, Ember, Glacier), text size, smooth caret, error sound, toggles for the keyboard, hands and finger colours.
 - **Command palette and shortcuts**: `Ctrl/Cmd+K` (or `Esc` when nothing else claims it) opens a palette to jump between pages, switch themes with live preview, toggle settings and change test mode. In the test, `Tab` then `Enter` restarts, `Esc` starts a new test while one is running, and `Ctrl/Alt+Backspace` deletes a word.
+- **Optional accounts and sync**: off unless the deployment is configured for it. When enabled, you can sign in with GitHub or Google to sync lesson progress, settings and custom layouts across devices. See [docs/accounts-setup.md](docs/accounts-setup.md).
 
-Everything runs in the browser. Settings, custom layouts and lesson progress are stored in `localStorage`; nothing is sent to a server.
+Everything runs in the browser. By default, settings, custom layouts and lesson progress are stored in `localStorage` and nothing is sent to a server. If the deployment has accounts enabled and you sign in, those three things (except a few device-specific settings: `emulateLayout`, `showHands`, `fontSize`) are also kept in a copy on the server so your devices stay in step; if you never sign in, nothing is sent. What is stored is described on the site's `/privacy` page; the owner setup is in [docs/accounts-setup.md](docs/accounts-setup.md).
 
 ## Quick start
 
@@ -146,15 +147,19 @@ On split boards each hand is fitted to its own half (home keys per hand, column 
 
 ### Persistence
 
-There is no database. Three `localStorage` keys, all under the `ll:v1:` prefix, hold everything:
+By default there is no server-side storage. Three `localStorage` keys, all under the `ll:v1:` prefix, hold the app's data:
 
 | Key | What |
 |---|---|
 | `ll:v1:settings` | Settings and custom layouts (`lib/settings/store.ts`) |
 | `ll:v1:lessons` | Lesson progress per layout (`lib/lessons/progress.ts`) |
 | `ll:v1:learn` | Learn preferences: unlock all, hands camera, show both guides (`components/learn/prefs.ts`) |
+| `ll:v1:sync` | Sync sidecar, only when accounts are enabled: this device's replica of the synced document, the account link and timestamps (`lib/sync/meta.ts`) |
+| `ll:v1:account` | Signed-in hint, only when accounts are enabled: tells the app whether to ask the server for a session, and signals sign-in and sign-out between tabs (`lib/auth/client.ts`) |
 
-Each store is an external store consumed with `useSyncExternalStore`, reads defensively (corrupt or missing data reads as defaults), keeps working in memory if storage is blocked, and syncs across tabs through the `storage` event. "Clear all data" in Settings removes every `ll:v1:` key and fires a window event so the other stores reset. Statistics (history, heatmaps, charts) used to exist and were removed; the settings store deletes their old keys. `next-auth` is wired up under `app/api/auth` with GitHub and Google providers but nothing uses it to store data yet.
+Each store is an external store consumed with `useSyncExternalStore`, reads defensively (corrupt or missing data reads as defaults), keeps working in memory if storage is blocked, and syncs across tabs through the `storage` event. "Clear all data" in Settings removes every `ll:v1:` key and fires a window event so the other stores reset. Statistics (history, heatmaps, charts) used to exist and were removed; the settings store deletes their old keys.
+
+**Server copy (optional).** When the deployment has accounts enabled (a GitHub or Google provider, `NEXTAUTH_SECRET` and a Postgres `DATABASE_URL`), `next-auth` under `app/api/auth` handles sign-in with JWT sessions and `app/api/sync` stores one JSON document per account in Postgres (Neon in production, PGlite locally). The document is a state-based CRDT (`lib/sync/doc.ts`): devices exchange whole documents and merge them, so the order of syncs does not matter. When the feature is off, the sync keys above are never written and the API answers 404.
 
 ## Adding a layout or a board preset
 
@@ -192,6 +197,10 @@ A new layout on an existing board (for example another letter arrangement on the
 | `components/ui`, `components/shell` | Design system primitives, app shell and command palette |
 | `public/models/hand.glb`, `assets/hand/` | The runtime hand model and its source files |
 | `scripts/verify.mjs` | Browser verification CLI |
+| `lib/sync`, `lib/auth`, `lib/db` | Accounts and sync: merge core and client engine, auth config and session, Postgres/PGlite storage |
+| `app/api/sync`, `components/account` | Sync API route, account UI and provider |
+| `scripts/verify-sync.mjs`, `scripts/sync-property.mjs`, `scripts/sync-engine-sim.mjs`, `scripts/db.mjs` | Multi-device browser check, merge property tests, engine simulation, database migrate/dump/reset |
+| `docs/accounts-setup.md` | Owner guide for enabling accounts and sync |
 
 ## Development workflow
 
@@ -214,7 +223,7 @@ yarn verify "goto:/dev/keyboard?preset=colemak-dh-split" shot:split
 
 ## Deployment
 
-The site is deployed on Vercel from the `main` branch (see the badge above). `next build` must pass; there are no server-side secrets required to run the app.
+The site is deployed on Vercel from the `main` branch (see the badge above). `next build` must pass; there are no server-side secrets required to run the app. Accounts and sync are optional and need environment variables and a database; see [docs/accounts-setup.md](docs/accounts-setup.md).
 
 ## Contribution Guide
 
@@ -224,7 +233,7 @@ Pull requests to make changes or contributions to this project are welcome. For 
 
 1. Layers (Fn, Lower, Raise) in lessons and tests. Today layer keys are modifiers with no effect.
 2. Better handling of unusual boards: more reliable finger assignment for irregular rotated or non-columnar layouts, and finishing 3D hand support for split boards.
-3. Accounts and server-side storage, to sync progress between devices and to allow competition. `next-auth` is wired but unused.
+3. Competition on top of accounts (cross-device sync already exists, see above).
 4. Generating layout data from a photo of a keyboard.
 5. Non-ASCII characters on keys (accents, dead keys, AltGr layers) under emulation.
 

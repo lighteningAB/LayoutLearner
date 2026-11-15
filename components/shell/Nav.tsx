@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import AuthStatus from "@/components/AuthStatus";
+import { AccountControl } from "@/components/account/AccountControl";
 import { Icon, IconButton, cx } from "@/components/ui";
 import { getPreset } from "@/lib/layout/presets";
 import { useSettings } from "@/lib/settings";
@@ -66,7 +66,7 @@ export function Nav() {
             data-testid="nav-palette"
             onClick={() => openCommandPalette()}
           />
-          <AuthStatus />
+          <AccountControl />
         </div>
       </div>
     </header>

@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { initAccount, primeAccount } from "@/lib/auth/client";
 import type { PublicAuthConfig } from "@/lib/auth/types";
 import { initSync, primeSync } from "@/lib/sync/engine";
+import { AccountGlobals } from "./AccountGlobals";
 
 /**
  * Boots the account session store and the sync engine with the server's feature configuration.
@@ -26,5 +27,10 @@ export function AccountProvider({ config, children }: { config: PublicAuthConfig
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {config.enabled && <AccountGlobals />}
+    </>
+  );
 }

@@ -24,6 +24,8 @@ import {
   type Settings,
   type TestMode,
 } from "@/lib/settings";
+import { AccountSection } from "@/components/account/AccountSection";
+import { useAccount } from "@/lib/auth/client";
 import { ThemePicker } from "./ThemePicker";
 
 function Section({ id, title, description, children }: { id: string; title: string; description: string; children: ReactNode }) {
@@ -57,6 +59,7 @@ type BooleanKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : nev
 export function SettingsView() {
   const [settings, update] = useSettings();
   const [confirmClear, setConfirmClear] = useState(false);
+  const signedIn = useAccount().status === "signed-in";
 
   const toggleRow = (key: BooleanKey, label: string, description: string) => (
     <SettingRow label={label} description={description} htmlFor={`setting-${key}`}>
@@ -184,7 +187,9 @@ export function SettingsView() {
         </Rows>
       </Section>
 
-      <Section id="data" title="Data" description="Settings, custom layouts and lesson progress live only in this browser.">
+      <AccountSection />
+
+      <Section id="data" title="Data" description={signedIn ? "Settings, custom layouts and lesson progress are kept in this browser and synced to your account." : "Settings, custom layouts and lesson progress live only in this browser."}>
         <Rows>
           <SettingRow label="Reset settings" description="Back to the defaults. Custom layouts and lesson progress are kept.">
             <Button
@@ -217,7 +222,7 @@ export function SettingsView() {
           toast("All local data cleared", { variant: "success" });
         }}
         title="Clear all data?"
-        description="This removes your settings, custom layouts and lesson progress from this browser. It cannot be undone."
+        description={"This removes your settings, custom layouts and lesson progress from this browser" + (signedIn ? " and signs this device out. Your account’s data on the server is not deleted. It cannot be undone here." : ". It cannot be undone.")}
         confirmLabel="Clear everything"
         tone="danger"
         data-testid="confirm-clear"
