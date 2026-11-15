@@ -6,9 +6,12 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "db:migrate": "node scripts/db.mjs migrate",
+    "db:dump": "node scripts/db.mjs dump"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
     "json5": "^2.2.3",
@@ -19,6 +22,7 @@
     "three": "^0.187.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.12",

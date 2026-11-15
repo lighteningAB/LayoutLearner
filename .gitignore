@@ -17,3 +17,12 @@ build/
 # Verification screenshots
 .verify/
 tsconfig.tsbuildinfo
+
+# Local env files (only .env.example is committed)
+.env
+.env.*
+!.env.example
+# Local development database (PGlite)
+.data/
+# Alternate Next.js build directories (NEXT_DIST_DIR)
+.next-*/

@@ -1,18 +1,37 @@
 import NextAuth from "next-auth";
-import GithubProvider from "next-auth/providers/github";
-import GoogleProvider from "next-auth/providers/google";
+import type { NextRequest } from "next/server";
+import { getAuthOptions } from "@/lib/auth/options";
 
-const handler = NextAuth({
-    providers: [
-        GithubProvider({
-            clientId: process.env.GITHUB_ID || "",
-            clientSecret: process.env.GITHUB_SECRET || "",
-        }),
-        GoogleProvider({
-            clientId: process.env.GOOGLE_ID || "",
-            clientSecret: process.env.GOOGLE_SECRET || "",
-        }) 
-    ]
-})
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
-export { handler as GET, handler as POST };
+type RouteContext = { params: Promise<{ nextauth: string[] }> };
+
+const JSON_HEADERS = {
+  "Content-Type": "application/json",
+  "Cache-Control": "no-store",
+  "X-Content-Type-Options": "nosniff",
+};
+
+function json(status: number, body: unknown, extra?: Record<string, string>): Response {
+  return new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...extra } });
+}
+
+async function handle(req: NextRequest, context: RouteContext): Promise<Response> {
+  const options = getAuthOptions();
+  // Feature off: answer without ever invoking next-auth.
+  if (!options) return json(404, { error: "disabled" });
+  if (req.method !== "GET" && req.method !== "POST") {
+    return json(405, { error: "method_not_allowed" }, { Allow: "GET, POST" });
+  }
+  return (await NextAuth(req, context, options)) as Response;
+}
+
+export {
+  handle as GET,
+  handle as POST,
+  handle as PUT,
+  handle as PATCH,
+  handle as DELETE,
+  handle as OPTIONS,
+};
