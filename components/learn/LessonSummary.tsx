@@ -108,7 +108,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, []);
 
-  const unlocked = grade.passed && !outcome.wasPassed && nextLesson;
+  const nextUp = grade.passed && !outcome.wasPassed && nextLesson;
   const improved = grade.passed && outcome.wasPassed && grade.stars > outcome.previousStars;
   const primaryLabel = canNext ? "next lesson" : grade.passed ? "back to the course" : "retry";
 
@@ -190,11 +190,11 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
         </div>
       </div>
 
-      {(unlocked || improved || (grade.passed && !nextLesson)) && (
+      {(nextUp || improved || (grade.passed && !nextLesson)) && (
         <p className="tt-rise mt-5 inline-flex items-center gap-2 rounded-full bg-main/[0.12] px-3.5 py-1.5 text-[13px] text-main" style={{ "--i": 6 } as CSSProperties} data-testid="summary-note">
-          <Icon name={unlocked ? "zap" : "trophy"} size={14} />
-          {unlocked
-            ? `Unlocked lesson ${unlocked.number}: ${unlocked.lesson.title}`
+          <Icon name={nextUp ? "zap" : "trophy"} size={14} />
+          {nextUp
+            ? `Next up: lesson ${nextUp.number}, ${nextUp.lesson.title}`
             : !nextLesson
               ? "That was the last lesson. You know the whole layout."
               : `New best: ${grade.stars} stars (was ${outcome.previousStars})`}

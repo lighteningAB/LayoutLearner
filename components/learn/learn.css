@@ -60,7 +60,7 @@
     border-color 150ms ease,
     transform 150ms ease;
 }
-.learn-tile:not([data-state="locked"]):hover {
+.learn-tile:hover {
   transform: translateY(-1px);
 }
 

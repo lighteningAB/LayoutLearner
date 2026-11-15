@@ -164,7 +164,7 @@ export function SettingsView() {
           {toggleRow(
             "emulateLayout",
             "Emulate layout",
-            "Remap your physical keys in the app, so you can practise without switching the layout in your OS.",
+            "Off: the app uses whatever characters your OS produces (right if your OS is already set to this layout). On: the app remaps your physical keys itself, so you can practise on a QWERTY system without changing OS settings.",
           )}
         </Rows>
       </Section>

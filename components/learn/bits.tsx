@@ -27,27 +27,6 @@ export function StarIcon({ filled, size = 16, className, style }: { filled?: boo
   );
 }
 
-export function LockIcon({ size = 14, className }: { size?: number; className?: string }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      focusable="false"
-      className={cx("shrink-0", className)}
-    >
-      <rect x="5" y="10.500" width="14" height="9.500" rx="2" />
-      <path d="M8 10.500V8a4 4 0 0 1 8 0v2.500" />
-    </svg>
-  );
-}
-
 export interface StarsProps {
   value: number;
   size?: number;

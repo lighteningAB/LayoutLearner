@@ -6,15 +6,13 @@ import { DATA_CLEARED_EVENT } from "@/lib/settings";
 export const LEARN_PREFS_KEY = "ll:v1:learn";
 
 export interface LearnPrefs {
-  /** Experienced users: every lesson can be started, regardless of what was passed. */
-  unlockAll: boolean;
   /** Camera of the 3D hands panel. */
   camera: "angled" | "top";
   /** The guide view "both" was picked: show the 2D board under the 3D hands. */
   bothGuides: boolean;
 }
 
-export const DEFAULT_LEARN_PREFS: LearnPrefs = { unlockAll: false, camera: "angled", bothGuides: false };
+export const DEFAULT_LEARN_PREFS: LearnPrefs = { camera: "angled", bothGuides: false };
 
 const listeners = new Set<() => void>();
 let state: LearnPrefs | null = null;
@@ -25,7 +23,6 @@ function load(): LearnPrefs {
     const raw = window.localStorage.getItem(LEARN_PREFS_KEY);
     const p = raw ? (JSON.parse(raw) as Partial<LearnPrefs> | null) : null;
     return {
-      unlockAll: p?.unlockAll === true,
       camera: p?.camera === "top" ? "top" : "angled",
       bothGuides: p?.bothGuides === true,
     };

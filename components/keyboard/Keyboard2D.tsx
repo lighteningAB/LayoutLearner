@@ -27,6 +27,17 @@ export interface Keyboard2DProps {
   /** Largest size of one key unit in px (default 60). The board never exceeds its container. */
   maxUnit?: number;
   className?: string;
+  /**
+   * Makes the keys focusable buttons (one tab stop, arrow keys move between keys, Enter / Space
+   * activate). Without it the board is a plain image and nothing changes.
+   */
+  onKeyClick?: (keyId: string) => void;
+  /** Keys drawn with a selection ring (e.g. the key being edited). */
+  selectedKeyIds?: string[];
+  /** Keys drawn with a small "customised" marker. */
+  markedKeyIds?: string[];
+  /** Describes a key for assistive tech when `onKeyClick` is set (default: its legend). */
+  keyLabel?: (key: LayoutKey) => string;
 }
 
 /** Below this unit size (px) long key names are swapped for glyphs. */
@@ -117,11 +128,22 @@ interface KeyCapProps {
   fingerColors: boolean;
   showHome: boolean;
   compact: boolean;
+  interactive: boolean;
+  selected: boolean;
+  marked: boolean;
+  focusable: boolean;
+  ariaLabel?: string;
+  onActivate?: (id: string) => void;
+}
+
+function defaultKeyLabel(k: LayoutKey): string {
+  const text = displayLegends(k.label).join(" ").trim();
+  return text || (k.base === " " ? "Space" : "Key");
 }
 
 const u = (n: number) => `calc(var(--u) * ${Math.round(n * 1000) / 1000})`;
 
-const KeyCap = memo(function KeyCap({ k, state, heat, fingerColors, showHome, compact }: KeyCapProps) {
+const KeyCap = memo(function KeyCap({ k, state, heat, fingerColors, showHome, compact, interactive, selected, marked, focusable, ariaLabel, onActivate }: KeyCapProps) {
   const fi = fingerColors && k.finger ? fingerIndex(k.finger) : -1;
   const hasHeat = heat !== undefined && heat > 0;
   const capClass = [
@@ -155,8 +177,26 @@ const KeyCap = memo(function KeyCap({ k, state, heat, fingerColors, showHome, co
       data-finger={k.finger ? `${k.finger.hand}-${k.finger.finger}` : undefined}
       data-home={k.isHome ? "" : undefined}
       data-heat={hasHeat ? heat.toFixed(2) : undefined}
+      data-selected={selected ? "" : undefined}
+      data-marked={marked ? "" : undefined}
+      {...(interactive
+        ? {
+            role: "button",
+            tabIndex: focusable ? 0 : -1,
+            "aria-label": ariaLabel,
+            "aria-pressed": selected,
+            onClick: () => onActivate?.(k.id),
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onActivate?.(k.id);
+              }
+            },
+          }
+        : null)}
     >
       <div className={capClass} style={capStyle}>
+        {marked && <span className={styles.mark} aria-hidden />}
         {legendsFor(k, compact).map((l, i) => (
           <span
             key={i}
@@ -184,6 +224,10 @@ export function Keyboard2D({
   dimUnused,
   maxUnit = 60,
   className,
+  onKeyClick,
+  selectedKeyIds,
+  markedKeyIds,
+  keyLabel,
 }: Keyboard2DProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   // null until measured: CSS container units size the board for SSR / first paint.
@@ -210,7 +254,41 @@ export function Keyboard2D({
   const error = useMemo(() => new Set(errorKeyIds), [errorKeyIds]);
   const dim = useMemo(() => new Set(dimUnused), [dimUnused]);
 
+  const selected = useMemo(() => new Set(selectedKeyIds), [selectedKeyIds]);
+  const marked = useMemo(() => new Set(markedKeyIds), [markedKeyIds]);
+  const interactive = !!onKeyClick;
+  // Roving tab stop: the selected key, else the one last focused, else the first.
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const tabStop =
+    (selectedKeyIds?.find((id) => layout.keys.some((k) => k.id === id)) ?? (focusId && layout.keys.some((k) => k.id === focusId) ? focusId : null)) ??
+    layout.keys[0]?.id;
+
   const compact = unit !== null && unit < COMPACT_BELOW;
+
+  const onBoardKeyDown = (e: React.KeyboardEvent) => {
+    if (!interactive) return;
+    const dir = e.key === "ArrowRight" ? [1, 0] : e.key === "ArrowLeft" ? [-1, 0] : e.key === "ArrowDown" ? [0, 1] : e.key === "ArrowUp" ? [0, -1] : null;
+    const fromId = (e.target as HTMLElement).closest<HTMLElement>("[data-key-id]")?.dataset.keyId;
+    const from = layout.keys.find((k) => k.id === fromId);
+    if (!dir || !from) return;
+    e.preventDefault();
+    const cx = from.x + from.w / 2;
+    const cy = from.y + from.h / 2;
+    let best: LayoutKey | undefined;
+    let bestScore = Infinity;
+    for (const k of layout.keys) {
+      if (k === from) continue;
+      const dx = k.x + k.w / 2 - cx;
+      const dy = k.y + k.h / 2 - cy;
+      const along = dx * dir[0] + dy * dir[1];
+      if (along < 0.25) continue;
+      const score = along + 2.5 * Math.abs(dx * dir[1] + dy * dir[0]);
+      if (score < bestScore) [best, bestScore] = [k, score];
+    }
+    if (!best) return;
+    setFocusId(best.id);
+    rootRef.current?.querySelector<HTMLElement>(`[data-key-id="${best.id}"]`)?.focus();
+  };
 
   const rootStyle = {
     "--kb-w": layout.width,
@@ -227,8 +305,17 @@ export function Keyboard2D({
       data-testid="keyboard-2d"
       data-layout={layout.name}
       data-compact={compact ? "" : undefined}
-      role="img"
-      aria-label={`${layout.name} keyboard`}
+      role={interactive ? "group" : "img"}
+      aria-label={interactive ? `${layout.name} keyboard, choose a key` : `${layout.name} keyboard`}
+      onKeyDown={interactive ? onBoardKeyDown : undefined}
+      onFocusCapture={
+        interactive
+          ? (e) => {
+              const id = (e.target as HTMLElement).closest<HTMLElement>("[data-key-id]")?.dataset.keyId;
+              if (id) setFocusId(id);
+            }
+          : undefined
+      }
     >
       <div className={styles.board} style={boardStyle}>
         {layout.keys.map((k) => {
@@ -250,6 +337,12 @@ export function Keyboard2D({
               fingerColors={fingerColors}
               showHome={showHomeMarkers}
               compact={compact}
+              interactive={interactive}
+              selected={selected.has(k.id)}
+              marked={marked.has(k.id)}
+              focusable={k.id === tabStop}
+              ariaLabel={interactive ? (keyLabel ? keyLabel(k) : defaultKeyLabel(k)) : undefined}
+              onActivate={onKeyClick}
             />
           );
         })}

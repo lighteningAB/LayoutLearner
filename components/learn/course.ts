@@ -7,10 +7,10 @@ import { buildCurriculum, type Lesson, type LessonStage } from "@/lib/lessons/cu
 import { useLessonProgress, type LessonProgress, type LessonProgressEntry } from "@/lib/lessons/progress";
 import type { CharStat, HistoryPoint, TestResult } from "@/lib/typing/engine";
 import type { ParsedLayout } from "@/lib/types";
-import { useLearnPrefs } from "./prefs";
 import { stableLayout } from "./stableLayout";
 
-export type LessonState = "locked" | "available" | "current" | "completed";
+/** "current" is the suggested next lesson (the first one not passed yet). Every lesson can be started. */
+export type LessonState = "available" | "current" | "completed";
 
 export const STAGE_NAME: Record<LessonStage, string> = {
   home: "Home row",
@@ -27,8 +27,6 @@ export interface CourseLesson {
   /** 1-based position in the course. */
   number: number;
   state: LessonState;
-  /** Can be started (passed before, next in line, or everything is unlocked). */
-  unlocked: boolean;
   passed: boolean;
   stars: 0 | 1 | 2 | 3;
   entry: LessonProgressEntry | null;
@@ -79,37 +77,27 @@ export function shortLessonTitle(lesson: Pick<Lesson, "title" | "stage">): strin
   return t[0].toUpperCase() + t.slice(1);
 }
 
-export function buildCourse(curriculum: Lesson[], progress: LessonProgress, unlockAll: boolean): Course {
+export function buildCourse(curriculum: Lesson[], progress: LessonProgress): Course {
   const lessons: CourseLesson[] = [];
   let next: CourseLesson | null = null;
-  let previousPassed = true;
   for (const lesson of curriculum) {
     const entry = progress[lesson.id] ?? null;
     const passed = entry?.completedAt != null;
-    const unlocked = unlockAll || passed || previousPassed;
     const item: CourseLesson = {
       lesson,
       number: lessons.length + 1,
-      state: passed ? "completed" : "locked",
-      unlocked,
+      state: passed ? "completed" : "available",
       passed,
       stars: passed ? ((Math.min(3, Math.max(0, Math.round(entry?.stars ?? 0))) as 0 | 1 | 2 | 3)) : 0,
       entry,
       shortTitle: shortLessonTitle(lesson),
     };
-    if (!passed) {
-      if (!next) {
-        next = item;
-        item.state = unlocked ? "current" : "locked";
-      } else if (unlocked) item.state = "available";
+    // The suggested next step is the first lesson that is not passed yet.
+    if (!passed && !next) {
+      next = item;
+      item.state = "current";
     }
     lessons.push(item);
-    previousPassed = passed;
-  }
-  // The "current" lesson is the first unfinished one; it is always startable.
-  if (next && !next.unlocked) {
-    next.unlocked = true;
-    next.state = "current";
   }
 
   const stages: CourseStage[] = [];
@@ -135,8 +123,6 @@ export function buildCourse(curriculum: Lesson[], progress: LessonProgress, unlo
 export interface UseCourse {
   active: ActiveLayout;
   course: Course;
-  unlockAll: boolean;
-  setUnlockAll: (on: boolean) => void;
 }
 
 /** The course of the active layout with live progress. */
@@ -146,10 +132,9 @@ export function useCourse(): UseCourse {
   // when an unrelated setting changes.
   const active = useMemo(() => ({ ...resolved, layout: stableLayout(resolved.layout) }), [resolved]);
   const progress = useLessonProgress(active.id);
-  const [prefs, setPrefs] = useLearnPrefs();
   const curriculum = useMemo(() => curriculumFor(active.layout), [active.layout]);
-  const course = useMemo(() => buildCourse(curriculum, progress, prefs.unlockAll), [curriculum, progress, prefs.unlockAll]);
-  return { active, course, unlockAll: prefs.unlockAll, setUnlockAll: (on) => setPrefs({ unlockAll: on }) };
+  const course = useMemo(() => buildCourse(curriculum, progress), [curriculum, progress]);
+  return { active, course };
 }
 
 export const lessonHref = (lessonId: string) => `/learn/${encodeURIComponent(lessonId)}`;

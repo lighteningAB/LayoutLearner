@@ -18,4 +18,4 @@ export {
   type UseCourse,
 } from "./course";
 export { useLearnPrefs, getLearnPrefs, updateLearnPrefs, LEARN_PREFS_KEY, type LearnPrefs } from "./prefs";
-export { Stars, StarIcon, LockIcon, KeyChip, KeyChips } from "./bits";
+export { Stars, StarIcon, KeyChip, KeyChips } from "./bits";

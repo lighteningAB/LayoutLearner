@@ -2,26 +2,103 @@
 
 Layout Learner teaches alternate keyboard layouts (Dvorak, Colemak, Colemak-DH, Workman, or one you design yourself) on the physical board you actually own: a 60% or full-size ANSI board, an ortholinear grid, or a split ergonomic keyboard. You can practise without touching your OS keyboard settings, follow a course that is generated for whichever layout you pick, and watch 3D hands show which finger goes where.
 
-Live site: https://layout-learner.vercel.app
+**Try it: https://layout-learner.vercel.app**
 
-![Layout Learner home page](https://github.com/lighteningAB/LayoutLearner/blob/main/public/layoutLearnerHomepage.png)
+![Typing test with 3D hands](docs/screenshots/hero.png)
 
 ## Build Status
 
 [![Vercel Deploy](https://deploy-badge.vercel.app/vercel/Layout-Learner)](https://layout-learner.vercel.app/)
 
-## Features
+## Contents
+
+**Using the app**
+
+- [Getting started in 60 seconds](#getting-started-in-60-seconds)
+- [What it does](#what-it-does)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [FAQ](#faq)
+
+**For developers**
+
+- [Quick start](#quick-start)
+- [How it works](#how-it-works): [architecture overview](#architecture-overview), [keystroke pipeline](#keystroke-pipeline), [layout engine](#layout-engine-liblayout), [typing engine](#typing-engine-libtyping), [lessons](#lessons-liblessons-componentslearn), [3D hands](#3d-hands-libhands-componentshands), [persistence](#persistence)
+- [Adding a layout or a board preset](#adding-a-layout-or-a-board-preset)
+- [Project structure](#project-structure)
+- [Development workflow](#development-workflow)
+- [Deployment](#deployment), [Contribution Guide](#contribution-guide), [Roadmap](#roadmap)
+
+---
+
+# Using the app
+
+## Getting started in 60 seconds
+
+1. **Pick your layout and board.** Open **Layouts** and choose a layout (QWERTY, Dvorak, Colemak, Colemak-DH, Workman, ...) on the board that matches your keyboard (ANSI 60%, full size, ortholinear or one of the split boards). Press "Use this layout".
+2. **Turn "Emulate layout" on** (unless your OS is already set to that layout). It is off by default, so the app trusts the characters your OS produces. With emulation on, your OS stays on QWERTY and the app translates each physical key press into what your chosen layout would type there, so there is nothing to change in your OS settings. The toggle sits next to the keyboard guide on the Test and lesson pages, and in **Settings**. If you start typing and your keys look like QWERTY, the app offers to turn it on for you.
+3. **Start lesson 1 on Learn.** The course is generated for your layout and starts with the home row. Each lesson shows the new keys, asks you to press them, then runs short typing drills. Every lesson can be started at any time; the course map highlights the next one you have not passed yet.
+4. **Measure yourself on Test.** The Test page is a plain typing test (time or words mode) that uses your layout. Use it to track speed and accuracy, or to run a drill on the keys you missed.
+
+If a guide gets in the way, switch off the 3D hands, the on-screen keyboard or the finger colours in **Settings** (or from the command palette) as you improve.
+
+### What it does
 
 - **Typing test** (`/`): time mode (15, 30, 60 or 120 s) or words mode (10, 25, 50 or 100 words), three word lists (English 200, English 1k, code), optional punctuation and numbers. Live WPM and accuracy, a per-second results chart, consistency, and a "practice weak keys" drill built from the keys you missed.
-- **Lessons** (`/learn`): a course generated for the active layout, home row first, then top and bottom rows, capitals, numbers and punctuation. Each lesson introduces a few keys, then runs short drills. Lessons are graded with 1 to 3 stars and the next lesson unlocks when you pass (or turn on "unlock all lessons").
-- **3D hands**: a rigged pair of hands over a 3D keyboard reaches for the next key with the correct finger, holds Shift with the opposite hand for capitals, and taps keys as you type. A 2D keyboard with finger colours is always available as an alternative, and takes over automatically if WebGL is unavailable.
+- **Lessons** (`/learn`): a course generated for the active layout, home row first, then top and bottom rows, capitals, numbers and punctuation. Each lesson introduces a few keys, then runs short drills. Lessons are graded with 1 to 3 stars. All lessons are open, so you can start anywhere; the first lesson you have not passed yet is marked as next up and the Continue button leads to it.
+- **3D hands**: a rigged pair of hands over a 3D keyboard reaches for the next key with the correct finger, holds Shift with the opposite hand for capitals, and taps keys as you type. The panel keeps its size while the 3D scene loads (a slim progress bar shows while the three.js code and the hand model download, so nothing on the page jumps). When the word you are typing contains a typo, the guide points at Backspace (with its finger, "fix the typo") until the word is a correct prefix again; once you move on with Space it goes back to the next letter. A 2D keyboard with finger colours is always available as an alternative, and takes over automatically if WebGL is unavailable or the scene fails to load.
 - **Layouts** (`/layouts`): a gallery with per-layout analysis (finger load, home-row share, same-finger bigrams, what moved relative to QWERTY), and an editor for custom layouts that accepts [keyboard-layout-editor](https://www.keyboard-layout-editor.com/) raw data, with live preview, import and export.
-- **Layout emulation**: with "Emulate layout" on (the default), your OS stays on QWERTY and the app translates each physical key press into the character your chosen layout would type there. Turn it off if your OS is already set to the layout.
+- **Layout emulation**: with "Emulate layout" on, your OS stays on QWERTY and the app translates each physical key press into the character your chosen layout would type there. It is off by default (the app trusts the characters your OS sends, which is right when your OS is already set to the layout); if your first keystrokes match QWERTY instead of the layout, a small dismissible hint offers to turn it on.
 - **Board types**: ANSI 60%, full size with numpad, ortholinear, and split or ergonomic boards (columnar stagger, rotated thumb clusters), including Corne (3x5 and 3x6), Ferris Sweep, Atreus, Kyria, Iris, Lily58, Sofle, Moonlander and ErgoDox. See `lib/layout/presets.ts` for the current list. Board geometry is approximated from the real boards.
 - **Themes and settings**: six themes (Tide, Paper, Dusk, Moss, Ember, Glacier), text size, smooth caret, error sound, toggles for the keyboard, hands and finger colours.
 - **Command palette and shortcuts**: `Ctrl/Cmd+K` (or `Esc` when nothing else claims it) opens a palette to jump between pages, switch themes with live preview, toggle settings and change test mode. In the test, `Tab` then `Enter` restarts, `Esc` starts a new test while one is running, and `Ctrl/Alt+Backspace` deletes a word.
 
+| | |
+|---|---|
+| ![Typing test on the default board](docs/screenshots/hero.png) | ![Typing test on a split board](docs/screenshots/test-split.png) |
+| **Typing test** with 3D hands reaching for the next key. | The same test on a split board: each hand is fitted to its own half. |
+| ![Course map](docs/screenshots/learn-map.png) | ![A lesson in progress](docs/screenshots/lesson.png) |
+| **Course map** generated for the active layout. | **A lesson**: new keys first, then drills. |
+| ![Layouts gallery](docs/screenshots/layouts.png) | ![Light theme](docs/screenshots/theme-paper.png) |
+| **Layouts** gallery with per-layout analysis and a custom layout editor. | One of the two light themes (Paper). |
+
 Everything runs in the browser. Settings, custom layouts and lesson progress are stored in `localStorage`; nothing is sent to a server.
+
+### Keyboard shortcuts
+
+| Keys | Where | What it does |
+|---|---|---|
+| `Tab`, then `Enter` | Test, lesson drills | Restart. `Tab` moves focus to the restart button from anywhere, `Enter` presses it. |
+| `Esc` | Test, while a test is running | Start a new test. |
+| `Esc` | Test, when no test is running; most other pages | Open the command palette. |
+| `Esc` | Lesson | Back to the course (a dialog may ask first if you would lose progress). On the result screen it goes straight back. |
+| `Enter` | Lesson intro and between drills | Continue to the next step. |
+| `Enter` | Lesson result screen | The highlighted action: next lesson if you passed, otherwise retry (back to the course if there is no next lesson). |
+| `Ctrl/Cmd+K` | Anywhere | Open or close the command palette: jump between pages, switch themes with live preview, toggle settings, change test mode. Move with the arrow keys (or `Ctrl+N` / `Ctrl+P`), `Enter` runs. |
+| `Backspace` | Test, lessons | Delete a character. |
+| `Ctrl+Backspace` or `Alt+Backspace` | Test, lessons | Delete a word. |
+
+Other browser and OS shortcuts (copy, reload, switching tabs) are left alone while you type.
+
+### FAQ
+
+**Do I need to change my OS keyboard layout?**
+No. Turn on "Emulate layout" (the toggle by the keyboard guide, or Settings) and the app reads which physical key you pressed and types the character your chosen layout has there, whatever your OS is set to. Leave it off if your OS is already set to that layout. It is off by default; if you have not changed your OS layout and your keystrokes look like QWERTY, the app shows a hint with a one-click "Turn on".
+
+**Does it work with my split or ortholinear keyboard?**
+Yes, if the board is on the Layouts page or you describe it yourself. There are presets for Corne (3x5 and 3x6), Ferris Sweep, Atreus, Kyria, Iris, Lily58, Sofle, Moonlander and ErgoDox, plus ortholinear grids. Fingers and home keys are worked out from the key positions, and board geometry is approximated from the real boards, so check the colours on the keyboard preview.
+
+**Can I use my own layout or board?**
+Yes. The editor on the Layouts page takes raw data from [keyboard-layout-editor.com](https://www.keyboard-layout-editor.com/), shows a live preview and warns about problems (missing letters, duplicate characters, no fingers found). Custom layouts can be exported and imported again.
+
+**Where is my progress stored? Is there an account?**
+In your browser's `localStorage` only. There is no account and nothing is sent to a server, so progress does not follow you to another browser or device, and "Clear all data" in Settings removes it.
+
+**Why are there no layers?**
+Layers are not supported yet. Keys named Fn, Lower, Raise or Hyper are treated as modifiers that do nothing, so only the normal and Shift characters printed on each key are typed. It is on the [roadmap](#roadmap).
+
+---
+
+# For developers
 
 ## Quick start
 
@@ -40,22 +117,114 @@ The stack is Next.js 15 (app router), React 19, TypeScript, Tailwind CSS v4, thr
 
 The app is built around one data type, `ParsedLayout` in `lib/types.ts`: a list of `LayoutKey`s, each with a position and size in key units (1u is one standard key), its legends, the characters it types (`base`, `shifted`), a `KeyboardEvent.code`, a `finger`, an `isHome` flag, and an optional rotation. Every feature (2D keyboard, typing, lessons, 3D hands, analysis) reads only that structure, so supporting a new board means producing a good `ParsedLayout`, not changing the features.
 
-```
- keydown (window, capture phase)
-    |
-    v
- useKeyboardInput ──> resolveKeystroke(layout, event, {emulate})      lib/typing/useKeyboardInput.ts, lib/layout/keys.ts
-    |                         |
-    |                         └─> { char, keyId, action }
-    v
- useTypingTest ──> applyInput(state, input, time)   pure state machine, lib/typing/engine.ts
-    |
-    ├─> WordsDisplay        letters, caret, word states
-    ├─> KeyboardGuide       guideForChar(layout, nextChar) -> key, Shift key, finger  (2D board)
-    └─> HandsPanel ─> HandsScene ─> HandsController              (3D hands: target, modifier, press)
+
+### Architecture overview
+
+Read this left to right: each route renders components, components call into `lib` modules, and three stores persist to `localStorage`. The layout engine feeds everything else.
+
+```mermaid
+flowchart LR
+  subgraph routes["Routes (app/)"]
+    R1["/ test"]
+    R2["/learn and /learn/id"]
+    R3["/layouts"]
+    R4["/settings"]
+  end
+  subgraph comps["Components"]
+    C1["typing: TypingTest, WordsDisplay, KeyboardGuide"]
+    C2["learn: CourseMap, LessonPlayer"]
+    C3["layouts: gallery, detail, editor"]
+    C4["hands: HandsScene"]
+    C5["keyboard: Keyboard2D"]
+    C6["shell: nav, palette, settings view"]
+  end
+  subgraph libs["lib/"]
+    L1["layout: parse, split, keys, presets, custom, analysis"]
+    L2["typing: engine, words, useKeyboardInput"]
+    L3["lessons: curriculum, progress"]
+    L4["hands: rig, ik, pose, keyboard3d"]
+    L5["settings: store, themes"]
+  end
+  subgraph store["localStorage"]
+    S1["ll:v1:settings"]
+    S2["ll:v1:lessons"]
+    S3["ll:v1:learn"]
+  end
+  R1 --> C1
+  R2 --> C2
+  R3 --> C3
+  R4 --> C6
+  C1 --> C4
+  C2 --> C4
+  C1 --> C5
+  C2 --> C5
+  C1 --> L2
+  C1 --> L1
+  C2 --> L3
+  C2 --> L2
+  C3 --> L1
+  C4 --> L4
+  L3 --> L2
+  C2 --> L1
+  C6 --> L5
+  L1 --> L5
+  L5 --> S1
+  L3 --> S2
+  C2 --> S3
 ```
 
+### Keystroke pipeline
+
+Follow one key press from the browser event to what is drawn. The only branch is emulation: with it on the physical key decides the character, with it off the character decides the key.
+
+```mermaid
+flowchart TD
+  KD["keydown on window, capture phase"] --> UKI["useKeyboardInput"]
+  UKI --> FILT{"text field, modal or browser chord?"}
+  FILT -->|yes| IGN["ignored, browser handles it"]
+  FILT -->|no| RK["resolveKeystroke"]
+  RK --> EM{"emulate layout?"}
+  EM -->|on| E1["event.code to layout key to base or shifted char"]
+  EM -->|off| E2["event.key char to layout key"]
+  E1 --> OUT["char, keyId or action"]
+  E2 --> OUT
+  OUT --> ACT{"Enter, Tab, Esc, Backspace?"}
+  ACT -->|yes| ONA["onAction or backspace input"]
+  ACT -->|no| ONI["onInput char"]
+  ONI --> ENG["applyInput in engine.ts, pure state machine"]
+  ONA --> ENG
+  ENG --> WD["WordsDisplay"]
+  ENG --> KG["KeyboardGuide via guideForChar"]
+  ENG --> HS["HandsScene via HandsController"]
+```
+
+The same hook drives the lessons. A wrong character also flashes the key (`expectedChar`).
+
 ### Layout engine (`lib/layout`)
+
+Layout parsing turns KLE text into a `ParsedLayout`. Read the diagram top to bottom: geometry first, then one of three board-type branches decides the `code`, `finger` and `isHome` of every key.
+
+```mermaid
+flowchart TD
+  SRC["KLE raw data text"] --> J5["json5 parse, never eval"]
+  J5 --> WALK["walk rows: keys with x, y, w, h and rotation"]
+  WALK --> CH["charsFor and NAMED table: base, shifted, isModifier"]
+  CH --> TYPE{"board type"}
+  TYPE -->|"ANSI origin found"| A["row-staggered: ANSI_REF gives code"]
+  TYPE -->|"two halves found"| SP["split: analyseSplit and SPLIT_CODES"]
+  TYPE -->|"otherwise"| OR["ortholinear: match rows by order"]
+  A --> FG["finger and isHome from code tables"]
+  OR --> FG
+  SP --> FS["finger, isHome and logical row from columns"]
+  FG --> NORM["normalise bounding box to the origin"]
+  FS --> NORM
+  NORM --> PL["ParsedLayout"]
+  PL --> U1["Keyboard2D and 3D keyboard"]
+  PL --> U2["resolveKeystroke"]
+  PL --> U3["buildCurriculum"]
+  PL --> U4["analyzeLayout"]
+  PL --> U5["HandsController"]
+```
 
 **Parsing** (`parse.ts`). `parseLayout(source, name?)` reads keyboard-layout-editor (KLE) raw data. The source is parsed with `json5`, never `eval`, so the unquoted property names KLE exports (`{x:0.5,w:2}`) work and pasted text cannot execute code. It also accepts rows without the outer brackets. Syntax errors become `LayoutParseError`s carrying a line and column, which the editor shows in place. There is a hard cap of 400 keys per layout.
 
@@ -71,7 +240,45 @@ The walk follows KLE semantics: a string is a key, an object changes properties 
 
 Step 3 is a heuristic: it matches by order within a row, not by position on the board, so it expects a recognisable block of letter rows.
 
-**Split boards.** A board is treated as split when `detectHalves` finds a clear vertical gap (at least 0.75u) near the middle of the main block, with a comparable number of keys on each side, or, when there is no gap, two large groups of keys with opposite rotation (Atreus-style). Small rotated groups such as thumb clusters are ignored while looking for the gap. This is purely geometric, so it works for any letter arrangement. `analyseHalf` then works on each half in its own frame:
+**Split boards.** The diagram shows the order of steps and the sketch shows what ends up on each key. Read the sketch as the left half seen from above, with the gap between the halves on its right; the right half is the mirror image.
+
+```mermaid
+flowchart TD
+  K["all keys"] --> DH["detectHalves: gap or two opposite rotations"]
+  DH --> H1["left half"]
+  DH --> H2["right half"]
+  H1 --> AH["analyseHalf, in the half's own frame"]
+  H2 --> AH
+  AH --> COL["cluster keys into columns by x"]
+  COL --> ROW["logical rows from column tops"]
+  ROW --> ALPHA["pick up to 3 alpha rows, middle one is home"]
+  ALPHA --> REG["regular columns counted from the centre gap"]
+  REG --> FING["columns to index, index, middle, ring, pinky"]
+  ALPHA --> THUMB["leftover keys below the letters form the thumb cluster"]
+  FING --> HOME["home keys: index, middle, ring, pinky on the home row"]
+  THUMB --> RT["resting thumb key becomes a home key"]
+```
+
+```
+        left half, seen from above                       centre gap
+   pinky     ring    middle    index    index(inner)         |
+   col 5     col 4    col 3     col 2      col 1             |
+  .-----.  .-----.  .-----.  .-----.    .-----.              |
+  |  Q  |  |  W  |  |  E  |  |  R  |    |  T  |    top row   |
+  '-----'  '-----'  '-----'  '-----'    '-----'              |
+  .-----.  .-----.  .-----.  .-----.    .-----.              |
+  | [A] |  | [S] |  | [D] |  | [F] |    |  G  |    home row  |
+  '-----'  '-----'  '-----'  '-----'    '-----'              |
+  .-----.  .-----.  .-----.  .-----.    .-----.              |
+  |  Z  |  |  X  |  |  C  |  |  V  |    |  B  |    bottom    |
+  '-----'  '-----'  '-----'  '-----'    '-----'              |
+     thumb cluster, rotated, below the letters: [rest] key + others
+   [ ] = home key (the resting thumb key is one too).
+   The inner column (col 1) is an index stretch.
+   Letters above are QWERTY labels for the position; your layout puts its own letters there.
+```
+
+A board is treated as split when `detectHalves` finds a clear vertical gap (at least 0.75u) near the middle of the main block, with a comparable number of keys on each side, or, when there is no gap, two large groups of keys with opposite rotation (Atreus-style). Small rotated groups such as thumb clusters are ignored while looking for the gap. This is purely geometric, so it works for any letter arrangement. `analyseHalf` then works on each half in its own frame:
 
 - It undoes the rotation most keys share, clusters keys into **columns** by x position, and builds **logical rows** from how far each column's top key sits from its neighbour's (columnar stagger is less than a key, so those keys share a row).
 - It picks the up-to-three consecutive rows holding the most letters as the alpha rows (legends are used only to tell character rows from the number row and modifier rows). The middle one is the home row.
@@ -91,12 +298,12 @@ Step 3 is a heuristic: it matches by order within a row, not by position on the 
 
 `resolveKeystroke(layout, event, {emulate})` turns a browser key event into `{char, keyId, action}`.
 
-- **Emulate on** (default): the OS is on QWERTY, so the layout key is found by physical position, `event.code`, and the character is its `base` or, with Shift held, its `shifted`. Dead keys, IME composition and the OS layout are irrelevant because only `code` is used.
-- **Emulate off**: the OS already produces the layout, so `event.key` is trusted and mapped back to a layout key by character.
+- **Emulate on**: the OS is on QWERTY, so the layout key is found by physical position, `event.code`, and the character is its `base` or, with Shift held, its `shifted`. Dead keys, IME composition and the OS layout are irrelevant because only `code` is used.
+- **Emulate off** (default): the OS already produces the layout, so `event.key` is trusted and mapped back to a layout key by character.
 
 Enter, Tab, Escape and Backspace are returned as `action`s. `keyForChar` goes the other way, from a character to the key that types it and, if Shift is needed, the Shift key on the opposite hand from that key. `guideForChar` in `components/typing/KeyboardGuide.tsx` builds on it to describe "next key, Shift, finger" for the guides.
 
-`useKeyboardInput` is the single window-level listener, shared by the test and the lessons. It listens in the capture phase, ignores events while a text field, modal, menu or the palette has focus, lets browser and app chords through (Ctrl/Alt+Backspace is the exception), ignores held-key repeats, tracks which keys are down for the on-screen keyboard, and flashes the key when the typed character differs from `expectedChar`.
+`useKeyboardInput` is the single window-level listener, shared by the test and the lessons. It listens in the capture phase, ignores events while a text field, modal, menu or the palette has focus, lets browser and app chords through (Ctrl/Alt+Backspace is the exception), ignores held-key repeats, tracks which keys are down for the on-screen keyboard, and flashes the key when the typed character differs from `expectedChar`. Every character keystroke is also reported through `onKeystroke(char, expected)`; `useEmulationHint` (`components/typing/EmulationHint.tsx`) uses it while emulation is off: when most of the first few keystrokes equal what QWERTY types at the expected key's physical position (`code`), it shows a dismissible hint (once per browser session) with a "Turn on" action.
 
 ### Typing engine (`lib/typing`)
 
@@ -115,6 +322,23 @@ The result also carries per-character hit, miss and latency data and a mistype m
 
 ### Lessons (`lib/lessons`, `components/learn`)
 
+A lesson is a small state machine in `LessonPlayer`. Read it from the course map: a lesson that introduces keys starts with the intro, a review goes straight to the drills. Lessons are never locked: the course map only marks the first lesson that is not passed as "next up".
+
+```mermaid
+stateDiagram-v2
+  [*] --> CourseMap
+  CourseMap --> Intro: open any lesson with new keys
+  CourseMap --> Drills: open a review lesson
+  Intro --> Drills: every new key pressed, or Enter, or Skip intro
+  Drills --> Drills: Enter after a finished drill, next drill
+  Drills --> Summary: last drill finished
+  Summary --> CourseMap: Esc or Back to course
+  Summary --> Intro: Retry or Next lesson
+  Summary --> Drills: Retry or Next lesson, no new keys
+```
+
+On the summary, `gradeLesson` gives 0 to 3 stars. One star or more passes the lesson, saves the result with `recordLessonResult`; the next lesson then becomes the suggested one on the course map.
+
 `buildCurriculum(layout)` in `curriculum.ts` derives a whole course from `finger`, `isHome`, `row` and the characters of the keys, so it works for any layout:
 
 1. Find the home row (the row with the most home keys) and the unique letters on the keys.
@@ -123,9 +347,26 @@ The result also carries per-character hit, miss and latency data and a mistype m
 
 Each lesson has `newChars`, the cumulative known `chars`, `focusKeyIds` for the guides, a few `drills` (word lists, easiest first) and a goal (`GOALS` per stage). Drill words are restricted to known characters with the same filtering and pseudo-word fallback as above, and the PRNG is seeded from the layout's characters plus the lesson id, so a layout always yields the same course. `validateCurriculum` checks that every character is introduced exactly once; the `/dev/engine` harness runs it.
 
-`gradeLesson` gives 1 star when both the accuracy and WPM goals are met, 2 stars at 95% accuracy and 1.25x the WPM goal, 3 stars at 98% and 1.5x. `lib/lessons/progress.ts` keeps the best stars, WPM and accuracy per layout and lesson. `components/learn/course.ts` joins the curriculum with progress to compute the unlock chain: a lesson is startable if passed, next in line, or "unlock all" is on. A custom layout gets its own course and progress, keyed by its id.
+`gradeLesson` gives 1 star when both the accuracy and WPM goals are met, 2 stars at 95% accuracy and 1.25x the WPM goal, 3 stars at 98% and 1.5x. `lib/lessons/progress.ts` keeps the best stars, WPM and accuracy per layout and lesson. `components/learn/course.ts` joins the curriculum with progress to compute each lesson's state: completed, "current" (the first lesson not passed, the suggested next step) or available. Every lesson is startable. A custom layout gets its own course and progress, keyed by its id.
 
 ### 3D hands (`lib/hands`, `components/hands`)
+
+Read the chain from top to bottom for one keystroke; the first two steps run only when the layout changes, the rest on every target change.
+
+```mermaid
+flowchart TD
+  LC["layout change"] --> PL["placeLayout: keys into world space"]
+  PL --> FR["fitRest per hand: relaxed fingertips on home keys"]
+  FR --> TK["setTarget key: digit chosen from key.finger"]
+  TK --> RP["reachPose: finger extends first"]
+  RP --> NEED{"finger reach enough?"}
+  NEED -->|yes| IK["solveChain IK on the digit"]
+  NEED -->|no| PM["palm moves by the remaining distance"]
+  PM --> IK
+  IK --> SP["critically damped springs, idle fingers follow"]
+  SP --> TAP["press: tap and flash on the key"]
+  TAP --> RD["render on demand, frameloop demand"]
+```
 
 The scene is layout-agnostic: it uses only the keys' positions, `finger` and `isHome`.
 
@@ -133,7 +374,7 @@ The scene is layout-agnostic: it uses only the keys' positions, `finger` and `is
 - **Keyboard** (`space.ts`, `keyboard3d.ts`). `placeLayout` maps the layout into world space (1 unit is 1u, centred on the origin, key rotation about the vertical axis). `Keyboard3D` draws caps as instanced meshes bucketed by size, with key dip, flash, hold and finger-zone tints, and implements the `KeySink` interface the pose layer calls into.
 - **IK** (`ik.ts`). `solveChain` solves one digit's three parameters (spread, knuckle flexion, curl) against a 3D fingertip target with a few damped Gauss-Newton steps on a finite-difference Jacobian and hard joint limits. It allocates nothing per call.
 - **Posing** (`pose.ts`). `HandsController` owns both hands. `setTarget(keyId)` and `setModifier(keyId)` pick the digit from the key's `finger`. For each hand `fitRest` slides and pivots the hand so every relaxed fingertip rests on its home key in a comfortable arch, with spare reach one row up and down, and on boards with a dedicated thumb home key it also fits the thumb. How far the hands are turned inward depends on how far apart the home keys are, and a column-staggered half (`columnYaw`) lays the fingers along its own columns. To reach a key, `reachPose` has the finger do as much of the reach as is comfortable (IK must succeed without hitting a joint limit while following the key down) and moves the palm only by what is left, so letter-row keys barely move the hand and far keys move it a lot. Motion uses critically damped springs, and idle fingers follow a displaced hand. `press` plays a tap and flash on a key, in the error colour when the keystroke was wrong.
-- **Rendering** (`components/hands/HandsScene.tsx`). The `Canvas` uses `frameloop="demand"`, so nothing is drawn while everything is at rest; effects call `invalidate()` and the frame loop keeps requesting frames only while `controller.update` reports movement, and pauses when the canvas is off screen or the tab is hidden. The camera is fitted to the key block and both hands and glides when the framing changes (`angled`, `top` or `front`). Colours are read from the CSS design tokens by `theme.ts` (`readTheme`, `watchTheme`), so the scene follows theme changes. `components/hands/index.tsx` loads it with `next/dynamic` and `ssr: false`, and `HandsPanel` falls back to the 2D keyboard when WebGL2 is unavailable.
+- **Rendering** (`components/hands/HandsScene.tsx`). The `Canvas` uses `frameloop="demand"`, so nothing is drawn while everything is at rest; effects call `invalidate()` and the frame loop keeps requesting frames only while `controller.update` reports movement, and pauses when the canvas is off screen or the tab is hidden. The camera is fitted to the key block and both hands and glides when the framing changes (`angled`, `top` or `front`). Colours are read from the CSS design tokens by `theme.ts` (`readTheme`, `watchTheme`), so the scene follows theme changes. `components/hands/index.tsx` loads it with `next/dynamic` and `ssr: false` (used by the dev pages). `HandsPanel` imports the scene itself so it can show real progress: the panel box has its final size from the first paint (aspect ratio plus a height clamp, `handsBoxStyle`), the scene chunk and `hand.glb` load in parallel (`lib/hands/progress.ts` carries the GLB byte progress from the loader), a slim bar with "Loading 3D hands…" appears after 150 ms (indeterminate when the size is unknown, no creeping with reduced motion), and the canvas is revealed only after its first frame with the hands at rest and the camera fitted (the scene reports `ready` from inside the frame loop). The panel root carries `data-hands-load="loading|ready|error"` and the bar `data-testid="hands-progress"`. If WebGL2 is unavailable or the scene fails to load, `HandsPanel` renders nothing and the 2D keyboard takes over.
 
 On split boards each hand is fitted to its own half (home keys per hand, column yaw, thumb home key), so the same mechanism carries them. Outer thumb-cluster keys on large boards still need the whole hand to move; check `/dev/hands?preset=<id>` when adding a board.
 
@@ -152,7 +393,7 @@ There is no database. Three `localStorage` keys, all under the `ll:v1:` prefix, 
 |---|---|
 | `ll:v1:settings` | Settings and custom layouts (`lib/settings/store.ts`) |
 | `ll:v1:lessons` | Lesson progress per layout (`lib/lessons/progress.ts`) |
-| `ll:v1:learn` | Learn preferences: unlock all, hands camera, show both guides (`components/learn/prefs.ts`) |
+| `ll:v1:learn` | Learn preferences: hands camera, show both guides (an old `unlockAll` value is ignored) (`components/learn/prefs.ts`) |
 
 Each store is an external store consumed with `useSyncExternalStore`, reads defensively (corrupt or missing data reads as defaults), keeps working in memory if storage is blocked, and syncs across tabs through the `storage` event. "Clear all data" in Settings removes every `ll:v1:` key and fires a window event so the other stores reset. Statistics (history, heatmaps, charts) used to exist and were removed; the settings store deletes their old keys. `next-auth` is wired up under `app/api/auth` with GitHub and Google providers but nothing uses it to store data yet.
 

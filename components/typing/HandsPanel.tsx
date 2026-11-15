@@ -10,14 +10,15 @@
 // The three.js bundle is only fetched when the panel actually renders (settings.showHands on and
 // WebGL available). Without WebGL nothing renders and `useGuideView().showKeyboard` turns true, so
 // the 2D board silently takes over.
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import HandsScene from "@/components/hands";
-import { SegmentedControl, Skeleton, cx } from "@/components/ui";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ComponentType } from "react";
+import type { HandsSceneProps } from "@/components/hands/HandsScene";
+import { ProgressBar, SegmentedControl, cx } from "@/components/ui";
+import { getHandModelProgress, subscribeHandModelProgress } from "@/lib/hands/progress";
 import { useLearnPrefs } from "@/components/learn/prefs";
 import { stableLayout } from "@/components/learn/stableLayout";
 import { useSettings } from "@/lib/settings";
 import type { ParsedLayout } from "@/lib/types";
-import { guideForChar } from "./KeyboardGuide";
+import { guideForTarget, type GuideAction } from "./KeyboardGuide";
 
 export type GuideView = "hands" | "keys" | "both" | "none";
 export type HandsPanelCamera = "angled" | "top";
@@ -55,6 +56,29 @@ export function useWebGLSupport(): boolean | null {
   return ok;
 }
 
+// ────────────────────────────────────────────────────────────────────────── load failure
+
+// The 3D scene could not load (chunk or model): for the rest of this page's life the 2D keyboard stands in.
+let handsFailed = false;
+const failListeners = new Set<() => void>();
+function markHandsFailed() {
+  if (handsFailed) return;
+  handsFailed = true;
+  failListeners.forEach((l) => l());
+}
+function useHandsFailed(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      failListeners.add(l);
+      return () => {
+        failListeners.delete(l);
+      };
+    },
+    () => handsFailed,
+    () => false,
+  );
+}
+
 // ────────────────────────────────────────────────────────────────────────── view state
 
 export interface GuideViewState {
@@ -67,6 +91,8 @@ export interface GuideViewState {
   showKeyboard: boolean;
   /** `maxUnit` for KeyboardGuide: the 2D board shrinks when it sits under the hands. */
   keyboardUnit: number;
+  /** Pass to KeyboardGuide `reserveBox`: keeps the hands' footprint free while the guide is on "keys" (so text does not jump on switching). */
+  reserveBox: CSSProperties | undefined;
   /** false once we know WebGL is unavailable (the view switch hides itself). */
   handsSupported: boolean;
 }
@@ -76,6 +102,7 @@ export function useGuideView(): GuideViewState {
   const [settings, update] = useSettings();
   const [prefs, setPrefs] = useLearnPrefs();
   const webgl = useWebGLSupport();
+  const failed = useHandsFailed();
   // The 3D scene already draws the keyboard, so with hands on the 2D board is only added when
   // the user explicitly picked "both" (a fresh profile has both settings on and shows the hands).
   const view: GuideView = settings.showHands
@@ -92,9 +119,12 @@ export function useGuideView(): GuideViewState {
     },
     [update, setPrefs],
   );
-  const showHands = settings.showHands && webgl !== false;
-  const showKeyboard = view === "both" || view === "keys" || (settings.showHands && webgl === false);
-  return { view, setView, showHands, showKeyboard, keyboardUnit: showHands && showKeyboard ? 30 : 46, handsSupported: webgl !== false };
+  const showHands = settings.showHands && webgl !== false && !failed;
+  const showKeyboard = view === "both" || view === "keys" || (settings.showHands && (webgl === false || failed));
+  return { view, setView, showHands, showKeyboard, keyboardUnit: showHands && showKeyboard ? 30 : 46,
+    reserveBox: view === "keys" && webgl !== false && !failed ? handsBoxStyle(false) : undefined,
+    handsSupported: webgl !== false && !failed,
+  };
 }
 
 /**
@@ -169,6 +199,8 @@ export interface HandsPanelProps {
   layout: ParsedLayout;
   /** Character to type next: its finger reaches for the key (and the other hand holds Shift when needed). */
   nextChar: string | null;
+  /** Reach for an action key instead (Backspace while the current word has a typo). */
+  nextAction?: GuideAction | null;
   /** Latest keystroke (`useGuidePress`): taps the key, in the accent or the error colour. */
   press?: GuidePress | null;
   /** Shorter panel, for when the 2D board is shown underneath. */
@@ -179,12 +211,64 @@ export interface HandsPanelProps {
 }
 
 type SceneStatus = "loading" | "ready" | "error" | "nowebgl";
+type SceneComponent = ComponentType<HandsSceneProps>;
+
+/** The loader waits this long before it shows: a fast load never flashes a bar. */
+const LOADER_DELAY_MS = 150;
+const FADE_MS = 300;
 
 /**
- * Responsive, fixed-height box with the 3D keyboard and guide hands. Renders nothing when
- * settings.showHands is off or WebGL is unavailable (so no canvas, and no three.js download).
+ * Progress 0..1 of the whole load: the scene chunk and the model download run in parallel, each worth
+ * about half; the last few percent are the first frame. `indeterminate` when the model size is unknown.
  */
-export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextChar, press, compact = false, camera, className }: HandsPanelProps) {
+function useLoadProgress(chunkLoaded: boolean, needsModel: boolean, ready: boolean, reduceMotion: boolean): { value: number; indeterminate: boolean } {
+  const model = useSyncExternalStore(subscribeHandModelProgress, getHandModelProgress, getHandModelProgress);
+  const known = model.phase === "loading" && model.total > 0;
+  const indeterminate = !ready && needsModel && model.phase === "loading" && !known;
+  // Unknown size: creep towards (never reach) the end so the bar visibly moves; no creeping with reduced motion.
+  const [creep, setCreep] = useState(0.3);
+  useEffect(() => {
+    if (!indeterminate || reduceMotion) return;
+    const id = window.setInterval(() => setCreep((c) => c + (0.9 - c) * 0.12), 250);
+    return () => window.clearInterval(id);
+  }, [indeterminate, reduceMotion]);
+  let modelPart = 0;
+  if (!needsModel || model.phase === "done") modelPart = 1;
+  else if (known) modelPart = Math.min(1, model.loaded / model.total);
+  else if (model.phase === "loading") modelPart = reduceMotion ? 0.5 : creep;
+  const value = ready ? 1 : 0.08 + 0.42 * (chunkLoaded ? 1 : 0) + 0.4 * modelPart;
+  return { value, indeterminate };
+}
+
+function usePrefersReducedMotion(): boolean {
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduce(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return reduce;
+}
+
+/** Size of the hands box (also reserved for the 2D board when the guide is switched to "keys"). */
+export function handsBoxStyle(compact: boolean): CSSProperties {
+  return {
+    aspectRatio: compact ? "5 / 2" : "2 / 1",
+    maxHeight: compact ? "clamp(150px, 21.5dvh, 250px)" : "clamp(190px, 33dvh, 380px)",
+  };
+}
+
+/**
+ * Responsive box with the 3D keyboard and guide hands. The box has its final size from the first
+ * paint (aspect ratio capped by a height clamp) and keeps it through loading, so nothing around it
+ * moves when the canvas appears. While the three.js chunk and the hand model load, a slim progress
+ * bar sits inside the box; the canvas is revealed only once its first frame (hands at rest, camera
+ * fitted) is drawn. Renders nothing when settings.showHands is off or WebGL is unavailable, and
+ * hands the job to the 2D keyboard (useGuideView) when the scene fails to load.
+ */
+export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextChar, nextAction = null, press, compact = false, camera, className }: HandsPanelProps) {
   // A settings change re-parses the layout into an equal object: do not rebuild the scene for that.
   const layout = stableLayout(layoutProp);
   // Layouts without finger assignments (odd custom boards): the hands would only hide the keys.
@@ -193,34 +277,62 @@ export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextCha
   const webgl = useWebGLSupport();
   const [prefs, setPrefs] = useLearnPrefs();
   const cam: HandsPanelCamera = camera ?? prefs.camera;
+  const reduceMotion = usePrefersReducedMotion();
 
-  const guide = useMemo(() => guideForChar(layout, nextChar), [layout, nextChar]);
+  const guide = useMemo(() => guideForTarget(layout, nextChar, nextAction), [layout, nextChar, nextAction]);
   const scenePress = useMemo(() => (press ? { keyId: press.keyId, nonce: press.nonce } : null), [press]);
 
-  // The scene reports its state through [data-hands-status]; mirror it to fade the skeleton out.
-  const boxRef = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<SceneStatus>("loading");
   const mounted = settings.showHands && webgl === true;
-  useEffect(() => {
-    const box = boxRef.current;
-    if (!mounted || !box) return;
-    const read = () => {
-      const s = box.querySelector("[data-hands-status]")?.getAttribute("data-hands-status") as SceneStatus | null;
-      if (s) setStatus((prev) => (prev === s ? prev : s));
-    };
-    read();
-    const mo = new MutationObserver(read);
-    mo.observe(box, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-hands-status"] });
-    return () => mo.disconnect();
-  }, [mounted]);
+  const [Scene, setScene] = useState<SceneComponent | null>(null);
+  const [status, setStatus] = useState<SceneStatus>("loading");
+  const failed = useHandsFailed();
 
-  if (!settings.showHands || webgl === false) return null;
+  // Step 1: the three.js chunk. The model download starts right away in parallel (it only needs the rig module).
+  useEffect(() => {
+    if (!mounted || Scene) return;
+    let alive = true;
+    import("@/components/hands/HandsScene").then(
+      (m) => alive && setScene(() => m.default),
+      (e) => {
+        console.warn("[hands] scene failed to load", e);
+        markHandsFailed();
+      },
+    );
+    if (hasFingers) {
+      import("@/lib/hands/rig").then((m) => m.loadHandTemplate()).catch(() => {});
+    }
+    return () => {
+      alive = false;
+    };
+  }, [mounted, Scene, hasFingers]);
+
+  useEffect(() => {
+    if (status === "error") markHandsFailed();
+  }, [status]);
+
+  const ready = mounted && status === "ready";
+  const load: "loading" | "ready" | "error" = status === "error" || status === "nowebgl" ? "error" : ready ? "ready" : "loading";
+  const { value: progress, indeterminate } = useLoadProgress(Scene != null, hasFingers, ready, reduceMotion);
+
+  // The bar appears after a short delay (fast loads show nothing) and stays mounted for the fade-out.
+  const [showLoader, setShowLoader] = useState(false);
+  const [loaderGone, setLoaderGone] = useState(false);
+  useEffect(() => {
+    if (ready) {
+      const id = window.setTimeout(() => setLoaderGone(true), reduceMotion ? 0 : FADE_MS);
+      return () => window.clearTimeout(id);
+    }
+    setLoaderGone(false);
+    const id = window.setTimeout(() => setShowLoader(true), LOADER_DELAY_MS);
+    return () => window.clearTimeout(id);
+  }, [ready, reduceMotion]);
+
+  if (!settings.showHands || webgl === false || failed) return null;
   if (mounted && status === "nowebgl") return null;
 
-  const busy = !mounted || status === "loading";
+  const fade = reduceMotion ? "" : "transition-opacity duration-300";
   const style = {
-    aspectRatio: compact ? "5 / 2" : "2 / 1",
-    maxHeight: compact ? "clamp(150px, 21.5dvh, 250px)" : "clamp(190px, 33dvh, 380px)",
+    ...handsBoxStyle(compact),
     // the wrists run out of the frame: fade them instead of cutting them off
     maskImage: "linear-gradient(to bottom, #000 80%, transparent)",
     WebkitMaskImage: "linear-gradient(to bottom, #000 80%, transparent)",
@@ -228,18 +340,18 @@ export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextCha
 
   return (
     <div
-      ref={boxRef}
       className={cx("group/hands relative w-full overflow-hidden rounded-ui-lg", className)}
       style={style}
       data-testid="hands-panel"
       data-compact={compact ? "true" : "false"}
       data-camera={cam}
       data-status={mounted ? status : "pending"}
+      data-hands-load={load}
       data-target-key={guide?.key?.id ?? ""}
       data-modifier-key={guide?.shiftKey?.id ?? ""}
     >
-      {mounted && (
-        <HandsScene
+      {mounted && Scene && (
+        <Scene
           layout={layout}
           targetKeyId={guide?.key?.id ?? null}
           modifierKeyId={guide?.shiftKey?.id ?? null}
@@ -248,12 +360,21 @@ export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextCha
           camera={cam}
           fingerZones={settings.fingerColors}
           showHands={hasFingers}
-          className={cx("transition-opacity duration-300", busy ? "opacity-0" : "opacity-100")}
+          onStatus={setStatus}
+          className={cx(fade, ready ? "opacity-100" : "opacity-0")}
         />
       )}
-      {busy && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center" data-testid="hands-skeleton" aria-hidden>
-          <Skeleton animate className="h-[58%] w-[min(78%,560px)] rounded-ui-lg" />
+      {showLoader && !loaderGone && (
+        <div
+          className={cx("pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2.5", fade, ready ? "opacity-0" : "opacity-100")}
+          data-testid="hands-loader"
+          data-indeterminate={indeterminate ? "true" : "false"}
+          role="status"
+        >
+          <div className="w-[min(60%,220px)]">
+            <ProgressBar data-testid="hands-progress" size="sm" value={progress * 100} aria-label="Loading 3D hands" />
+          </div>
+          <span className="text-xs text-sub">Loading 3D hands…</span>
         </div>
       )}
       {camera == null && (
