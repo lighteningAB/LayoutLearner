@@ -133,7 +133,7 @@ export function layoutWarnings(layout: ParsedLayout): string[] {
     );
 
   if (!layout.keys.some((k) => k.finger))
-    out.push("Could not work out which finger presses which key, so finger colours and the hands view will be blank. Row-staggered ANSI boards and ortholinear grids are recognised.");
+    out.push("Could not work out which finger presses which key, so finger colours and the hands view will be blank. Row-staggered ANSI boards, ortholinear grids and split boards with a clear gap between the halves are recognised.");
   else if (!layout.keys.some((k) => k.isHome && k.base !== " "))
     out.push("No home-row keys were recognised, so home-row lessons and row statistics are unavailable.");
 

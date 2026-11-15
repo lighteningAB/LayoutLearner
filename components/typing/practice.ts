@@ -1,8 +1,22 @@
 // "Practice weak keys": text weighted toward a handful of characters, and the helper that picks
 // the weakest characters out of one finished test.
 import type { TestResult } from "@/lib/typing/engine";
-import { summarizeKeyStats, type KeyStats, type KeyStatSummary } from "@/lib/stats/store";
 import { createRng, getWordList, isLetter, isTypable, pick, pseudoWord, type WordListName } from "@/lib/typing/words";
+
+/** How one character went in a single test. */
+export interface KeyStatSummary {
+  char: string;
+  hits: number;
+  misses: number;
+  /** 0-100. */
+  accuracy: number;
+  /** Average ms since the previous keystroke, null if never timed. */
+  avgMs: number | null;
+  /** Higher = weaker. Blend of error rate and slowness relative to the test's average. */
+  score: number;
+  /** Most frequent wrong character typed instead, if any. */
+  mostMistypedAs: string | null;
+}
 
 export interface PracticeConfig {
   /** Characters to drill (letters, capitals, digits or punctuation). */
@@ -95,13 +109,34 @@ export function generatePracticeWords(cfg: PracticeConfig): string[] {
   return out;
 }
 
-/** Per-character summaries of one finished test (same scoring as the stats store), worst first. */
+/** Per-character summaries of one finished test, worst first. */
 export function rankResultChars(result: Pick<TestResult, "charStats" | "mistypes">): KeyStatSummary[] {
-  const stats: KeyStats = {};
-  for (const [ch, s] of Object.entries(result.charStats ?? {})) {
-    stats[ch] = { hits: s.hits, misses: s.misses, totalMs: s.totalMs, samples: s.samples, mistypedAs: { ...(result.mistypes?.[ch] ?? {}) } };
+  const entries = Object.entries(result.charStats ?? {});
+  let totalMs = 0;
+  let samples = 0;
+  for (const [, s] of entries) {
+    totalMs += s.totalMs;
+    samples += s.samples;
   }
-  return summarizeKeyStats(stats)
+  const overallMs = samples > 0 ? totalMs / samples : 0;
+  const summaries = entries.map(([char, s]): KeyStatSummary => {
+    const attempts = s.hits + s.misses;
+    const avgMs = s.samples > 0 ? s.totalMs / s.samples : null;
+    // Smoothed error rate (one phantom correct attempt) so a single slip on a rare key does not dominate.
+    const errorRate = attempts > 0 ? s.misses / (attempts + 1) : 0;
+    const slowness = avgMs != null && overallMs > 0 ? Math.max(0, avgMs / overallMs - 1) : 0;
+    const wrong = Object.entries(result.mistypes?.[char] ?? {}).sort((a, b) => b[1] - a[1]);
+    return {
+      char,
+      hits: s.hits,
+      misses: s.misses,
+      accuracy: attempts > 0 ? Math.round((s.hits / attempts) * 10000) / 100 : 100,
+      avgMs: avgMs == null ? null : Math.round(avgMs),
+      score: Math.round((errorRate + 0.25 * Math.min(slowness, 2)) * 1000) / 1000,
+      mostMistypedAs: wrong.length > 0 ? wrong[0][0] : null,
+    };
+  });
+  return summaries
     .filter((s) => s.char !== " ")
     .sort((a, b) => b.score - a.score || b.misses - a.misses || (b.avgMs ?? 0) - (a.avgMs ?? 0) || a.char.localeCompare(b.char));
 }

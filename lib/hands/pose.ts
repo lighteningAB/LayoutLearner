@@ -35,12 +35,21 @@ const FOLLOW = 0.1; // how much idle fingers follow a displaced hand (1 = rigidl
 const FOLLOW_FROM = 0.8; // hand displacement (key units) beyond which idle fingers start to ride along
 const HOVER = 0.22; // idle fingers lift this much (max) while the hand is away from home
 /** Horizontal knuckle -> pad distance of the relaxed arch, pinky..index (key units). */
-const REST_REACH = [1.65, 1.92, 2.0, 2.1];
+const REST_REACH = [1.65, 2.0, 2.1, 2.1];
 /** Rest-pose fit: weight of staying near the relaxed arch vs. keeping reach in reserve. */
 const POSTURE = 4;
-const RESERVE = 30;
+const RESERVE = 25;
 /** Rows (key units) above and below home that a finger should reach without help from the palm. */
-const ROW_RESERVE = 1;
+const ROW_UP = 1;
+/** Shoulder width in key units, and the distance between the hands beyond which a board counts as split. */
+const SHOULDERS = 21;
+/** Rest-pose fit: weight of the thumb reaching its own home key (boards with thumb clusters). */
+const THUMB_FIT = 40;
+const SPLIT_FROM = 8;
+/** Resting fingers curl no more than about this (radians at the middle joint). */
+const CURL_MAX = 0.7;
+const CURL_COST = 60;
+const ROW_DOWN = 1;
 /** Thumb tip rests this far inward (towards the other hand) of the index finger's home key. */
 const THUMB_INSET = 0.5;
 /** Root-frame point used to report how far the palm (not the wrist) has moved. */
@@ -549,6 +558,63 @@ export class HandsController {
     for (const h of this.hands) this.computeGoals(h);
   }
 
+  /** Distance between the two hands' home-key centroids (6 on a one-piece board when unknown). */
+  private handSeparation(): number {
+    let lx = 0, lz = 0, ln = 0, rx = 0, rz = 0, rn = 0;
+    for (const p of this.placed.list) {
+      const f = p.key.finger;
+      if (!f || !p.key.isHome || f.finger === "thumb") continue;
+      if (f.hand === "L") {
+        lx += p.cx;
+        lz += p.cz;
+        ln++;
+      } else {
+        rx += p.cx;
+        rz += p.cz;
+        rn++;
+      }
+    }
+    return ln && rn ? Math.hypot(rx / rn - lx / ln, rz / rn - lz / ln) : 6;
+  }
+
+  /**
+   * If this hand's keys are arranged in straight columns (ortholinear / column
+   * stagger, possibly on a rotated half): the hand yaw that lays the fingers
+   * along them. null on row-staggered boards.
+   */
+  private columnYaw(h: Hand, mine: KeyPlacement[]): number | null {
+    let sx = 0;
+    let sz = 0;
+    let n = 0;
+    const pairs: number[] = [];
+    for (let di = 0; di < THUMB; di++) {
+      const home = h.digits[di].homeKey;
+      if (!home) continue;
+      for (const p of mine) {
+        if (p === home || p.key.finger!.finger !== DIGITS[di]) continue;
+        const dx = p.cx - home.cx;
+        const dz = p.cz - home.cz;
+        const dist = Math.hypot(dx, dz);
+        // the keys directly above / below the home key: about 1u away, mostly along z
+        if (dist < 0.8 || dist > 1.25 || Math.abs(dz) < Math.abs(dx) * 1.5) continue;
+        const up = dz < 0 ? 1 : -1;
+        sx += dx * up;
+        sz += dz * up;
+        pairs.push(dx * up, dz * up);
+        n++;
+      }
+    }
+    if (n < 3) return null;
+    const len = Math.hypot(sx, sz);
+    const ax = sx / len;
+    const az = sz / len;
+    for (let i = 0; i < pairs.length; i += 2) {
+      // sideways offset of each neighbour from the common column direction
+      if (Math.abs(pairs[i] * az - pairs[i + 1] * ax) > 0.12) return null;
+    }
+    return Math.atan2(-ax, -az);
+  }
+
   /** Rest pose: rigidly fit the relaxed fingertips onto this hand's home keys. */
   private fitRest(h: Hand): void {
     const sign = h.side === "L" ? 1 : -1;
@@ -641,9 +707,21 @@ export class HandsController {
       const yaw0 = h.rest.yaw;
       const x0 = h.rest.x;
       const z0 = h.rest.z;
-      const reachErr = (di: number, pl: KeyPlacement, dz: number): number => {
+      // Natural turn of the hand. On one-piece boards the forearms come in from
+      // shoulder width, so the hands are turned inward; the further apart the
+      // halves, the straighter. On split column-staggered boards the fingers
+      // simply lie along the columns of their own half.
+      const col = this.columnYaw(h, mine);
+      const sep = this.handSeparation();
+      const natural = col !== null && sep > SPLIT_FROM ? col : -sign * 0.85 * Math.atan(Math.max(0, SHOULDERS - sep) / 48);
+      // "one row up" along the columns of this half (plain -z unless the half is rotated)
+      const upYaw = col !== null && sep > SPLIT_FROM ? col : 0;
+      const ux = -Math.sin(upYaw);
+      const uz = -Math.cos(upYaw);
+      const thumbHome = mine.find((p) => p.key.finger!.finger === "thumb" && p.key.isHome && Math.max(p.w, p.h) <= 2.8) ?? null;
+      const reachErr = (di: number, pl: KeyPlacement, up: number): number => {
         // (rows above / below are tested with the key pressed: the finger has to follow it down)
-        worldToRoot(scratchPose, v1.set(pl.cx, dz ? KEY_TOP - KEY_TRAVEL : KEY_TOP, pl.cz + dz)).applyMatrix4(rig.fromRoot[di]);
+        worldToRoot(scratchPose, v1.set(pl.cx + ux * up, up ? KEY_TOP - KEY_TRAVEL : KEY_TOP, pl.cz + uz * up)).applyMatrix4(rig.fromRoot[di]);
         return solveChain(rig.chains[di], v1, scratchP, 16, 1e-4) * UNIT;
       };
       const cost = (ox: number, oz: number, oyaw: number): number => {
@@ -677,12 +755,24 @@ export class HandsController {
           // a little spare range at home, so the resting pose is never against a joint limit
           const spare = Math.min(p1 - chain.min[1], p2 - chain.min[2]);
           if (spare < 0.1) sum += 40 * (0.1 - spare) * (0.1 - spare);
-          const up = reachErr(di, pl, -ROW_RESERVE);
+          // ...and never balled up: fingertips stay visibly in front of the middle joints
+          if (p2 > CURL_MAX) sum += CURL_COST * (p2 - CURL_MAX) * (p2 - CURL_MAX);
+          const up = reachErr(di, pl, ROW_UP);
           scratchP[0] = p0;
           scratchP[1] = p1;
           scratchP[2] = p2;
-          const down = reachErr(di, pl, ROW_RESERVE);
+          const down = reachErr(di, pl, -ROW_DOWN);
           sum += RESERVE * (up * up + down * down);
+        }
+        if (thumbHome) {
+          // a dedicated thumb key (split boards): sit where the thumb can rest on it too
+          const r = h.digits[THUMB].restP;
+          scratchP[0] = r[0];
+          scratchP[1] = r[1];
+          scratchP[2] = r[2];
+          worldToRoot(scratchPose, v1.set(thumbHome.cx, KEY_TOP, thumbHome.cz)).applyMatrix4(rig.fromRoot[THUMB]);
+          const err = solveChain(rig.chains[THUMB], v1, scratchP, 24, 1e-4) * UNIT;
+          sum += THUMB_FIT * err * err;
         }
         return sum;
       };
@@ -690,11 +780,8 @@ export class HandsController {
       let bz = 0;
       let byaw = 0;
       let best = Infinity;
-      for (let iy = -3; iy <= 3; iy++) {
-        const oyaw = iy * 0.05;
-        const y1 = yaw0 + oyaw;
-        // keep it anatomically plausible: between slightly outward and clearly inward
-        if (y1 * sign > 0.1 || y1 * sign < -0.5) continue;
+      for (let iy = -1; iy <= 1; iy++) {
+        const oyaw = natural + iy * 0.04 - yaw0;
         let cx = 0;
         let cz = 0;
         let cb = Infinity;

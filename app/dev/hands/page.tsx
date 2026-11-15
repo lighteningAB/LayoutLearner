@@ -1,7 +1,7 @@
 "use client";
 
 // Dev harness for the 3D hands scene.
-// URL params: ?preset=<preset id | fixture>&camera=top|angled|front&target=<KeyboardEvent.code | key id>
+// URL params: ?preset=<preset id | fixture | split-fixture>&camera=top|angled|front&target=<KeyboardEvent.code | key id>
 //             &mod=<code | id>&orbit=1&h=<px>&theme=<data-theme, this page view only>
 // Press any physical key to make the hands reach for and tap it.
 // CLI helpers: window.__handsDev.{setTarget(codeOrId), press(codeOrId), sweep()}, window.__hands (scene internals:
@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import HandsScene, { type HandsCamera } from "@/components/hands";
-import { QWERTY_FIXTURE } from "@/lib/hands/fixture";
+import { QWERTY_FIXTURE, SPLIT_FIXTURE } from "@/lib/hands/fixture";
 import { parseLayout } from "@/lib/layout/parse";
 import { PRESETS, getPreset } from "@/lib/layout/presets";
 import type { LayoutKey, ParsedLayout } from "@/lib/types";
@@ -71,6 +71,7 @@ export default function HandsDevPage() {
 
   const layout = useMemo<ParsedLayout>(() => {
     if (presetId === "fixture") return QWERTY_FIXTURE;
+    if (presetId === "split-fixture") return SPLIT_FIXTURE;
     const p = getPreset(presetId);
     try {
       return p ? parseLayout(p.source, p.name) : QWERTY_FIXTURE;
@@ -85,7 +86,7 @@ export default function HandsDevPage() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const p = q.get("preset");
-    if (p && (p === "fixture" || getPreset(p))) setPresetId(p);
+    if (p && (p === "fixture" || p === "split-fixture" || getPreset(p))) setPresetId(p);
     const c = q.get("camera") as HandsCamera | null;
     if (c && CAMERAS.includes(c)) setCamera(c);
     if (q.get("orbit") === "1") setOrbit(true);
@@ -244,6 +245,7 @@ export default function HandsDevPage() {
           style={btnStyle}
         >
           <option value="fixture">fixture (QWERTY 60%)</option>
+          <option value="split-fixture">fixture (split columnar)</option>
           {PRESETS.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}

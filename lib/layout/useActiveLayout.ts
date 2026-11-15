@@ -7,7 +7,7 @@ import { parseLayout } from "./parse";
 import { DEFAULT_PRESET_ID, getPreset } from "./presets";
 
 export interface ActiveLayout {
-  /** Id used for settings and stats (preset id or custom layout id). */
+  /** Id used for settings and lesson progress (preset id or custom layout id). */
   id: string;
   name: string;
   layout: ParsedLayout;

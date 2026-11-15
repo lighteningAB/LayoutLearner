@@ -135,3 +135,77 @@ function build(): ParsedLayout {
 }
 
 export const QWERTY_FIXTURE: ParsedLayout = build();
+
+// ---- split, column-staggered board (3x6 + 3 rotated thumb keys per half) ----
+// Dev-harness fixture for boards with two separated halves: no shared space
+// bar, one resting thumb key per half, thumb clusters rotated.
+
+const SPLIT_COLS = [0.375, 0.375, 0.125, 0, 0.125, 0.25]; // vertical stagger, outer pinky column -> inner index column
+const SPLIT_GAP = 4; // key units between the halves
+const SPLIT_LEFT: [string, string][][] = [
+  [["Tab", "Tab"], ["Q", "KeyQ"], ["W", "KeyW"], ["E", "KeyE"], ["R", "KeyR"], ["T", "KeyT"]],
+  [["Ctrl", "ControlLeft"], ["A", "KeyA"], ["S", "KeyS"], ["D", "KeyD"], ["F", "KeyF"], ["G", "KeyG"]],
+  [["Shift", "ShiftLeft"], ["Z", "KeyZ"], ["X", "KeyX"], ["C", "KeyC"], ["V", "KeyV"], ["B", "KeyB"]],
+];
+const SPLIT_RIGHT: [string, string][][] = [
+  [["Y", "KeyY"], ["U", "KeyU"], ["I", "KeyI"], ["O", "KeyO"], ["P", "KeyP"], ["Bksp", "Backspace"]],
+  [["H", "KeyH"], ["J", "KeyJ"], ["K", "KeyK"], ["L", "KeyL"], [":\n;", "Semicolon"], ['"\n\'', "Quote"]],
+  [["N", "KeyN"], ["M", "KeyM"], ["<\n,", "Comma"], [">\n.", "Period"], ["?\n/", "Slash"], ["Shift", "ShiftRight"]],
+];
+const SPLIT_FINGERS: Finger[] = ["pinky", "pinky", "ring", "middle", "index", "index"];
+// thumb keys, outer -> inner: [label, code, dx from the half's inner edge, y, clockwise angle on the left half]
+const SPLIT_THUMBS: [string, string, string, number, number, number][] = [
+  ["Alt", "AltLeft", "MetaRight", -2.6, 3.35, 0],
+  ["", "Space", "Enter", -1.55, 3.45, 15],
+  ["Fn", "Fn", "AltRight", -0.5, 3.8, 30],
+];
+
+function buildSplit(): ParsedLayout {
+  const keys: LayoutKey[] = [];
+  const half = SPLIT_COLS.length;
+  const width = half * 2 + SPLIT_GAP;
+  const push = (id: string, row: number, x: number, y: number, label: string, code: string, finger: FingerId, isHome: boolean, angle = 0) => {
+    const legends = label.split("\n");
+    const isModifier = MODIFIER_CODES.test(code) || code === "Fn";
+    let base = "";
+    let shifted = "";
+    if (code === "Space") base = shifted = " ";
+    else if (!isModifier && !NON_CHAR.has(code)) {
+      shifted = legends[0];
+      base = legends.length === 2 ? legends[1] : legends[0].toLowerCase();
+    }
+    keys.push({
+      id,
+      row,
+      x,
+      y,
+      w: 1,
+      h: 1,
+      label: label || (code === "Enter" ? "Enter" : ""),
+      legends,
+      base,
+      shifted,
+      isModifier,
+      code,
+      finger,
+      isHome,
+      rotation: angle ? { angle, cx: x + 0.5, cy: y + 0.5 } : undefined,
+    });
+  };
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < half; c++) {
+      const [ll, lc] = SPLIT_LEFT[r][c];
+      push(`l${r}k${c}`, r, c, r + SPLIT_COLS[c], ll, lc, { hand: "L", finger: SPLIT_FINGERS[c] }, r === 1 && c >= 1 && c <= 4);
+      const [rl, rc] = SPLIT_RIGHT[r][c];
+      const m = half - 1 - c; // mirrored column
+      push(`r${r}k${c}`, r, half + SPLIT_GAP + c, r + SPLIT_COLS[m], rl, rc, { hand: "R", finger: SPLIT_FINGERS[m] }, r === 1 && m >= 1 && m <= 4);
+    }
+  }
+  SPLIT_THUMBS.forEach(([label, lcode, rcode, dx, y, angle], i) => {
+    push(`lt${i}`, 3, half + dx, y, label, lcode, { hand: "L", finger: "thumb" }, i === 1, angle);
+    push(`rt${i}`, 3, half + SPLIT_GAP - dx - 1, y, rcode === "Enter" ? "Enter" : label, rcode, { hand: "R", finger: "thumb" }, i === 1, -angle);
+  });
+  return { name: "Split columnar fixture", keys, width, height: 4.8 };
+}
+
+export const SPLIT_FIXTURE: ParsedLayout = buildSplit();

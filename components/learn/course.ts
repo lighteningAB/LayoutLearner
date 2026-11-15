@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { keyAction } from "@/lib/layout/parse";
 import { useActiveLayout, type ActiveLayout } from "@/lib/layout/useActiveLayout";
 import { buildCurriculum, type Lesson, type LessonStage } from "@/lib/lessons/curriculum";
-import { useLessonProgress, type LessonProgress, type LessonProgressEntry } from "@/lib/stats/store";
+import { useLessonProgress, type LessonProgress, type LessonProgressEntry } from "@/lib/lessons/progress";
 import type { CharStat, HistoryPoint, TestResult } from "@/lib/typing/engine";
 import type { ParsedLayout } from "@/lib/types";
 import { useLearnPrefs } from "./prefs";

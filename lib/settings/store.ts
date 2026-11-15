@@ -101,6 +101,17 @@ function sanitize(raw: unknown): Settings {
   return out;
 }
 
+/** Statistics used to be stored here; the feature is gone, so drop what it left behind. */
+const OBSOLETE_KEYS = ["results", "keystats", "bests", "activity", "demo"].map((k) => `${STORAGE_PREFIX}${k}`);
+
+function removeObsoleteData() {
+  try {
+    for (const key of OBSOLETE_KEYS) window.localStorage.removeItem(key);
+  } catch {
+    /* storage unavailable: nothing to clean */
+  }
+}
+
 function load(): Settings {
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
@@ -136,7 +147,10 @@ function applyTheme(theme: ThemeId, animate = false) {
 /** Current settings (defaults on the server). */
 export function getSettings(): Settings {
   if (!isBrowser) return DEFAULT_SETTINGS;
-  if (!state) state = load();
+  if (!state) {
+    removeObsoleteData();
+    state = load();
+  }
   return state;
 }
 
@@ -153,7 +167,7 @@ export function updateSettings(patch: SettingsPatch): Settings {
   return next;
 }
 
-/** Restore default settings (keeps other ll:v1:* data such as stats). */
+/** Restore default settings (keeps other ll:v1:* data such as lesson progress). */
 export function resetSettings(): Settings {
   return updateSettings({ ...DEFAULT_SETTINGS });
 }

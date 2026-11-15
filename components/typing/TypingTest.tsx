@@ -1,18 +1,16 @@
 "use client";
 // The typing test (route "/"): config bar, live counters, words, keyboard guide, results.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { Icon, Kbd, SegmentedControl, Tooltip, cx, toast, type IconName } from "@/components/ui";
+import { Icon, Kbd, SegmentedControl, Tooltip, cx, type IconName } from "@/components/ui";
 import { useRegisterCommands, type Command } from "@/components/shell";
-import { TIME_AMOUNTS, WORD_AMOUNTS, WORD_LISTS, getSettings, useSettings } from "@/lib/settings";
+import { TIME_AMOUNTS, WORD_AMOUNTS, WORD_LISTS, useSettings } from "@/lib/settings";
 import { typableChars } from "@/lib/layout/keys";
-import { resolveLayout, useActiveLayout } from "@/lib/layout/useActiveLayout";
-import type { TestConfig, TestInput, TestResult } from "@/lib/typing/engine";
+import { useActiveLayout } from "@/lib/layout/useActiveLayout";
+import type { TestConfig, TestInput } from "@/lib/typing/engine";
 import { useTypingTest } from "@/lib/typing/useTypingTest";
 import { useKeyboardInput, type KeyboardAction, type KeyboardActionEvent } from "@/lib/typing/useKeyboardInput";
 import { playErrorSound } from "@/lib/typing/sound";
 import { createWordStream, generateText, type GenerateConfig, type WordListName, type WordStream } from "@/lib/typing/words";
-import { getPersonalBests, recordResult, weakestKeys } from "@/lib/stats/store";
 import { GuideViewSwitch, HandsPanel, useGuidePress, useGuideView } from "./HandsPanel";
 import { KeyboardGuide } from "./KeyboardGuide";
 import { ResultsView } from "./ResultsView";
@@ -26,10 +24,9 @@ const DEFAULT_AMOUNT = { time: 30, words: 25 } as const;
 const LIST_LABEL: Record<WordListName, string> = { english200: "english", english1k: "english 1k", code: "code" };
 const newSeed = () => Math.floor(Math.random() * 0xffffffff);
 
+/** A drill built from the keys missed in the test that just finished (never stored). */
 interface Practice {
   chars: string[];
-  /** Where the characters came from, for the badge wording. */
-  source: "stats" | "result";
 }
 
 interface Plan {
@@ -82,7 +79,6 @@ function ConfigToggle({
 const Divider = () => <span aria-hidden className="mx-1.5 hidden h-4 w-px shrink-0 bg-border sm:block" />;
 
 export function TypingTest() {
-  const router = useRouter();
   const [settings, update] = useSettings();
   const active = useActiveLayout();
   const layout = active.layout;
@@ -101,7 +97,6 @@ export function TypingTest() {
   // null until we are on the client: random text must never be part of the server render.
   const [seed, setSeed] = useState<number | null>(null);
   const [practice, setPractice] = useState<Practice | null>(null);
-  const [outcome, setOutcome] = useState<{ isPersonalBest: boolean; previousBest: number | null } | null>(null);
 
   const plan = useMemo<Plan | null>(() => {
     if (seed == null) return null;
@@ -124,20 +119,8 @@ export function TypingTest() {
   const streamRef = useRef<WordStream | null>(null);
   const moreWords = useCallback((count: number) => streamRef.current?.next(count) ?? [], []);
 
-  const layoutIdRef = useRef(active.id);
-  layoutIdRef.current = active.id;
-  const practiceRef = useRef(practice);
-  practiceRef.current = practice;
-
-  const onFinish = useCallback((result: TestResult) => {
-    const layoutId = layoutIdRef.current;
-    const previous = getPersonalBests(layoutId)[`${result.mode}:${result.modeValue}`]?.wpm ?? null;
-    const { isPersonalBest } = recordResult({ layoutId, result });
-    // The very first result of a kind is trivially a "best": only celebrate beating an earlier one.
-    setOutcome({ isPersonalBest: isPersonalBest && previous != null && !practiceRef.current, previousBest: previous });
-  }, []);
-
-  const test = useTypingTest({ words: NO_WORDS, config: { mode: "words" }, onFinish, moreWords });
+  // Results live only on screen: nothing about a finished test is stored.
+  const test = useTypingTest({ words: NO_WORDS, config: { mode: "words" }, moreWords });
   const { restart, status } = test;
 
   /** (Re)start the given plan from its first word, including the endless stream behind time mode. */
@@ -150,7 +133,6 @@ export function TypingTest() {
       } else {
         streamRef.current = null;
       }
-      setOutcome(null);
       restart({ words: p.words, config: p.config });
     },
     [restart],
@@ -165,8 +147,8 @@ export function TypingTest() {
     if (plan) arm(plan);
   }, [plan, arm]);
 
-  const startPractice = useCallback((chars: string[], source: Practice["source"]) => {
-    setPractice({ chars, source });
+  const startPractice = useCallback((chars: string[]) => {
+    setPractice({ chars });
     setSeed(newSeed());
   }, []);
   const exitPractice = useCallback(() => {
@@ -174,42 +156,16 @@ export function TypingTest() {
     setSeed(newSeed());
   }, []);
 
-  /** Drill the weakest keys on record for the active layout; a normal test (and a note) if there are none. */
-  const practiceFromStats = useCallback(
-    (layoutId: string) => {
-      const weak = weakestKeys(layoutId, 6);
-      if (weak.length === 0) {
-        toast("Not enough key data yet", { description: "Finish a few tests first. Starting a normal test instead.", duration: 5000 });
-        return false;
-      }
-      startPractice(
-        weak.map((k) => k.char),
-        "stats",
-      );
-      return true;
-    },
-    [startPractice],
-  );
-
-  // First client render: pick the text, honouring /?practice=weak (linked from the stats page).
+  // First client render: pick the text.
   const booted = useRef(false);
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("practice") === "weak") {
-      const s = getSettings();
-      const started = practiceFromStats(resolveLayout(s.layoutId, s.customLayouts).id);
-      // One-shot instruction: drop it from the URL so a reload is a normal test again.
-      params.delete("practice");
-      const q = params.toString();
-      router.replace(window.location.pathname + (q ? `?${q}` : ""), { scroll: false });
-      if (started) return;
-    }
     // ?seed=<n> pins the first text (handy for automated checks and for sharing a text).
     const fixed = params.has("seed") ? Number(params.get("seed")) : NaN;
     setSeed(Number.isFinite(fixed) ? Math.abs(Math.floor(fixed)) : newSeed());
-  }, [practiceFromStats, router]);
+  }, []);
 
   // Focus mode: the shell dims itself through <html data-typing>.
   useEffect(() => {
@@ -359,17 +315,20 @@ export function TypingTest() {
         keepOpen: true,
         run: () => update((s) => ({ emulateLayout: !s.emulateLayout })),
       },
-      {
-        id: "test-practice-weak",
-        group: "Test",
-        label: practice ? "Stop practising weak keys" : "Practice weak keys",
-        icon: "target",
-        keywords: "drill weakest worst keys stats",
-        run: () => (practice ? exitPractice() : void practiceFromStats(active.id)),
-      },
     ];
+    // The weak-keys drill starts from a results screen; while it runs, offer the way out.
+    if (practice) {
+      list.push({
+        id: "test-practice-stop",
+        group: "Test",
+        label: "Stop practising weak keys",
+        icon: "target",
+        keywords: "drill exit normal test",
+        run: exitPractice,
+      });
+    }
     return list;
-  }, [newTest, update, mode, amount, wordList, punctuation, numbers, canNumbers, settings.showKeyboard, settings.emulateLayout, practice, exitPractice, practiceFromStats, active.id]);
+  }, [newTest, update, mode, amount, wordList, punctuation, numbers, canNumbers, settings.showKeyboard, settings.emulateLayout, practice, exitPractice]);
   useRegisterCommands(commands);
 
   // ── derived display values ──
@@ -395,7 +354,7 @@ export function TypingTest() {
       >
         <span className="inline-flex items-center gap-2 font-medium text-main">
           <Icon name="target" size={14} />
-          {practice.source === "stats" ? "Drilling your weakest keys" : "Drilling the keys you missed"}
+          Drilling the keys you missed
         </span>
         <span className="inline-flex flex-wrap items-center gap-1">
           {practice.chars.map((c) => (
@@ -531,11 +490,9 @@ export function TypingTest() {
             layoutName={active.name}
             testLabel={testLabel}
             testDetail={testDetail}
-            isPersonalBest={outcome?.isPersonalBest}
-            previousBest={outcome?.previousBest}
             onNext={newTest}
             onRepeat={repeatTest}
-            onPracticeKeys={(chars) => startPractice(chars, "result")}
+            onPracticeKeys={startPractice}
           />
         </div>
       ) : (

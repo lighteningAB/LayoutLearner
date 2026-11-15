@@ -1,5 +1,5 @@
 "use client";
-// Bare verification harness for lib/typing, lib/lessons and lib/stats. Not a product page.
+// Bare verification harness for lib/typing and lib/lessons. Not a product page.
 // Query params: ?mode=time&seconds=3  ?seed=7  ?count=10  ?layout=dvorak  ?lesson=0&drill=0
 import { useEffect, useMemo, useState } from "react";
 import { generateText, createWordStream, type GenerateConfig } from "@/lib/typing/words";
@@ -7,17 +7,7 @@ import { useTypingTest } from "@/lib/typing/useTypingTest";
 import type { TestConfig, TestResult } from "@/lib/typing/engine";
 import { buildCurriculum, validateCurriculum, type Lesson } from "@/lib/lessons/curriculum";
 import { DEV_LAYOUTS } from "@/lib/lessons/devLayouts";
-import {
-  clearAll,
-  recordLessonResult,
-  recordResult,
-  useKeyStats,
-  useLessonProgress,
-  usePersonalBests,
-  useResults,
-  useStreak,
-  useWeakestKeys,
-} from "@/lib/stats/store";
+import { clearLessonProgress, recordLessonResult, useLessonProgress } from "@/lib/lessons/progress";
 
 interface Params {
   mode: "words" | "time";
@@ -89,13 +79,10 @@ function Harness({ params }: { params: Params }) {
     config,
     moreWords,
     onFinish: (result: TestResult) => {
-      if (lesson) {
-        const r = recordLessonResult(layoutId, lesson, result);
-        setLastSave(JSON.stringify({ lesson: lesson.id, ...r }));
-      } else {
-        const r = recordResult({ layoutId, result });
-        setLastSave(JSON.stringify({ id: r.entry.id, isPersonalBest: r.isPersonalBest }));
-      }
+      // Only lesson runs are saved (stars / bests); plain tests leave nothing behind.
+      if (!lesson) return;
+      const r = recordLessonResult(layoutId, lesson, result);
+      setLastSave(JSON.stringify({ lesson: lesson.id, ...r }));
     },
   });
   const { handleInput, restart } = test;
@@ -117,13 +104,7 @@ function Harness({ params }: { params: Params }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [handleInput, restart]);
 
-  const results = useResults(layoutId);
-  const allResults = useResults();
-  const keyStats = useKeyStats(layoutId);
-  const weakest = useWeakestKeys(layoutId, 5);
   const progress = useLessonProgress(layoutId);
-  const bests = usePersonalBests(layoutId);
-  const streak = useStreak();
 
   const checks = useMemo(() => {
     const out: Record<string, unknown> = {};
@@ -187,26 +168,16 @@ function Harness({ params }: { params: Params }) {
         <button data-testid="finish" onClick={() => test.finish()}>
           finish now
         </button>{" "}
-        <button data-testid="clear" onClick={() => clearAll()}>
-          clear storage
+        <button data-testid="clear" onClick={() => clearLessonProgress()}>
+          clear lesson progress
         </button>
       </p>
       <h2>result</h2>
       <pre data-testid="result" style={{ whiteSpace: "pre-wrap" }}>{shortResult ? JSON.stringify(shortResult) : ""}</pre>
       <pre data-testid="char-stats" style={{ whiteSpace: "pre-wrap" }}>{test.result ? JSON.stringify({ charStats: test.result.charStats, mistypes: test.result.mistypes, keyPresses: test.state.keyPresses }) : ""}</pre>
       <pre data-testid="last-save" style={{ whiteSpace: "pre-wrap" }}>{lastSave}</pre>
-      <h2>stored</h2>
-      <p>
-        results for layout <b data-testid="stored-count">{results.length}</b> (all layouts <b data-testid="stored-count-all">{allResults.length}</b>) · streak{" "}
-        <b data-testid="streak">{JSON.stringify(streak)}</b>
-      </p>
-      <pre data-testid="stored-results" style={{ whiteSpace: "pre-wrap" }}>
-        {JSON.stringify(results.map((r) => ({ id: r.id, mode: r.mode, modeValue: r.modeValue, wpm: r.wpm, accuracy: r.accuracy, history: r.history.length })))}
-      </pre>
-      <pre data-testid="bests" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(bests)}</pre>
+      <h2>stored lesson progress</h2>
       <pre data-testid="lesson-progress" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(progress)}</pre>
-      <pre data-testid="weakest" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(weakest)}</pre>
-      <pre data-testid="key-stats" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(keyStats)}</pre>
       <h2>curriculum checks</h2>
       <pre data-testid="curriculum-check" style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(checks)}</pre>
       <h2>curriculum: {layout.name}</h2>

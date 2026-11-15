@@ -277,7 +277,7 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
             ]}
           />
           <span className="hidden font-mono text-xs text-sub sm:inline">
-            {layout.keys.length} keys · {layout.width}u × {layout.height}u
+            {layout.keys.length} keys · {+layout.width.toFixed(2)}u × {+layout.height.toFixed(2)}u
           </span>
         </div>
         <div className="px-3 pt-6 pb-5 sm:px-6 sm:pt-8">

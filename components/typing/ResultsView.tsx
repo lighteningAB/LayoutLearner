@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type R
 import type { HistoryPoint, TestResult } from "@/lib/typing/engine";
 import type { ParsedLayout } from "@/lib/types";
 import { useSettings } from "@/lib/settings";
-import { Badge, Button, Kbd, cx } from "@/components/ui";
+import { Button, Kbd, cx } from "@/components/ui";
 import { guideForChar } from "./KeyboardGuide";
 import { weakCharsOfResult } from "./practice";
 import "./typing.css";
@@ -19,10 +19,6 @@ export interface ResultsViewProps {
   testLabel?: string;
   /** Second line of the "test" cell: "english 200 · punctuation". */
   testDetail?: string;
-  /** Show the personal-best badge. */
-  isPersonalBest?: boolean;
-  /** Previous best wpm for this test type, to show the improvement on the badge. */
-  previousBest?: number | null;
   /** Default: settings.fingerColors. */
   fingerColors?: boolean;
   /** Primary action (Enter, or Tab then Enter). */
@@ -325,8 +321,6 @@ export function ResultsView({
   layoutName,
   testLabel,
   testDetail,
-  isPersonalBest,
-  previousBest,
   fingerColors,
   onNext,
   nextLabel = "Next test",
@@ -374,7 +368,6 @@ export function ResultsView({
 
   const { chars } = result;
   const label = testLabel ?? `${result.mode} ${result.modeValue}`;
-  const gain = isPersonalBest && previousBest != null && previousBest > 0 ? result.wpm - previousBest : null;
 
   return (
     <section
@@ -388,14 +381,7 @@ export function ResultsView({
       <div className="grid items-center gap-x-10 gap-y-6 md:grid-cols-[auto_minmax(0,1fr)]">
         <div className="flex items-end gap-10 md:flex-col md:items-start md:gap-6">
           <div className="tt-rise" style={{ "--i": 0 } as CSSProperties}>
-            <div className="flex h-6 items-center gap-2 text-sm text-sub">
-              wpm
-              {isPersonalBest && (
-                <Badge tone="main" icon="trophy" data-testid="result-pb">
-                  {gain != null && gain >= 0.5 ? `personal best · +${fmt(gain)}` : "personal best"}
-                </Badge>
-              )}
-            </div>
+            <div className="flex h-6 items-center text-sm text-sub">wpm</div>
             <div
               className="mt-1 font-mono text-[64px] leading-none font-medium tracking-tight text-main tabular-nums sm:text-[80px]"
               data-testid="result-wpm"

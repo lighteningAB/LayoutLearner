@@ -7,6 +7,7 @@
 import type { LayoutKey, ParsedLayout } from "../types";
 import { fingerIndex } from "../types";
 import { ENGLISH_1K } from "../typing/data/english";
+import { isSplitLayout, keyCenter } from "./geometry";
 import { parseLayout } from "./parse";
 import { getPreset } from "./presets";
 
@@ -101,8 +102,37 @@ export function homeRowY(layout: ParsedLayout): number | null {
   return best;
 }
 
+/**
+ * Logical home row of a split board (columns are staggered, so there is no single y):
+ * the `row` most finger home keys share. null on one-piece boards.
+ */
+function splitHomeRow(layout: ParsedLayout): number | null {
+  if (!isSplitLayout(layout)) return null;
+  const counts = new Map<number, number>();
+  for (const k of layout.keys) {
+    if (k.isHome && k.finger && k.finger.finger !== "thumb") counts.set(k.row, (counts.get(k.row) ?? 0) + 1);
+  }
+  let best: number | null = null;
+  let bestN = 0;
+  for (const [r, n] of counts) if (n > bestN) [best, bestN] = [r, n];
+  return best;
+}
+
+/** key → rows away from the home row (0 home, -1 above, 1 below); null when the home row is unknown. */
+function rowOffsets(layout: ParsedLayout): ((k: LayoutKey) => number) | null {
+  const splitRow = splitHomeRow(layout);
+  if (splitRow !== null) return (k) => (k.finger?.finger === "thumb" ? 99 : k.row - splitRow);
+  const homeY = homeRowY(layout);
+  return homeY === null ? null : (k) => Math.round(k.y - homeY);
+}
+
 /** Ids of every character key sitting on the home row (not only the eight resting keys). */
 export function homeRowKeyIds(layout: ParsedLayout): string[] {
+  const splitRow = splitHomeRow(layout);
+  if (splitRow !== null)
+    return layout.keys
+      .filter((k) => !!k.base && k.base !== " " && k.row === splitRow && k.finger?.finger !== "thumb")
+      .map((k) => k.id);
   const y = homeRowY(layout);
   if (y === null) return layout.keys.filter((k) => k.isHome && k.base !== " ").map((k) => k.id);
   return layout.keys
@@ -115,13 +145,13 @@ export function homeRowChars(layout: ParsedLayout): string[] {
   const ids = new Set(homeRowKeyIds(layout));
   return layout.keys
     .filter((k) => ids.has(k.id) && k.base && k.base !== " ")
-    .sort((a, b) => a.x - b.x)
+    .sort((a, b) => keyCenter(a).x - keyCenter(b).x)
     .map((k) => k.base);
 }
 
 export function analyzeLayout(layout: ParsedLayout, corpus: Corpus = getEnglishCorpus()): LayoutAnalysis {
   const keyOf = baseKeyMap(layout);
-  const homeY = homeRowY(layout);
+  const offset = rowOffsets(layout);
 
   let covered = 0;
   const rowSum: RowShares = { top: 0, home: 0, bottom: 0, other: 0 };
@@ -134,8 +164,8 @@ export function analyzeLayout(layout: ParsedLayout, corpus: Corpus = getEnglishC
     const key = keyOf.get(ch);
     if (!key) continue;
     covered += share;
-    if (homeY !== null) {
-      const d = Math.round(key.y - homeY);
+    if (offset) {
+      const d = offset(key);
       if (d === 0) rowSum.home += share;
       else if (d === -1) rowSum.top += share;
       else if (d === 1) rowSum.bottom += share;
@@ -152,7 +182,7 @@ export function analyzeLayout(layout: ParsedLayout, corpus: Corpus = getEnglishC
 
   const norm = (n: number) => (covered > 0 ? n / covered : 0);
   const rows: RowShares | null =
-    homeY === null || covered === 0
+    !offset || covered === 0
       ? null
       : { top: norm(rowSum.top), home: norm(rowSum.home), bottom: norm(rowSum.bottom), other: norm(rowSum.other) };
 

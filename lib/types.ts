@@ -1,5 +1,5 @@
 // Shared contract types. Every feature area (layout parser, 2D keyboard, typing
-// engine, lessons, stats, 3D hands) codes against these. Change with care.
+// engine, lessons, 3D hands) codes against these. Change with care.
 
 export type Hand = "L" | "R";
 export type Finger = "pinky" | "ring" | "middle" | "index" | "thumb";

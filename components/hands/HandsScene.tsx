@@ -70,9 +70,11 @@ function focusPoints(placed: PlacedLayout, controller: HandsController | null, e
   const box = new THREE.Box3();
   for (const p of placed.list) {
     // skip numpads / far clusters unless the hands are being sent there
-    if (Math.abs(p.cx - cx) > MAIN_BLOCK && !extraIds.includes(p.key.id)) continue;
-    box.expandByPoint(new THREE.Vector3(p.cx - p.w / 2, 0, p.cz - p.h / 2));
-    box.expandByPoint(new THREE.Vector3(p.cx + p.w / 2, 0, p.cz + p.h / 2));
+    if (Math.abs(p.cx - cx) > mainBlock(placed) && !extraIds.includes(p.key.id)) continue;
+    // a far key the hand is sent to: leave room for the hand around it, not just the key
+    const far = Math.abs(p.cx - cx) > mainBlock(placed) ? 2.4 : 0;
+    box.expandByPoint(new THREE.Vector3(p.cx - p.w / 2 - far, 0, p.cz - p.h / 2));
+    box.expandByPoint(new THREE.Vector3(p.cx + p.w / 2 + far, 0, p.cz + p.h / 2));
   }
   if (box.isEmpty()) box.set(new THREE.Vector3(-7, 0, -2.5), new THREE.Vector3(7, 0, 2.5));
   box.expandByVector(new THREE.Vector3(0.45, 0, 0.45));
@@ -94,6 +96,24 @@ function focusPoints(placed: PlacedLayout, controller: HandsController | null, e
 /** Keys further than this (key units, in x) from the home keys are outside the default framing. */
 const MAIN_BLOCK = 9.6;
 
+const blockCache = new WeakMap<PlacedLayout, number>();
+/** MAIN_BLOCK widened for split boards: by half of whatever the hands are further apart than on a one-piece board. */
+function mainBlock(placed: PlacedLayout): number {
+  let b = blockCache.get(placed);
+  if (b === undefined) {
+    const xs: Record<string, number[]> = { L: [], R: [] };
+    for (const p of placed.list) {
+      const f = p.key.finger;
+      if (f && p.key.isHome && f.finger !== "thumb") xs[f.hand].push(p.cx);
+    }
+    const mean = (a: number[]) => a.reduce((s, x) => s + x, 0) / a.length;
+    const sep = xs.L.length && xs.R.length ? Math.abs(mean(xs.R) - mean(xs.L)) : 6;
+    b = MAIN_BLOCK + Math.max(0, sep - 6) / 2;
+    blockCache.set(placed, b);
+  }
+  return b;
+}
+
 /** Ids among `ids` whose keys lie outside the default framing (joined, for use as an effect dependency). */
 function outsideMainBlock(placed: PlacedLayout, ids: (string | null | undefined)[]): string {
   const homes = placed.list.filter((p) => p.key.isHome);
@@ -102,7 +122,7 @@ function outsideMainBlock(placed: PlacedLayout, ids: (string | null | undefined)
   return ids
     .filter((id): id is string => {
       const p = id ? placed.byId.get(id) : undefined;
-      return !!p && Math.abs(p.cx - cx) > MAIN_BLOCK;
+      return !!p && Math.abs(p.cx - cx) > mainBlock(placed);
     })
     .join(",");
 }

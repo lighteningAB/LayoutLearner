@@ -19,9 +19,9 @@ export const HAND_SCALE = 46;
  * Wrist extension: the palm slopes up from the wrist to the knuckles (radians),
  * so the fingers arch over and come down onto the keys instead of lying flat.
  */
-export const HAND_PITCH = 0.2;
+export const HAND_PITCH = 0.15;
 /** Height of the wrist joint above the key tops (key units). */
-export const WRIST_HEIGHT = 0.6;
+export const WRIST_HEIGHT = 0.35;
 /** Slight outward roll, thumb side up (radians). */
 export const HAND_ROLL = 0.12;
 
@@ -30,7 +30,16 @@ export const HAND_ROLL = 0.12;
  * next to its middle finger (0.64 : 1; real hands are about 0.75 : 1), which
  * left it unable to reach the rows above and below without dragging the hand.
  */
-const DIGIT_SCALE = [1.12, 1, 1, 1.04, 0.92];
+const DIGIT_SCALE = [1.12, 0.96, 0.94, 1.04, 0.92];
+
+/**
+ * Transverse arch of the palm: how far the metacarpal of each digit is lifted
+ * (radians, pinky..thumb). Raising the knuckles of the two long fingers lets
+ * them rest on a straight home row without having to curl up like a claw.
+ */
+const PALM_ARCH = [0.12, 0.12, 0.16, 0, 0];
+// Metacarpal bones (children of the hand bone), pinky..index.
+const PALM_BONES = ["palm04L001", "palm03L001", "palm02L001", "palm01L001"];
 
 /** Length the forearm is stretched to, and where along it the fade to nothing starts / ends (key units behind the wrist). */
 const FOREARM_LENGTH = 11;
@@ -56,14 +65,14 @@ const LIMITS_MIN: [number, number, number][] = [
   [-0.38, -0.3, 0.08],
   [-0.38, -0.3, 0.08],
   [-0.5, -0.3, 0.08],
-  [-0.75, -0.35, -0.3],
+  [-0.95, -0.35, -0.3],
 ];
 const LIMITS_MAX: [number, number, number][] = [
   [0.5, 1.45, 1.75],
   [0.38, 1.45, 1.75],
   [0.38, 1.45, 1.75],
   [0.5, 1.45, 1.75],
-  [0.8, 1.0, 1.0],
+  [0.8, 1.0, 1.35],
 ];
 // Relaxed arch: knuckles gently flexed, middle joints bent, with plenty of
 // extension AND curl left in reserve for the rows above and below.
@@ -81,6 +90,8 @@ export interface HandTemplate {
   /** Per vertex: which digit's tip it belongs to (-1: none) and how strongly (0..1). */
   tintDigit: Int8Array;
   tintWeight: Float32Array;
+  /** Per finger (pinky..index): axis in the hand bone's frame about which its metacarpal lifts. */
+  archAxes: THREE.Vector3[];
   /** Per vertex: distance behind the wrist along the forearm, key units (0 on the hand itself). */
   back: Float32Array;
 }
@@ -122,6 +133,7 @@ function buildTemplate(scene: THREE.Object3D): HandTemplate {
   const tintDigit = new Int8Array(pos.count).fill(-1);
   const tintWeight = new Float32Array(pos.count);
 
+  const archAxes: THREE.Vector3[] = [];
   const chains: ChainDef[] = BONES.map((names, digit) => {
     const [b1, b2, b3] = names.map(byName);
     const parent = b1.parent as THREE.Object3D;
@@ -190,6 +202,10 @@ function buildTemplate(scene: THREE.Object3D): HandTemplate {
     b2.getWorldQuaternion(q2);
     const toFrame = (axis: THREE.Vector3, q: THREE.Quaternion) =>
       axis.clone().applyQuaternion(q.clone().invert()).normalize();
+    if (!isThumb) {
+      const meta = byName(PALM_BONES[digit]);
+      archAxes.push(toFrame(flex, (meta.parent as THREE.Object3D).getWorldQuaternion(new THREE.Quaternion())));
+    }
 
     const ds = DIGIT_SCALE[digit];
     return {
@@ -239,7 +255,7 @@ function buildTemplate(scene: THREE.Object3D): HandTemplate {
     skinned.geometry.computeBoundingSphere();
   }
 
-  return { armature, chains, tintDigit, tintWeight, back: backDist };
+  return { armature, chains, archAxes, tintDigit, tintWeight, back: backDist };
 }
 
 const tmpQ1 = new THREE.Quaternion();
@@ -299,6 +315,11 @@ export class HandRig {
     this.mesh = mesh as unknown as THREE.SkinnedMesh;
     const skeleton = this.mesh.skeleton;
 
+    // palm arch (static): lift the metacarpals before the digit frames are measured
+    for (let d = 0; d < PALM_BONES.length; d++) {
+      const meta = skeleton.bones.find((b) => b.name === PALM_BONES[d]);
+      if (meta && PALM_ARCH[d]) meta.quaternion.premultiply(tmpQ1.setFromAxisAngle(template.archAxes[d], -PALM_ARCH[d]));
+    }
     this.root.updateMatrixWorld(true);
     for (const names of BONES) {
       const bs = names.map((n) => skeleton.bones.find((b) => b.name === n) as THREE.Bone);

@@ -184,9 +184,9 @@ export function SettingsView() {
         </Rows>
       </Section>
 
-      <Section id="data" title="Data" description="Settings, custom layouts, lesson progress and stats live only in this browser.">
+      <Section id="data" title="Data" description="Settings, custom layouts and lesson progress live only in this browser.">
         <Rows>
-          <SettingRow label="Reset settings" description="Back to the defaults. Custom layouts, progress and stats are kept.">
+          <SettingRow label="Reset settings" description="Back to the defaults. Custom layouts and lesson progress are kept.">
             <Button
               size="sm"
               icon="restart"
@@ -217,7 +217,7 @@ export function SettingsView() {
           toast("All local data cleared", { variant: "success" });
         }}
         title="Clear all data?"
-        description="This removes your settings, custom layouts, lesson progress and stats from this browser. It cannot be undone."
+        description="This removes your settings, custom layouts and lesson progress from this browser. It cannot be undone."
         confirmLabel="Clear everything"
         tone="danger"
         data-testid="confirm-clear"

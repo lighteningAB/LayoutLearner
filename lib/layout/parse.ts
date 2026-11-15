@@ -3,6 +3,7 @@
 // that every key gets a character pair, a KeyboardEvent.code, a finger and a home flag.
 import JSON5 from "json5";
 import type { FingerId, LayoutKey, ParsedLayout } from "../types";
+import { analyseSplit, type SplitAnalysis } from "./split";
 
 export class LayoutParseError extends Error {
   /** 1-based line / column in the source, when the failure is a syntax error. */
@@ -408,8 +409,12 @@ export function parseLayout(source: string, name?: string): ParsedLayout {
 
   if (keys.length === 0) throw new LayoutParseError("Layout contains no keys.");
 
-  assignCodes(keys);
-  assignFingers(keys);
+  // Split / ergonomic boards get codes, fingers, home keys and logical rows from their
+  // column structure; everything else goes through the ANSI / ortholinear heuristics.
+  const split = findAnsiOrigin(keys) ? null : analyseSplit(keys);
+  assignCodes(keys, split);
+  if (split) applySplit(keys, split);
+  else assignFingers(keys);
   const size = normalise(keys);
 
   const metaName = meta && typeof meta.name === "string" ? meta.name : undefined;
@@ -445,7 +450,7 @@ function findAnsiOrigin(keys: LayoutKey[]): AnsiOrigin | undefined {
   return undefined;
 }
 
-function assignCodes(keys: LayoutKey[]) {
+function assignCodes(keys: LayoutKey[], split: SplitAnalysis | null = null) {
   const used = new Set<string>();
   const give = (k: LayoutKey, code: string | undefined) => {
     if (!code || k.code || used.has(code)) return false;
@@ -471,6 +476,9 @@ function assignCodes(keys: LayoutKey[]) {
       k.base = k.code === "NumpadEnter" || !isNumChar ? "" : first;
       k.shifted = "";
     }
+  } else if (split) {
+    centre = split.splitX;
+    assignCodesBySplit(keys, split, give);
   } else {
     let minX = Infinity;
     let maxX = -Infinity;
@@ -497,7 +505,7 @@ function assignCodes(keys: LayoutKey[]) {
       give(k, named.code);
       continue;
     }
-    const side: Side = named.side ?? (k.x + k.w / 2 < centre ? "L" : "R");
+    const side: Side = named.side ?? split?.info.get(k)?.hand ?? (k.x + k.w / 2 < centre ? "L" : "R");
     const first = named.code + (side === "L" ? "Left" : "Right");
     const second = named.code + (side === "L" ? "Right" : "Left");
     if (!give(k, first) && !named.side) give(k, second);
@@ -529,9 +537,70 @@ function assignCodesByColumn(keys: LayoutKey[], give: (k: LayoutKey, code: strin
   }
 }
 
+// Physical QWERTY positions of a split board's finger columns, counted from the centre gap
+// outwards (column 0 = inner index column), per row relative to the home row.
+const SPLIT_CODES: Record<"L" | "R", Record<number, string[]>> = {
+  L: {
+    [-2]: [...D("54321"), "Backquote"],
+    [-1]: K("TREWQ"),
+    0: K("GFDSA"),
+    1: K("BVCXZ"),
+  },
+  R: {
+    [-2]: [...D("67890"), "Minus", "Equal"],
+    [-1]: [...K("YUIOP"), "BracketLeft", "BracketRight", "Backslash"],
+    0: [...K("HJKL"), "Semicolon", "Quote"],
+    1: [...K("NM"), "Comma", "Period", "Slash"],
+  },
+};
+
+/** ANSI code of the key that types each unshifted character on QWERTY. */
+const QWERTY_CODE_BY_CHAR = new Map<string, string>();
+[SEQ_NUM_FULL, SEQ_TOP, SEQ_HOME, SEQ_BOTTOM].forEach((seq, i) => {
+  const chars = ["`1234567890-=", "qwertyuiop[]\\", "asdfghjkl;'", "zxcvbnm,./"][i];
+  seq.forEach((code, c) => QWERTY_CODE_BY_CHAR.set(chars[c], code));
+});
+
+/**
+ * Split boards: a character key in a letter column takes the QWERTY position of its
+ * half + column + row; character keys elsewhere (outer columns, thumb cluster, extra keys)
+ * take the position that types the same character on QWERTY when it is still free.
+ */
+function assignCodesBySplit(keys: LayoutKey[], split: SplitAnalysis, give: (k: LayoutKey, code: string | undefined) => boolean) {
+  const isChar = (k: LayoutKey) => k.base !== "" && k.base !== " ";
+  const positional = (minCol: number, maxCol: number) => {
+    for (const k of keys) {
+      const i = split.info.get(k);
+      if (k.code || !i || !isChar(k) || i.col === undefined || i.rel === undefined) continue;
+      if (i.col >= minCol && i.col <= maxCol) give(k, SPLIT_CODES[i.hand][i.rel]?.[i.col]);
+    }
+  };
+  // The five letter columns of each half are purely positional…
+  positional(0, 4);
+  // …keys around them prefer the position their character has on QWERTY (so "'" is Quote
+  // wherever it sits), then fall back to the position of their outer column.
+  for (const k of keys) {
+    if (!k.code && isChar(k)) give(k, QWERTY_CODE_BY_CHAR.get(k.base));
+  }
+  positional(5, Infinity);
+}
+
 // ---------------------------------------------------------------------------
 // Fingers / home keys
 // ---------------------------------------------------------------------------
+
+/** Split boards: finger, home flag and logical row straight from the column analysis. */
+function applySplit(keys: LayoutKey[], split: SplitAnalysis) {
+  for (const k of keys) {
+    const i = split.info.get(k);
+    if (!i) continue;
+    k.finger = { hand: i.hand, finger: i.finger };
+    if (i.isHome) k.isHome = true;
+    // KLE row order is arbitrary on columnar boards (rows are often written column by column),
+    // so `row` becomes the logical row: 0 = top of the main block, thumb cluster last.
+    k.row = i.row;
+  }
+}
 
 function assignFingers(keys: LayoutKey[]) {
   let minX = Infinity;

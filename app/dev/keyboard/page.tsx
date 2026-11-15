@@ -7,9 +7,37 @@ import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
 import { LayoutParseError, parseLayout } from "@/lib/layout/parse";
 import { DEFAULT_PRESET_ID, PRESETS, getPreset } from "@/lib/layout/presets";
 import { keyForChar, resolveKeystroke, typableChars } from "@/lib/layout/keys";
-import type { ParsedLayout } from "@/lib/types";
+import { keyCenter, layoutHalves } from "@/lib/layout/geometry";
+import { buildCurriculum, validateCurriculum } from "@/lib/lessons/curriculum";
+import { FINGER_ORDER, fingerIndex, type ParsedLayout } from "@/lib/types";
 
 const CUSTOM = "__custom";
+
+const keyName = (k: ParsedLayout["keys"][number]) => (k.base === " " ? "Space" : k.base ? k.base.toUpperCase() : k.label.replace(/\n/g, " ") || k.id);
+
+/** Extra summary fields for split boards (absent on one-piece boards so their summary is unchanged). */
+function splitSummary(layout: ParsedLayout) {
+  const halves = layoutHalves(layout);
+  if (!halves.split) return {};
+  const byFinger: Record<string, string> = {};
+  FINGER_ORDER.forEach((f, i) => {
+    const keys = layout.keys
+      .filter((k) => k.finger && fingerIndex(k.finger) === i)
+      .sort((a, b) => a.row - b.row || keyCenter(a).x - keyCenter(b).x);
+    byFinger[`${f.hand}-${f.finger}`] = keys.map((k) => (k.isHome ? `[${keyName(k)}]` : keyName(k))).join(" ");
+  });
+  return {
+    split: { splitX: halves.splitX, left: halves.left.length, right: halves.right.length },
+    fingerHomeKeys: layout.keys.filter((k) => k.isHome && k.finger?.finger !== "thumb").length,
+    thumbHomeKeys: layout.keys.filter((k) => k.isHome && k.finger?.finger === "thumb").map(keyName),
+    rotatedKeys: layout.keys.filter((k) => k.rotation).length,
+    rows: [...new Set(layout.keys.map((k) => k.row))].sort((a, b) => a - b).map((r) =>
+      layout.keys.filter((k) => k.row === r).sort((a, b) => keyCenter(a).x - keyCenter(b).x).map(keyName).join(" "),
+    ),
+    codes: layout.keys.filter((k) => k.code).map((k) => `${keyName(k)}=${k.code}`).join(" "),
+    fingers: byFinger,
+  };
+}
 
 export default function KeyboardDevPage() {
   const [presetId, setPresetId] = useState(DEFAULT_PRESET_ID);
@@ -90,6 +118,7 @@ export default function KeyboardDevPage() {
       keysWithoutFinger: layout.keys.filter((k) => !k.finger).map((k) => k.label || k.id),
       charKeysWithoutFinger: charKeys.filter((k) => !k.finger).map((k) => k.label),
       homeKeys: layout.keys.filter((k) => k.isHome).map((k) => `${k.code}:${k.base === " " ? "space" : k.base}`),
+      ...splitSummary(layout),
     };
   }, [layout]);
 
@@ -101,10 +130,12 @@ export default function KeyboardDevPage() {
     ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8"].forEach((c, i) => {
       if (id(c)) heat[id(c)] = (i + 1) / 8;
     });
+    // Rotated (thumb-cluster) keys show the states too.
+    const rot = layout.keys.filter((k) => k.rotation).map((k) => k.id);
     return {
-      highlightKeyIds: [id("KeyJ"), id("ShiftLeft")],
-      pressedKeyIds: [id("KeyD")],
-      errorKeyIds: [id("KeyL")],
+      highlightKeyIds: [id("KeyJ"), id("ShiftLeft"), ...rot.slice(0, 1)],
+      pressedKeyIds: [id("KeyD"), ...rot.slice(1, 2)],
+      errorKeyIds: [id("KeyL"), ...rot.slice(2, 3)],
       dimUnused: ["KeyZ", "KeyX", "KeyC", "KeyV", "KeyB"].map(id),
       heat,
     };
@@ -119,6 +150,10 @@ export default function KeyboardDevPage() {
       keyForChar,
       resolveKeystroke,
       typableChars,
+      keyCenter,
+      layoutHalves,
+      buildCurriculum,
+      validateCurriculum,
       layout,
     };
   }, [layout]);

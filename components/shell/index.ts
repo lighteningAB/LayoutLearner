@@ -11,4 +11,4 @@ export {
   fuzzyScore,
   type Command,
 } from "./commands";
-export { ComingSoon, KeyboardSilhouette, TestSkeleton, LearnSkeleton, LayoutsSkeleton, StatsSkeleton } from "./Placeholders";
+export { ComingSoon, KeyboardSilhouette, TestSkeleton, LearnSkeleton, LayoutsSkeleton } from "./Placeholders";

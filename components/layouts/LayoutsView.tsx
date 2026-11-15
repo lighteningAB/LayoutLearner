@@ -13,7 +13,7 @@ import { LayoutDetail } from "./LayoutDetail";
 import { LayoutEditor, copyText, downloadLayout, type EditorDraft } from "./LayoutEditor";
 
 type Filter = "all" | Family;
-const FAMILY_ORDER: Family[] = ["ansi-60", "ansi-100", "ortho", "custom"];
+const FAMILY_ORDER: Family[] = ["ansi-60", "ansi-100", "ortho", "split", "custom"];
 
 const filterLabel = (text: string, count: number) => (
   <>

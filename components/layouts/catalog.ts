@@ -12,6 +12,7 @@ export const FAMILY_LABEL: Record<Family, string> = {
   "ansi-60": "ANSI 60%",
   "ansi-100": "Full size",
   ortho: "Ortholinear",
+  split: "Split",
   custom: "Custom",
 };
 

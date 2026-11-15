@@ -12,7 +12,7 @@ import { Button, Card, ConfirmDialog, Icon, Kbd, Skeleton, cx } from "@/componen
 import type { ActiveLayout } from "@/lib/layout/useActiveLayout";
 import { gradeLesson } from "@/lib/lessons/curriculum";
 import { useSettings } from "@/lib/settings";
-import { recordLessonResult } from "@/lib/stats/store";
+import { recordLessonResult } from "@/lib/lessons/progress";
 import type { TestConfig, TestInput, TestResult } from "@/lib/typing/engine";
 import { playErrorSound } from "@/lib/typing/sound";
 import { useKeyboardInput, type KeyboardAction, type KeyboardActionEvent } from "@/lib/typing/useKeyboardInput";

@@ -142,34 +142,3 @@ export function LayoutsSkeleton() {
     </div>
   );
 }
-
-const BARS = [28, 34, 31, 42, 39, 47, 44, 52, 49, 58, 55, 63, 60, 66, 71, 68, 74, 72, 79, 83];
-
-export function StatsSkeleton() {
-  return (
-    <div data-testid="stats-skeleton">
-      <div aria-hidden>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {["wpm", "accuracy", "tests", "time typing"].map((label) => (
-            <Card key={label}>
-              <div className="text-sm text-sub">{label}</div>
-              <div className="mt-1.5 font-mono text-4xl leading-none font-medium text-sub/50">–</div>
-            </Card>
-          ))}
-        </div>
-        <Card className="mt-3">
-          <div className="flex h-48 items-end gap-1.5 sm:gap-2.5">
-            {BARS.map((h, i) => (
-              <div
-                key={i}
-                className={cx("flex-1 rounded-t-[3px]", i === BARS.length - 1 ? "bg-main" : "bg-text/[0.09]")}
-                style={{ height: `${h}%` }}
-              />
-            ))}
-          </div>
-        </Card>
-      </div>
-      <ComingSoon>Speed, accuracy and per-key history will chart here.</ComingSoon>
-    </div>
-  );
-}

@@ -128,7 +128,8 @@ const KeyCap = memo(function KeyCap({ k, state, heat, fingerColors, showHome, co
     styles.cap,
     fi >= 0 ? styles.finger : "",
     fi >= 0 ? styles[`f${fi}`] : "",
-    showHome && k.isHome && k.base !== " " ? styles.home : "",
+    // Space bars carry no bump, but a key-sized thumb rest on a split board does.
+    showHome && k.isHome && (k.base !== " " || k.w < 1.75) ? styles.home : "",
     hasHeat ? styles.heat : "",
     hasHeat && heat > 0.6 ? styles.heatHot : "",
   ]
