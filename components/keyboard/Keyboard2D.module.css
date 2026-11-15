@@ -1,0 +1,210 @@
+/* 2D keyboard. Everything is sized in multiples of --u (one key unit, in px).
+   --u comes from container-query units (SSR / first paint) and is then pinned to an
+   exact px value by a ResizeObserver in Keyboard2D.tsx. */
+
+.root {
+  --kb-key-bg: var(--key-bg, #2c2e31);
+  --kb-key-border: var(--key-border, #3b3e43);
+  --kb-key-text: var(--key-text, #d1d0c5);
+  --kb-sub: var(--sub, #7f8288);
+  --kb-main: var(--main, #e2b714);
+  --kb-main-fg: var(--main-fg, #1e1f22);
+  --kb-error: var(--error, #ca4754);
+  --kb-f0: var(--finger-0, #e06c75);
+  --kb-f1: var(--finger-1, #e5a05a);
+  --kb-f2: var(--finger-2, #d8c556);
+  --kb-f3: var(--finger-3, #7fc27a);
+  --kb-f4: var(--finger-4, #9aa0a8);
+  --kb-f5: var(--finger-5, #9aa0a8);
+  --kb-f6: var(--finger-6, #56b6c2);
+  --kb-f7: var(--finger-7, #61a0ef);
+  --kb-f8: var(--finger-8, #a78bfa);
+  --kb-f9: var(--finger-9, #e879b9);
+
+  container-type: inline-size;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.board {
+  --u: min(calc(100cqw / var(--kb-w)), var(--kb-max-u));
+  position: relative;
+  width: calc(var(--u) * var(--kb-w));
+  height: calc(var(--u) * var(--kb-h));
+  margin: 0 auto;
+}
+
+.key {
+  position: absolute;
+  box-sizing: border-box;
+  padding: calc(var(--u) * 0.045);
+}
+
+.cap {
+  --fc: transparent;
+  --cap-bg: var(--kb-key-bg);
+  --cap-fg: var(--kb-key-text);
+  --cap-border: var(--kb-key-border);
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 0.01);
+  overflow: hidden;
+  border-radius: calc(var(--u) * 0.15);
+  border: 1px solid var(--cap-border);
+  background: var(--cap-bg);
+  color: var(--cap-fg);
+  box-shadow:
+    0 calc(var(--u) * 0.05) 0 color-mix(in srgb, #000 30%, var(--cap-bg)),
+    inset 0 1px 0 rgb(255 255 255 / 0.07);
+  transform: translateY(calc(var(--u) * -0.02));
+  transition:
+    background-color 110ms ease,
+    color 110ms ease,
+    border-color 110ms ease,
+    box-shadow 110ms ease,
+    transform 70ms ease,
+    opacity 160ms ease;
+}
+
+/* Finger colour: soft tint + a solid underline. */
+.finger {
+  --cap-bg: color-mix(in srgb, var(--fc) 15%, var(--kb-key-bg));
+  --cap-border: color-mix(in srgb, var(--fc) 32%, var(--kb-key-border));
+}
+.finger::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: max(2px, calc(var(--u) * 0.07));
+  background: var(--fc);
+  opacity: 0.9;
+  transition: opacity 110ms ease;
+}
+.f0 { --fc: var(--kb-f0); }
+.f1 { --fc: var(--kb-f1); }
+.f2 { --fc: var(--kb-f2); }
+.f3 { --fc: var(--kb-f3); }
+.f4 { --fc: var(--kb-f4); }
+.f5 { --fc: var(--kb-f5); }
+.f6 { --fc: var(--kb-f6); }
+.f7 { --fc: var(--kb-f7); }
+.f8 { --fc: var(--kb-f8); }
+.f9 { --fc: var(--kb-f9); }
+
+/* Home-row bump. */
+.home::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--u) * 0.13);
+  width: calc(var(--u) * 0.2);
+  height: max(1.5px, calc(var(--u) * 0.035));
+  border-radius: 99px;
+  transform: translateX(-50%);
+  background: currentColor;
+  opacity: 0.55;
+}
+
+/* Heat: --heat-pct is set inline (0%..100%). */
+.heat {
+  --cap-bg: color-mix(in srgb, var(--kb-error) var(--heat-pct), var(--kb-key-bg));
+  --cap-border: color-mix(in srgb, var(--kb-error) var(--heat-pct), var(--kb-key-border));
+}
+.heatHot {
+  --cap-fg: #fff;
+}
+
+/* ---- states (data-state on the .key wrapper) ---- */
+
+.key[data-state="dim"] .cap {
+  opacity: 0.32;
+}
+
+.key[data-state="highlight"] {
+  z-index: 2;
+}
+.key[data-state="highlight"] .cap {
+  --cap-bg: var(--kb-main);
+  --cap-fg: var(--kb-main-fg);
+  --cap-border: var(--kb-main);
+  transform: translateY(calc(var(--u) * -0.05));
+  box-shadow:
+    0 calc(var(--u) * 0.08) 0 color-mix(in srgb, #000 35%, var(--kb-main)),
+    0 0 0 max(2px, calc(var(--u) * 0.05)) color-mix(in srgb, var(--kb-main) 35%, transparent),
+    0 0 calc(var(--u) * 0.5) color-mix(in srgb, var(--kb-main) 60%, transparent);
+}
+.key[data-state="highlight"] .cap::after {
+  opacity: 0;
+}
+
+.key[data-state="pressed"] .cap {
+  --cap-bg: color-mix(in srgb, var(--kb-key-text) 30%, var(--kb-key-bg));
+  --cap-border: color-mix(in srgb, var(--kb-key-text) 65%, var(--kb-key-bg));
+  transform: translateY(calc(var(--u) * 0.035));
+  box-shadow: inset 0 calc(var(--u) * 0.04) calc(var(--u) * 0.08) rgb(0 0 0 / 0.35);
+}
+.key[data-state="pressed"] .finger {
+  --cap-bg: color-mix(in srgb, var(--fc) 55%, var(--kb-key-bg));
+  --cap-border: var(--fc);
+}
+
+.key[data-state="error"] {
+  z-index: 1;
+}
+.key[data-state="error"] .cap {
+  --cap-bg: var(--kb-error);
+  --cap-fg: #fff;
+  --cap-border: var(--kb-error);
+  box-shadow:
+    0 calc(var(--u) * 0.05) 0 color-mix(in srgb, #000 40%, var(--kb-error)),
+    0 0 calc(var(--u) * 0.35) color-mix(in srgb, var(--kb-error) 55%, transparent);
+}
+.key[data-state="error"] .cap::after {
+  opacity: 0;
+}
+
+/* ---- legends ---- */
+
+.legend {
+  display: block;
+  max-width: 100%;
+  padding: 0 calc(var(--u) * 0.05);
+  box-sizing: border-box;
+  text-align: center;
+  line-height: 1.02;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.wrap {
+  white-space: normal;
+  overflow-wrap: normal;
+}
+.muted {
+  opacity: 0.6;
+  font-weight: 500;
+}
+.name {
+  font-weight: 500;
+  opacity: 0.8;
+  text-transform: lowercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cap {
+    transition: none;
+  }
+}

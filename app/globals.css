@@ -1,0 +1,414 @@
+@import "tailwindcss";
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LayoutLearner design tokens
+   Tokens are plain CSS custom properties, set per theme via [data-theme] (on
+   <html>, or on any subtree for scoped previews) and consumed as var(--x).
+   They are mapped into Tailwind below, so `bg-bg`, `bg-bg-alt`, `text-text`,
+   `text-sub`, `text-main`, `border-border`, `bg-finger-3`, `rounded-ui`,
+   `font-mono` … all work, including opacity modifiers (`bg-text/10`).
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root,
+[data-theme="tide"] {
+  color-scheme: dark;
+  --bg: #0f1317;
+  --bg-alt: #171c22;
+  --border: #262d36;
+  --text: #d3dae3;
+  --sub: #7d8896;
+  --main: #62d2b0;
+  --main-fg: #08221b;
+  --caret: #62d2b0;
+  --error: #f2616f;
+  --error-alt: #a23a48;
+  --success: #8fd46b;
+  --key-bg: #1a2027;
+  --key-border: #2b333d;
+  --key-text: #aab4c0;
+  --finger-0: #ee95b8;
+  --finger-1: #e6a560;
+  --finger-2: #89c782;
+  --finger-3: #48c7e2;
+  --finger-4: #bdb2e3;
+  --finger-5: #d2aec5;
+  --finger-6: #86b6fd;
+  --finger-7: #51ccb4;
+  --finger-8: #c5b65a;
+  --finger-9: #f59888;
+  --radius: 10px;
+}
+
+[data-theme="paper"] {
+  color-scheme: light;
+  --bg: #f5f2ec;
+  --bg-alt: #ebe7de;
+  --border: #d9d3c7;
+  --text: #26282c;
+  --sub: #6a665f;
+  --main: #3552d1;
+  --main-fg: #ffffff;
+  --caret: #3552d1;
+  --error: #c8323c;
+  --error-alt: #e39a9a;
+  --success: #2a7d44;
+  --key-bg: #fdfcf9;
+  --key-border: #d5cfc2;
+  --key-text: #45474c;
+  --finger-0: #bb4e7f;
+  --finger-1: #ad6800;
+  --finger-2: #3d8f35;
+  --finger-3: #0389a0;
+  --finger-4: #7869a4;
+  --finger-5: #906581;
+  --finger-6: #3c79d1;
+  --finger-7: #048e7a;
+  --finger-8: #8b7b0a;
+  --finger-9: #c35141;
+  --radius: 10px;
+}
+
+[data-theme="dusk"] {
+  color-scheme: dark;
+  --bg: #17141f;
+  --bg-alt: #201c2b;
+  --border: #322c42;
+  --text: #e3def0;
+  --sub: #8d85a1;
+  --main: #c3a2ff;
+  --main-fg: #1d1233;
+  --caret: #ff9ad5;
+  --error: #ff6b81;
+  --error-alt: #a3445a;
+  --success: #86e0b0;
+  --key-bg: #231e30;
+  --key-border: #382f4c;
+  --key-text: #b9b0cf;
+  --finger-0: #f496bb;
+  --finger-1: #eba75f;
+  --finger-2: #8acb83;
+  --finger-3: #43cae7;
+  --finger-4: #c0b5e8;
+  --finger-5: #d6b1c9;
+  --finger-6: #8ab9ff;
+  --finger-7: #4dd0b7;
+  --finger-8: #c9b957;
+  --finger-9: #fb9989;
+  --radius: 12px;
+}
+
+[data-theme="moss"] {
+  color-scheme: dark;
+  --bg: #141812;
+  --bg-alt: #1c2119;
+  --border: #2d3528;
+  --text: #dde3d2;
+  --sub: #858e78;
+  --main: #c5d86d;
+  --main-fg: #1c2208;
+  --caret: #c5d86d;
+  --error: #f0705a;
+  --error-alt: #9c4636;
+  --success: #8fd08a;
+  --key-bg: #20261c;
+  --key-border: #343d2d;
+  --key-text: #b3bca5;
+  --finger-0: #e496b4;
+  --finger-1: #dda46a;
+  --finger-2: #8cc186;
+  --finger-3: #5bc1d9;
+  --finger-4: #bab0da;
+  --finger-5: #ccadc0;
+  --finger-6: #89b3f1;
+  --finger-7: #61c6b1;
+  --finger-8: #c0b365;
+  --finger-9: #ea998b;
+  --radius: 8px;
+}
+
+[data-theme="ember"] {
+  color-scheme: dark;
+  --bg: #181311;
+  --bg-alt: #211a17;
+  --border: #362a25;
+  --text: #eeded2;
+  --sub: #96847c;
+  --main: #ff9a5a;
+  --main-fg: #2a1304;
+  --caret: #ffc38f;
+  --error: #ff5c7a;
+  --error-alt: #a33a52;
+  --success: #a6d17a;
+  --key-bg: #261e1a;
+  --key-border: #3d302a;
+  --key-text: #c4b3a8;
+  --finger-0: #f093b8;
+  --finger-1: #e8a45c;
+  --finger-2: #87c880;
+  --finger-3: #3fc7e4;
+  --finger-4: #bdb2e5;
+  --finger-5: #d3aec6;
+  --finger-6: #85b6fe;
+  --finger-7: #49cdb4;
+  --finger-8: #c6b654;
+  --finger-9: #f79686;
+  --radius: 10px;
+}
+
+[data-theme="glacier"] {
+  color-scheme: light;
+  --bg: #edf1f5;
+  --bg-alt: #e0e6ed;
+  --border: #cbd4de;
+  --text: #1d2733;
+  --sub: #566575;
+  --main: #0a7397;
+  --main-fg: #ffffff;
+  --caret: #0a7397;
+  --error: #c92c49;
+  --error-alt: #e59aaa;
+  --success: #1a7a50;
+  --key-bg: #f9fbfd;
+  --key-border: #c5cfda;
+  --key-text: #3a4654;
+  --finger-0: #ba507f;
+  --finger-1: #ad6800;
+  --finger-2: #408f39;
+  --finger-3: #08899f;
+  --finger-4: #786aa2;
+  --finger-5: #8f6581;
+  --finger-6: #3f79ce;
+  --finger-7: #0a8e7a;
+  --finger-8: #8b7b00;
+  --finger-9: #c15344;
+  --radius: 6px;
+}
+
+
+:root {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --color-bg: var(--bg);
+  --color-bg-alt: var(--bg-alt);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-sub: var(--sub);
+  --color-main: var(--main);
+  --color-main-fg: var(--main-fg);
+  --color-caret: var(--caret);
+  --color-error: var(--error);
+  --color-error-alt: var(--error-alt);
+  --color-success: var(--success);
+  --color-key-bg: var(--key-bg);
+  --color-key-border: var(--key-border);
+  --color-key-text: var(--key-text);
+  --color-finger-0: var(--finger-0);
+  --color-finger-1: var(--finger-1);
+  --color-finger-2: var(--finger-2);
+  --color-finger-3: var(--finger-3);
+  --color-finger-4: var(--finger-4);
+  --color-finger-5: var(--finger-5);
+  --color-finger-6: var(--finger-6);
+  --color-finger-7: var(--finger-7);
+  --color-finger-8: var(--finger-8);
+  --color-finger-9: var(--finger-9);
+
+  --radius-ui-sm: calc(var(--radius) * 0.6);
+  --radius-ui: var(--radius);
+  --radius-ui-lg: calc(var(--radius) * 1.5);
+
+  --shadow-pop: 0 1px 0 0 rgb(255 255 255 / 0.03) inset, 0 16px 48px -12px rgb(0 0 0 / 0.45),
+    0 4px 12px -4px rgb(0 0 0 / 0.25);
+
+  --animate-fade-in: ll-fade-in 140ms ease-out both;
+  --animate-pop-in: ll-pop-in 160ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+  --animate-rise-in: ll-rise-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-caret: ll-caret 1s ease-in-out infinite;
+  --animate-shimmer: ll-shimmer 2.4s ease-in-out infinite;
+
+  @keyframes ll-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ll-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.98);
+    }
+  }
+  @keyframes ll-rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  @keyframes ll-caret {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+  @keyframes ll-shimmer {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    border-color: var(--border);
+  }
+
+  html {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scrollbar-gutter: stable;
+    scrollbar-color: color-mix(in srgb, var(--sub) 45%, transparent) transparent;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--main) 35%, transparent);
+    color: var(--text);
+  }
+
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--main);
+    outline-offset: 2px;
+  }
+
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="radio"],
+  [role="switch"],
+  [role="option"],
+  [role="menuitem"],
+  summary,
+  select,
+  label[for] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Range input used by <Slider>. --ll-pct is set inline by the component. */
+.ll-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
+}
+.ll-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--main) 0 var(--ll-pct, 0%),
+    color-mix(in srgb, var(--text) 14%, transparent) var(--ll-pct, 0%) 100%
+  );
+}
+.ll-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+}
+.ll-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--main);
+}
+.ll-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 999px;
+  background: var(--main);
+  border: 3px solid var(--bg-alt);
+  box-shadow: 0 0 0 1px var(--main);
+  transition: transform 120ms ease;
+}
+.ll-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--main);
+  border: 3px solid var(--bg-alt);
+  box-shadow: 0 0 0 1px var(--main);
+}
+.ll-slider:hover::-webkit-slider-thumb,
+.ll-slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+.ll-slider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Smooth cross-fade when the theme changes (added briefly by the settings store). */
+html.ll-theme-transition,
+html.ll-theme-transition * {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease,
+    fill 180ms ease, stroke 180ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

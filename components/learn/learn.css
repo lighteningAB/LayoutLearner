@@ -1,0 +1,74 @@
+/* Styles for components/learn (plain global CSS, classes prefixed learn-). Tokens only. */
+
+@keyframes learn-star-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-35deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.25) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+.learn-star-pop {
+  animation: learn-star-pop 520ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation-delay: calc(260ms + var(--i, 0) * 240ms);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--main) 45%, transparent));
+}
+
+@keyframes learn-key-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+}
+.learn-key-in {
+  animation: learn-key-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes learn-dot-pop {
+  50% {
+    transform: scale(1.5);
+  }
+}
+.learn-dot[data-on="true"] {
+  animation: learn-dot-pop 220ms ease-out;
+}
+
+/* the lesson tile that "continue" points at */
+@keyframes learn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--main) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--main) 14%, transparent);
+  }
+}
+.learn-tile[data-state="current"] {
+  animation: learn-pulse 2.6s ease-in-out infinite;
+}
+
+/* connector between tiles of one stage: a quiet path behind the grid */
+.learn-tile {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+.learn-tile:not([data-state="locked"]):hover {
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .learn-star-pop,
+  .learn-key-in,
+  .learn-dot[data-on="true"],
+  .learn-tile[data-state="current"] {
+    animation: none !important;
+  }
+}

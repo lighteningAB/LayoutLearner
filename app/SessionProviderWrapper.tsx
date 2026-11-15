@@ -1,8 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { SessionProvider } from "next-auth/react";
-import { ReactNode } from "react";
 
 export default function SessionProviderWrapper({ children }: { children: ReactNode }) {
-  return <SessionProvider>{children}</SessionProvider>;
+  // No refetch-on-focus: the session is only used for a small nav item.
+  return <SessionProvider refetchOnWindowFocus={false}>{children}</SessionProvider>;
 }

@@ -1,0 +1,14 @@
+/* "vs QWERTY" view: many keys are highlighted at once, so swap Keyboard2D's single-key
+   glow for a calm accent tint. The doubled class outranks the keyboard module's own rule. */
+.diffKb.diffKb [data-state="highlight"] > div {
+  --cap-bg: color-mix(in srgb, var(--main) 24%, var(--key-bg));
+  --cap-fg: var(--text);
+  --cap-border: color-mix(in srgb, var(--main) 80%, var(--key-bg));
+  transform: translateY(calc(var(--u) * -0.02));
+  box-shadow:
+    0 calc(var(--u) * 0.05) 0 color-mix(in srgb, #000 30%, var(--cap-bg)),
+    inset 0 1px 0 rgb(255 255 255 / 0.07);
+}
+.diffKb.diffKb [data-state="dim"] > div {
+  opacity: 0.38;
+}
