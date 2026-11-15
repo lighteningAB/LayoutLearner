@@ -1,26 +1,25 @@
 "use client";
 
-import { signIn, signOut, useSession } from "next-auth/react";
 import { IconButton, Menu } from "@/components/ui";
+import { signInWith, signOutAccount, useAccount } from "@/lib/auth/client";
 
 /**
- * Small nav item. Always occupies one 32px slot, so there is no layout shift
- * while the session loads; with no providers configured it simply stays a quiet
- * "sign in" affordance.
+ * Placeholder nav item on top of the account store (lib/auth/client.ts); the account UI replaces
+ * it. Renders nothing when accounts are not configured.
  */
 export default function AuthStatus() {
-  const { data: session, status } = useSession();
-  const user = session?.user;
+  const account = useAccount();
+  if (!account.enabled) return null;
 
-  if (status === "authenticated" && user) {
-    const name = user.name ?? user.email ?? "Account";
+  if (account.status === "signed-in" && account.user) {
+    const name = account.user.name;
     return (
       <Menu
         align="end"
         aria-label="Account"
         items={[
           { label: name, icon: "user", disabled: true },
-          { label: "Sign out", icon: "log-out", separator: true, onSelect: () => void signOut() },
+          { label: "Sign out", icon: "log-out", separator: true, onSelect: () => void signOutAccount() },
         ]}
         trigger={(props) => (
           <button
@@ -38,16 +37,25 @@ export default function AuthStatus() {
     );
   }
 
+  const provider = account.providers[0];
   return (
     <IconButton
       icon="user"
       label="Sign in"
       size="sm"
       data-testid="auth-status"
-      data-auth={status}
-      disabled={status === "loading"}
+      data-auth={account.status === "loading" ? "loading" : "unauthenticated"}
+      disabled={account.status === "loading" || !provider}
       className="disabled:opacity-100"
-      onClick={() => void signIn()}
+      onClick={() => {
+        if (!provider) return;
+        if (provider.kind === "dev") {
+          const username = window.prompt("Dev login: username");
+          if (username) void signInWith(provider.id, { username });
+        } else {
+          void signInWith(provider.id);
+        }
+      }}
     />
   );
 }

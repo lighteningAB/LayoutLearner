@@ -278,6 +278,12 @@ async function handle(req: NextRequest): Promise<Response> {
     const userId = await getUserId();
     if (userId === null) return fail(401, "unauthorized");
 
+    // Defence in depth against an account switch in another tab: the client states which account it
+    // BELIEVES it is acting for. This never selects the user (the session does); a mismatch only rejects.
+    const claimed = req.headers.get("x-ll-user");
+    if (claimed !== null && claimed !== userId) return fail(401, "wrong_user");
+    if (claimed === null && (method === "PUT" || method === "DELETE")) return fail(401, "wrong_user");
+
     const rule = method === "PUT" ? RATE.write : method === "DELETE" ? RATE.delete : RATE.read;
     const rate = await hitRate(userId, rule.bucket, rule.limit, rule.windowSeconds);
     if (!rate.allowed) return fail(429, "rate_limited", { "Retry-After": String(rate.retryAfter) });

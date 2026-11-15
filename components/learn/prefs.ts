@@ -77,3 +77,6 @@ export function useLearnPrefs(): [LearnPrefs, (patch: Partial<LearnPrefs>) => vo
   const prefs = useSyncExternalStore(subscribe, getLearnPrefs, serverSnapshot);
   return [prefs, updateLearnPrefs];
 }
+
+/** Sync adapter hook (lib/sync/local.ts). */
+export const subscribeLearnPrefs = subscribe;

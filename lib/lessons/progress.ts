@@ -141,6 +141,7 @@ export function clearLessonProgress(): void {
     // storage unavailable: nothing persisted to remove
   }
   reset();
+  window.dispatchEvent(new CustomEvent("ll:lessons-reset"));
 }
 
 /** Client only (empty during SSR). */
@@ -153,3 +154,12 @@ export function useLessonProgress(layoutId: string): LessonProgress {
   const all = useSyncExternalStore(subscribe, readAll, () => EMPTY_ALL);
   return all[layoutId] ?? EMPTY_PROGRESS;
 }
+
+// --- Sync adapter hooks (lib/sync/local.ts) ---------------------------------------------------
+/** Fired on window by clearLessonProgress(): the user asked for a reset (not: storage was lost). */
+export const LESSONS_RESET_EVENT = "ll:lessons-reset";
+export const subscribeLessonProgress = subscribe;
+/** Progress of every layout. Client only (empty during SSR). */
+export const getAllLessonProgress = (): Record<string, LessonProgress> => readAll();
+/** Replace the progress of every layout (also refreshes the in-memory cache and notifies). */
+export const replaceAllLessonProgress = (value: Record<string, LessonProgress>): void => writeAll(value);

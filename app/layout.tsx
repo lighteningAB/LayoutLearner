@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Geist, JetBrains_Mono } from "next/font/google";
+import { AccountProvider } from "@/components/account/AccountProvider";
 import { AppShell } from "@/components/shell/AppShell";
+import { getAuthConfig } from "@/lib/auth/config";
 import { DEFAULT_THEME, themeInitScript } from "@/lib/settings/themes";
-import SessionProviderWrapper from "./SessionProviderWrapper";
 import "./globals.css";
 
 const sans = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
@@ -26,9 +27,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
-        <SessionProviderWrapper>
+        <AccountProvider config={getAuthConfig()}>
           <AppShell>{children}</AppShell>
-        </SessionProviderWrapper>
+        </AccountProvider>
       </body>
     </html>
   );
