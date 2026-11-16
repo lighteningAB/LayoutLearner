@@ -16,7 +16,7 @@ import { ProgressBar, SegmentedControl, cx } from "@/components/ui";
 import { getHandModelProgress, subscribeHandModelProgress } from "@/lib/hands/progress";
 import { useLearnPrefs } from "@/components/learn/prefs";
 import { stableLayout } from "@/components/learn/stableLayout";
-import { useSettings } from "@/lib/settings";
+import { getSettings, useSettings } from "@/lib/settings";
 import type { ParsedLayout } from "@/lib/types";
 import { guideForTarget, type GuideAction } from "./KeyboardGuide";
 
@@ -54,6 +54,18 @@ export function useWebGLSupport(): boolean | null {
     setOk(detectWebGL());
   }, []);
   return ok;
+}
+
+// ────────────────────────────────────────────────────────────────────────── early preload
+
+// Start fetching the 3D scene chunk and the hand model as soon as this module runs in the browser,
+// instead of after the first render, but only when the saved settings ask for hands (so routes and
+// profiles that never show them download nothing). Settings are read from localStorage here; nothing
+// is rendered from them, so hydration is unaffected. The panel's own effect calls the same
+// `import()` and `loadHandTemplate()`, which share their promises / cache: no second download.
+if (typeof window !== "undefined" && getSettings().showHands) {
+  import("@/components/hands/HandsScene").catch(() => {});
+  import("@/lib/hands/rig").then((m) => m.loadHandTemplate()).catch(() => {});
 }
 
 // ────────────────────────────────────────────────────────────────────────── load failure

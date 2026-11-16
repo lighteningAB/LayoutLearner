@@ -311,6 +311,14 @@ function Contents({
     invalidate();
   }, [keyboard, controller, holdIds, invalidate]);
 
+  // While one of a layer's activators is held the keycaps show that layer's legends (derived from the
+  // layout and the held keys, so callers need no extra prop); back to base when the hold ends.
+  const activeLayer = useMemo(() => layout.layers?.find((l) => l.activatorIds.some((id) => holdIds.includes(id))) ?? null, [layout, holdIds]);
+  useEffect(() => {
+    keyboard.setLayer(activeLayer);
+    invalidate();
+  }, [keyboard, activeLayer, invalidate]);
+
   const lastNonce = useRef<number | null>(press ? press.nonce : null);
   const okRef = useRef(pressedOk);
   okRef.current = pressedOk;

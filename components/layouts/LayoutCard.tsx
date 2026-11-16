@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
 import { Badge, Icon, IconButton, Menu, cx, type MenuItem } from "@/components/ui";
 import { FAMILY_LABEL, pct, type LayoutEntry } from "./catalog";
@@ -25,9 +25,40 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * True once the element has come within `margin` of the viewport; stays true
+ * after that. Falls back to true where IntersectionObserver is missing.
+ */
+function useNearViewport(margin = "300px") {
+  const ref = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    if (near) return;
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setNear(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setNear(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: margin },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [near, margin]);
+  return [ref, near] as const;
+}
+
 export const LayoutCard = memo(function LayoutCard({ entry, selected, inspected, onSelect, onInspect, menuItems }: LayoutCardProps) {
   const { layout, analysis, diff } = entry;
   const broken = !layout;
+  const [previewRef, nearViewport] = useNearViewport();
   const moved = diff ? diff.movedLetters.length : null;
 
   return (
@@ -58,9 +89,10 @@ export const LayoutCard = memo(function LayoutCard({ entry, selected, inspected,
         className="absolute inset-0 z-[1] cursor-pointer rounded-ui-lg"
       />
 
-      <div className="flex h-[118px] items-center justify-center rounded-ui bg-bg px-3">
+      {/* Fixed height, so the lazily mounted keyboard never moves the card. */}
+      <div ref={previewRef} className="flex h-[118px] items-center justify-center rounded-ui bg-bg px-3">
         {layout ? (
-          <Keyboard2D layout={layout} fingerColors maxUnit={21} className="pointer-events-none" />
+          nearViewport && <Keyboard2D layout={layout} fingerColors maxUnit={21} className="pointer-events-none" />
         ) : (
           <div className="flex flex-col items-center gap-2 text-error">
             <Icon name="alert" size={22} />

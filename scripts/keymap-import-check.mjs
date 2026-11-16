@@ -249,5 +249,87 @@ rejects("deeply nested JSON arrays (vial)", '{"layout": ' + "[".repeat(190000), 
 rejects("many 'enum' words", "enum ".repeat(40000), "qmk-c");
 rejects("long run of underscores/commas in C", "keymaps[] = { [0] = LAYOUT(" + ",".repeat(150000) + ") };", "qmk-c");
 
+// ---------- mapping onto a board (lib/layout/keymap/apply.ts) ----------
+// The app's layout modules import each other without file extensions (the bundler resolves them),
+// which node cannot do, so register a tiny resolver that retries relative imports with ".ts".
+{
+  const { register } = await import("node:module");
+  register("data:text/javascript," + encodeURIComponent(
+    `export async function resolve(s, c, n) { try { return await n(s, c); } catch (e) { if (s.startsWith(".") && !/\\.[a-z]+$/.test(s)) { try { return await n(s + ".ts", c); } catch {} } throw e; } }`));
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const { orderKeysForImport, mapKeymapToLayers } = await import(join(root, "lib/layout/keymap/apply.ts"));
+  const { getPreset } = await import(join(root, "lib/layout/presets.ts"));
+  const { parsePreset } = await import(join(root, "lib/layout/layers.ts"));
+  const board = (id) => parsePreset(getPreset(id));
+  const corne42 = board("qwerty-split");
+  const ferris = board("ferris-sweep");
+  const idOfBase = (layout, base) => layout.keys.find((k) => k.base === base).id;
+  const idOfLabel = (layout, label) => layout.keys.find((k) => k.label.replace(/\n/g, "") === label).id;
+
+  check("orderKeysForImport: Corne 42 reads rows left half then right half, thumbs last", () => {
+    const o = orderKeysForImport(corne42);
+    eq(o.length, 42);
+    eq(o.slice(0, 12).map((k) => k.label.replace(/\n/g, "")), ["Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "Bksp"]);
+    eq(o.slice(36).map((k) => k.label.replace(/\n/g, "")), ["Win", "Lower", "Space", "Enter", "Raise", "Alt"]);
+  });
+  check("orderKeysForImport: Ferris 34 despite its tall column stagger", () => {
+    const o = orderKeysForImport(ferris);
+    eq(o.slice(0, 10).map((k) => k.base), ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]);
+    eq(o.slice(10, 20).map((k) => k.base), ["a", "s", "d", "f", "g", "h", "j", "k", "l", ";"]);
+    eq(o.slice(30).map((k) => k.label.replace(/\n/g, "")), ["Lower", "Space", "Enter", "Raise"]);
+  });
+
+  const mapped = {};
+  for (const [fmt, km] of Object.entries(corne)) {
+    mapped[fmt] = mapKeymapToLayers(km, corne42);
+    check(`corne ${fmt} onto the 42-key Corne preset: layers land under the right fingers`, () => {
+      const m = mapped[fmt];
+      eq(m.layers.length, 2);
+      const lower = m.layers[0], raise = m.layers[1];
+      // fixtures: Lower has digits 1-5 / 6-0 over the letter row and arrows on the home row
+      eq(lower.keys[idOfBase(corne42, "q")].base, "1");
+      eq(lower.keys[idOfBase(corne42, "p")].base, "0");
+      eq(lower.keys[idOfBase(corne42, "h")].base, "-");
+      eq(raise.keys[idOfBase(corne42, "q")].base, "!");
+      eq(raise.keys[idOfBase(corne42, "q")].shifted ?? "", "");
+      // activators are the thumb keys
+      eq(lower.activatorIds, [idOfLabel(corne42, "Lower")]);
+      eq(raise.activatorIds, [idOfLabel(corne42, "Raise")]);
+      for (const l of m.layers) for (const id of l.activatorIds) if (l.keys[id]) throw new Error("activator has a character");
+      eq(m.baseMismatch.matched >= 30, true, "base letters match");
+    });
+  }
+  check("corne: the four formats map to identical layers", () => {
+    const ref = JSON.stringify(mapped["qmk-json"].layers.map((l) => [l.activatorIds, l.keys]));
+    for (const f of ["qmk-c", "zmk"]) eq(JSON.stringify(mapped[f].layers.map((l) => [l.activatorIds, l.keys])), ref, f);
+  });
+  check("ferris-sweep.keymap onto ferris-sweep: nav digits, thumb activators, tog layer skipped", () => {
+    const km = parseKeymap(read("ferris-sweep.keymap"));
+    const m = mapKeymapToLayers(km, ferris);
+    const nav = m.layers.find((l) => l.name.toLowerCase() === "nav");
+    if (!nav) throw new Error("no NAV layer");
+    eq(nav.keys[idOfBase(ferris, "q")].base, "1");
+    eq(nav.keys[idOfBase(ferris, "p")].base, "0");
+    eq(nav.activatorIds, [idOfLabel(ferris, "Lower")]);
+    const sym = m.layers.find((l) => l.name.toLowerCase() === "sym");
+    eq(sym.activatorIds, [idOfLabel(ferris, "Raise")]);
+    eq(sym.keys[idOfBase(ferris, "q")].base, "!");
+  });
+  check("a 34-key keymap on the 42-key board throws the plain-language error", () => {
+    let err = null;
+    try { mapKeymapToLayers(parseKeymap(read("ferris-sweep.keymap")), corne42); } catch (e) { err = e; }
+    if (!(err instanceof KeymapImportError)) throw new Error("no KeymapImportError");
+    eq(err.message, "This keymap has 34 keys per layer, but this board has 42. Pick the matching board first.");
+  });
+  check("a layer reached only by toggle gets a plain-words warning", () => {
+    const km = parseKeymap(`/ { keymap { compatible = "zmk,keymap"; a { bindings = <&kp A &tog 1>; }; Nav { bindings = <&kp N1 &trans>; }; }; };`);
+    const lay = parsePreset(getPreset("ferris-sweep"));
+    const tiny = { ...lay, keys: lay.keys.slice(0, 2) };
+    const m = mapKeymapToLayers(km, tiny);
+    eq(m.layers.length, 0);
+    eq(m.warnings.some((w) => w.includes('Layer "Nav" has no hold key (it is switched on by a toggle or one-shot key), so it was skipped.')), true);
+  });
+}
+
 console.log(failed ? `\n${failed} check(s) FAILED` : "\nall checks passed");
 process.exit(failed ? 1 : 0);

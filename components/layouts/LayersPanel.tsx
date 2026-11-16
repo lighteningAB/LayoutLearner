@@ -5,6 +5,7 @@ import { Button, ConfirmDialog, Icon, Input, cx } from "@/components/ui";
 import { MAX_LAYER_NAME, addLayer, removeLayer, renameLayer, setActivators, setKeyChars, type Layers } from "@/lib/layout/layers";
 import { MAX_LAYERS, type LayoutKey, type ParsedLayout } from "@/lib/types";
 import { displayLegends } from "@/lib/layout/parse";
+import { KeymapImportDialog } from "./KeymapImportDialog";
 
 const keyName = (k: LayoutKey) => displayLegends(k.label).join(" ").trim() || (k.base === " " ? "Space" : "Key");
 const fingerText = (k: LayoutKey) => (k.finger ? `${k.finger.hand === "L" ? "left" : "right"} ${k.finger.finger}` : "");
@@ -58,6 +59,7 @@ export interface LayersPanelProps {
 /** The "Layers" view of the layout editor: layer tabs, the activator picker and the key editor. */
 export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, selectedKey, settingActivator, onSettingActivator, onClearSelection }: LayersPanelProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [importing, setImporting] = useState(false);
   const list = layers ?? [];
   const active = list.find((l) => l.id === activeId) ?? null;
   const byId = new Map((layout?.keys ?? []).map((k) => [k.id, k]));
@@ -109,7 +111,11 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
           Add layer
         </Button>
         {list.length >= MAX_LAYERS && <span className="text-xs text-sub">Up to {MAX_LAYERS} layers.</span>}
+        <Button size="sm" variant="ghost" icon="upload" data-testid="layer-import" disabled={!layout} onClick={() => setImporting(true)}>
+          Import keymap
+        </Button>
       </div>
+      <p className="-mt-2 text-xs text-sub">Works with QMK (keymap.json or keymap.c), ZMK (.keymap) and Vial (.vil). Only hold-to-activate layers are imported.</p>
 
       {!active ? (
         <p className="text-[13px] text-sub" data-testid="layers-empty">
@@ -250,6 +256,18 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
             ))}
         </div>
       )}
+
+      <KeymapImportDialog
+        open={importing}
+        onClose={() => setImporting(false)}
+        layout={layout}
+        onApply={(next) => {
+          onChange(next);
+          onActiveId(next[0]?.id ?? null);
+          onSettingActivator(false);
+          onClearSelection();
+        }}
+      />
 
       <ConfirmDialog
         open={confirmDelete}

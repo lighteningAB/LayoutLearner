@@ -210,17 +210,30 @@ const NONE: string[] = [];
 
 // ────────────────────────────────────────────────────────────────────────── page
 
-function CourseSkeleton() {
+/**
+ * Placeholder shown until storage-backed state is read. It mirrors the real page (progress card,
+ * one block per stage, same tile grid and heights) using the stage sizes of the course known at that
+ * point (the default layout's), so the page is already its final height and the footer does not
+ * jump when the real list replaces it.
+ */
+function CourseSkeleton({ stages }: { stages: { stage: string; items: unknown[] }[] }) {
   return (
     <div aria-hidden data-testid="course-skeleton">
-      <Skeleton animate className="h-[76px] w-full rounded-ui-lg" />
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {Array.from({ length: 9 }, (_, i) => (
-            <Skeleton key={i} animate className="h-[112px] rounded-ui-lg" />
+      <Skeleton animate className="h-[72px] w-full rounded-ui-lg" />
+      <div className="mt-8 grid items-start gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-8">
+          {stages.map((stage, si) => (
+            <div key={`${stage.stage}-${si}`}>
+              <Skeleton animate className="mb-3 h-[23px] w-40 rounded-ui" />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {stage.items.map((_, i) => (
+                  <Skeleton key={i} animate className="h-[123px] rounded-ui-lg" />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
-        <Skeleton animate className="h-[420px] rounded-ui-lg" />
+        <Skeleton animate className="order-first h-[515px] rounded-ui-lg lg:order-none" />
       </div>
     </div>
   );
@@ -331,7 +344,7 @@ export function CourseMap() {
       />
 
       {!hydrated ? (
-        <CourseSkeleton />
+        <CourseSkeleton stages={course.stages} />
       ) : course.total === 0 ? (
         <Card className="flex flex-col items-start gap-3" data-testid="course-empty">
           <div className="text-[15px] font-semibold text-text">No lessons for {active.name}</div>

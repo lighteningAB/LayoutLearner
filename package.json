@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "(test -z \"$DATABASE_URL$POSTGRES_URL\" || node scripts/db.mjs migrate) && next build",
+    "vercel-build": "(test \"$VERCEL_ENV\" != production || test -z \"$DATABASE_URL$POSTGRES_URL\" || node scripts/db.mjs migrate) && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "verify": "node scripts/verify.mjs",
@@ -16,7 +16,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
     "json5": "^2.2.3",
-    "next": "15.4.10",
+    "next": "15.5.29",
     "next-auth": "^4.24.11",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

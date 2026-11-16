@@ -12,7 +12,8 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { chainRotations, chainTip, type ChainDef } from "./ik";
 import { mixSRGB, type HandsTheme } from "./theme";
 
-export const HAND_MODEL_URL = "/models/hand.glb";
+// Served with an immutable one-year Cache-Control (next.config.js): bump when the file changes.
+export const HAND_MODEL_URL = "/models/hand.glb?v=1";
 
 /** Model units -> key units. ~50 gives an adult hand on a 19.05 mm pitch board. */
 export const HAND_SCALE = 46;

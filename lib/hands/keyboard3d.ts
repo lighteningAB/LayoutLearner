@@ -5,6 +5,7 @@
 import * as THREE from "three";
 import { mixSRGB, type HandsTheme } from "./theme";
 import type { KeySink } from "./pose";
+import type { LayoutLayer } from "../types";
 import { KEY_GAP, KEY_TOP, KEY_TRAVEL, type KeyPlacement, type PlacedLayout } from "./space";
 
 const BEVEL = 0.055;
@@ -73,6 +74,15 @@ function legendTexts(pl: KeyPlacement): string[] {
     .slice(0, 2);
 }
 
+/** Legends of a key while a layer is shown: its character(s), blank when the layer leaves a character key unused. */
+function layerLegendTexts(pl: KeyPlacement, layer: LayoutLayer): string[] {
+  const e = layer.keys[pl.key.id];
+  if (e) return e.shifted ? [e.shifted, e.base] : [e.base];
+  const k = pl.key;
+  // Activators and non-character keys (Space, Shift, ...) keep their names; unused character keys go blank.
+  return k.base && k.base !== " " && !layer.activatorIds.includes(k.id) ? [] : legendTexts(pl);
+}
+
 const m4 = new THREE.Matrix4();
 const pos = new THREE.Vector3();
 const quat = new THREE.Quaternion();
@@ -90,6 +100,9 @@ export class Keyboard3D implements KeySink {
   private legendMaterial: THREE.MeshBasicMaterial;
   private legendTexture: THREE.CanvasTexture | null = null;
   private legendCanvas: HTMLCanvasElement | null = null;
+  /** The layer whose legends are on the keycaps (null = base), and one cached atlas per layer shown so far. */
+  private layer: LayoutLayer | null = null;
+  private layerAtlases = new Map<LayoutLayer, { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture }>();
   private legendCells: { pl: KeyPlacement; x: number; y: number; w: number; h: number }[] = [];
   private pxPerUnit = 128;
   private plate: THREE.Mesh;
@@ -296,9 +309,39 @@ export class Keyboard3D implements KeySink {
     this.drawLegends();
   }
 
+  /**
+   * Shows `layer`'s legends on the keycaps (null = the base legends). Each layer is rasterised once, the
+   * first time it is shown, and then only swapped in; nothing is drawn per frame.
+   */
+  setLayer(layer: LayoutLayer | null): void {
+    if (layer === this.layer || !this.legendCanvas || !this.legendTexture) return;
+    this.layer = layer;
+    let tex = this.legendTexture;
+    if (layer) {
+      let atlas = this.layerAtlases.get(layer);
+      if (!atlas) {
+        const canvas = document.createElement("canvas");
+        canvas.width = this.legendCanvas.width;
+        canvas.height = this.legendCanvas.height;
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 8;
+        texture.generateMipmaps = true;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        atlas = { canvas, texture };
+        this.layerAtlases.set(layer, atlas);
+        this.paintLegends(canvas, texture, layer);
+      }
+      tex = atlas.texture;
+    }
+    this.legendMaterial.map = tex;
+  }
+
   dispose(): void {
     for (const d of this.disposables) d.dispose();
     this.legendTexture?.dispose();
+    for (const a of this.layerAtlases.values()) a.texture.dispose();
+    this.layerAtlases.clear();
     this.legendMesh?.geometry.dispose();
     this.legendMesh?.dispose();
     this.legendCanvas = null;
@@ -444,8 +487,12 @@ export class Keyboard3D implements KeySink {
   }
 
   private drawLegends(): void {
-    const canvas = this.legendCanvas;
-    if (!canvas || !this.legendTexture) return;
+    if (!this.legendCanvas || !this.legendTexture) return;
+    this.paintLegends(this.legendCanvas, this.legendTexture, null);
+    for (const [layer, a] of this.layerAtlases) this.paintLegends(a.canvas, a.texture, layer);
+  }
+
+  private paintLegends(canvas: HTMLCanvasElement, texture: THREE.CanvasTexture, layer: LayoutLayer | null): void {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const px = this.pxPerUnit;
@@ -455,7 +502,7 @@ export class Keyboard3D implements KeySink {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (const c of this.legendCells) {
-      const texts = legendTexts(c.pl);
+      const texts = layer ? layerLegendTexts(c.pl, layer) : legendTexts(c.pl);
       const x0 = c.x * px;
       const y0 = c.y * px;
       const w = c.w * px;
@@ -490,7 +537,7 @@ export class Keyboard3D implements KeySink {
         ctx.globalAlpha = 1;
       }
     }
-    this.legendTexture.needsUpdate = true;
+    texture.needsUpdate = true;
   }
 }
 

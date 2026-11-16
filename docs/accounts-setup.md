@@ -99,7 +99,7 @@ Notes:
 
 ## 7. Create the tables
 
-On Vercel the tables are created automatically: the `vercel-build` script runs `node scripts/db.mjs migrate` before `next build` whenever a database URL is set for that environment (the statements are idempotent, and a failed migration fails the build). This matters because the Neon integration marks its variables as sensitive, so `vercel env pull` returns them empty and the commands below cannot reach the production database from your machine unless you paste the connection string yourself.
+On Vercel the tables are created automatically: the `vercel-build` script runs `node scripts/db.mjs migrate` before `next build` only on production builds (`VERCEL_ENV` is `production`) and only when a database URL is set; preview and development builds skip it and go straight to `next build`, so a preview deployment never touches the production database (the statements are idempotent, and a failed migration fails the build). This matters because the Neon integration marks its variables as sensitive, so `vercel env pull` returns them empty and the commands below cannot reach the production database from your machine unless you paste the connection string yourself.
 
 To run it by hand:
 

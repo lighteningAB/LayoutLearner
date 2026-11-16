@@ -7,6 +7,7 @@ import { buildCurriculum } from "../lessons/curriculum";
 import { applyLayers, sanitizeLayers } from "./layers";
 import { applyFingerOverrides, sanitizeFingerOverrides, type FingerOverrides } from "./overrides";
 import { LayoutParseError, parseLayout } from "./parse";
+import { MAX_CUSTOM_KEYS, MAX_SOURCE_BYTES, trimTrailingSeparators } from "./scan";
 import { PRESETS, getPreset } from "./presets";
 
 export interface CustomLayoutRecord {
@@ -20,8 +21,7 @@ export interface CustomLayoutRecord {
 }
 
 export const CUSTOM_ID_PREFIX = "custom-";
-export const MAX_CUSTOM_KEYS = 300;
-export const MAX_SOURCE_BYTES = 50_000;
+export { MAX_CUSTOM_KEYS, MAX_SOURCE_BYTES };
 export const MAX_NAME_LENGTH = 40;
 
 export function isCustomId(id: string): boolean {
@@ -191,7 +191,7 @@ interface Decoded {
 
 /** Reads KLE data in any accepted shape (raw data, downloaded JSON, with/without a meta object). */
 function decode(text: string): Decoded | undefined {
-  const trimmed = text.trim().replace(/[,;\s]+$/, "");
+  const trimmed = trimTrailingSeparators(text.trim());
   if (!trimmed) return undefined;
   let data: unknown;
   try {

@@ -4,6 +4,7 @@
 import JSON5 from "json5";
 import type { FingerId, LayoutKey, ParsedLayout } from "../types";
 import { analyseSplit, type SplitAnalysis } from "./split";
+import { MAX_CUSTOM_KEYS, MAX_LABEL_CHARS, MAX_SOURCE_BYTES, stripTagsLinear, trimTrailingSeparators } from "./scan";
 
 export class LayoutParseError extends Error {
   /** 1-based line / column in the source, when the failure is a syntax error. */
@@ -18,7 +19,7 @@ export class LayoutParseError extends Error {
   }
 }
 
-const MAX_KEYS = 400;
+const MAX_KEYS = MAX_CUSTOM_KEYS;
 
 // ---------------------------------------------------------------------------
 // Named (non-character) keys
@@ -106,7 +107,7 @@ const NAMED: Record<string, Named> = {
   "␣": { code: "Space" },
 };
 
-const stripTags = (s: string) => s.replace(/<[^>]*>/g, "").trim();
+const stripTags = stripTagsLinear;
 
 /** Non-empty, tag-stripped legends of a KLE label, in KLE order. */
 export function displayLegends(label: string): string[] {
@@ -257,7 +258,7 @@ const isPlainObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 function readRows(source: string): { rows: Row[]; meta?: Record<string, unknown> } {
-  const text = (source ?? "").trim().replace(/[,;\s]+$/, "");
+  const text = trimTrailingSeparators((source ?? "").trim());
   if (!text) throw new LayoutParseError("Layout is empty. Paste the raw data from keyboard-layout-editor.com.");
 
   let data: unknown;
@@ -334,6 +335,14 @@ function num(props: Record<string, unknown>, name: string, row: number): number 
 const round = (n: number) => Math.round(n * 1e4) / 1e4;
 
 export function parseLayout(source: string, name?: string): ParsedLayout {
+  // Bytes are at least UTF-16 length, so this cheap test rejects oversize input
+  // before any encoding work; the exact byte check follows for multibyte text.
+  if (
+    (source ?? "").length > MAX_SOURCE_BYTES ||
+    (typeof TextEncoder !== "undefined" && new TextEncoder().encode(source ?? "").length > MAX_SOURCE_BYTES)
+  ) {
+    throw new LayoutParseError(`Layout is larger than ${MAX_SOURCE_BYTES / 1000} KB.`);
+  }
   const { rows, meta } = readRows(source);
 
   const keys: LayoutKey[] = [];
@@ -347,7 +356,8 @@ export function parseLayout(source: string, name?: string): ParsedLayout {
 
   rows.forEach((row, r) => {
     let k = 0;
-    for (const item of row) {
+    for (const rawItem of row) {
+      const item = typeof rawItem === "string" && rawItem.length > MAX_LABEL_CHARS ? rawItem.slice(0, MAX_LABEL_CHARS) : rawItem;
       if (typeof item === "string") {
         if (keys.length >= MAX_KEYS) throw new LayoutParseError(`Layout has more than ${MAX_KEYS} keys.`);
         const chars = charsFor(item, w);
