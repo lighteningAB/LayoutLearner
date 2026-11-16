@@ -4,6 +4,7 @@ import {
   SETTINGS_KEY,
   STORAGE_PREFIX,
   isThemeId,
+  systemDefaultTheme,
   type ThemeId,
 } from "./themes";
 import { sanitizeFingerOverrides, type FingerOverrides } from "../layout/overrides";
@@ -73,8 +74,13 @@ const isBrowser = typeof window !== "undefined";
 const listeners = new Set<() => void>();
 let state: Settings | null = null;
 
+/** Defaults for this browser: DEFAULT_SETTINGS, with the theme following the OS light/dark setting. */
+function initialSettings(): Settings {
+  return { ...DEFAULT_SETTINGS, theme: systemDefaultTheme() };
+}
+
 function sanitize(raw: unknown): Settings {
-  const out: Settings = { ...DEFAULT_SETTINGS };
+  const out: Settings = initialSettings();
   if (!raw || typeof raw !== "object") return out;
   const src = raw as Record<string, unknown>;
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
@@ -126,7 +132,7 @@ function load(): Settings {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
     return sanitize(raw ? JSON.parse(raw) : null);
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    return initialSettings();
   }
 }
 
@@ -178,7 +184,7 @@ export function updateSettings(patch: SettingsPatch): Settings {
 
 /** Restore default settings (keeps other ll:v1:* data such as lesson progress). */
 export function resetSettings(): Settings {
-  return updateSettings({ ...DEFAULT_SETTINGS });
+  return updateSettings(initialSettings());
 }
 
 /** Remove every localStorage key under the ll:v1: prefix and reset settings in memory. */
@@ -194,7 +200,7 @@ export function clearAllData(): void {
   } catch {
     /* ignore */
   }
-  state = { ...DEFAULT_SETTINGS };
+  state = initialSettings();
   applyTheme(state.theme, true);
   emit();
   window.dispatchEvent(new CustomEvent(DATA_CLEARED_EVENT));

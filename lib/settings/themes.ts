@@ -40,8 +40,28 @@ export const STORAGE_PREFIX = "ll:v1:";
  * Inline <head> script: applies the persisted theme to <html data-theme> before
  * first paint, so there is no flash of the default theme on reload.
  */
+export const LIGHT_DEFAULT_THEME: ThemeId = "paper";
+
+/**
+ * Theme for a visitor who has not picked one: follows the OS light/dark
+ * setting (Paper or Tide). On the server, and where matchMedia is missing,
+ * it is DEFAULT_THEME.
+ */
+export function systemDefaultTheme(): ThemeId {
+  try {
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: light)").matches) {
+      return LIGHT_DEFAULT_THEME;
+    }
+  } catch {
+    /* fall through */
+  }
+  return DEFAULT_THEME;
+}
+
 export const themeInitScript = `(function(){var d=document.documentElement,t=${JSON.stringify(
   DEFAULT_THEME,
-)};try{var s=JSON.parse(localStorage.getItem(${JSON.stringify(
+)};try{if(window.matchMedia("(prefers-color-scheme: light)").matches)t=${JSON.stringify(
+  LIGHT_DEFAULT_THEME,
+)}}catch(e){}try{var s=JSON.parse(localStorage.getItem(${JSON.stringify(
   SETTINGS_KEY,
 )})||"{}");if(s&&${JSON.stringify(THEME_IDS)}.indexOf(s.theme)>-1)t=s.theme}catch(e){}d.setAttribute("data-theme",t)})();`;

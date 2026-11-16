@@ -426,7 +426,7 @@ A new layout on an existing board (for example another letter arrangement on the
 | Path | What |
 |---|---|
 | `app/` | Next.js routes: `/` (test), `/learn` and `/learn/[lessonId]`, `/layouts`, `/settings`, `/api/auth`, global CSS and tokens |
-| `app/dev/*` | Development harnesses: `keyboard`, `engine`, `hands`, `ui` |
+| `app/dev/*` | Development harnesses: `keyboard`, `engine`, `hands`, `ui` (development-only: 404 in production builds) |
 | `lib/types.ts` | Shared types (`ParsedLayout`, `LayoutKey`, fingers) |
 | `lib/layout` | KLE parser, geometry, split-board analysis, presets, custom layouts, keystroke resolution, analysis |
 | `lib/typing` | Typing engine, word generation, keyboard-input hook, word lists |
@@ -448,7 +448,7 @@ A new layout on an existing board (for example another letter arrangement on the
 There is no unit-test suite. The project deliberately verifies changes by driving the real app: pure modules are exercised through dev harness pages, and behaviour is checked in a real browser with `scripts/verify.mjs`.
 
 - `yarn typecheck` runs `tsc --noEmit`.
-- Harnesses: `/dev/keyboard` (layout parsing, fingers, keystroke resolution, curriculum validation; `?preset=`, `?emulate=`), `/dev/engine` (typing engine, word generation, curriculum, lesson progress; `?layout=`, `?lesson=`), `/dev/hands` (3D hands on a preset or fixture; `?preset=`, `?camera=`, `?target=`; press any key to see the hands reach it), `/dev/ui` (design system).
+- Harnesses (development-only: they return 404 in a production build, so use `yarn dev`): `/dev/keyboard` (layout parsing, fingers, keystroke resolution, curriculum validation; `?preset=`, `?emulate=`), `/dev/engine` (typing engine, word generation, curriculum, lesson progress; `?layout=`, `?lesson=`), `/dev/hands` (3D hands on a preset or fixture; `?preset=`, `?camera=`, `?target=`; press any key to see the hands reach it), `/dev/ui` (design system).
 - `scripts/verify.mjs` drives the running dev server with headless Chrome through `playwright-core` (it needs Google Chrome installed). Steps run in order and screenshots go to `.verify/` (git-ignored). Console errors, page errors and failed requests are printed, and the exit code is 1 on any failure. Read the header of the script for all steps.
 
 ```bash

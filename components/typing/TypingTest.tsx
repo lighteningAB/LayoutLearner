@@ -13,6 +13,7 @@ import { playErrorSound } from "@/lib/typing/sound";
 import { createWordStream, generateText, type GenerateConfig, type WordListName, type WordStream } from "@/lib/typing/words";
 import { GuideViewSwitch, HandsPanel, useGuidePress, useGuideView } from "./HandsPanel";
 import { EmulationHint, useEmulationHint } from "./EmulationHint";
+import { MobileNotice, WelcomeHint } from "./Hints";
 import { KeyboardGuide } from "./KeyboardGuide";
 import { ResultsView } from "./ResultsView";
 import { WordsDisplay } from "./WordsDisplay";
@@ -487,7 +488,9 @@ export function TypingTest() {
   return (
     <div className="flex min-h-[calc(100dvh-15.5rem)] flex-col" data-testid="typing-test" data-status={status} data-layout={active.id}>
       <h1 className="sr-only">Typing test</h1>
+      <MobileNotice />
       <EmulationHint hint={emulationHint} layoutName={active.name} />
+      <WelcomeHint suppressed={status !== "idle" || emulationHint.visible} />
       <span className="sr-only" data-testid="test-status" aria-live="polite">
         {status}
       </span>

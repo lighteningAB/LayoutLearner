@@ -236,7 +236,7 @@ Accepted risks. These are known and deliberately not fixed:
 - Timestamps inside a document are client-supplied and accepted up to one hour ahead of the server clock.
 - Rate limiting is per signed-in account with a fixed window (a burst of up to twice the limit can straddle two windows), and there is no limit per IP address or for signed-out requests.
 - No Content-Security-Policy header is sent (the app uses an inline theme script and WebGL assets; a policy is deferred). `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and `X-Frame-Options: DENY` are sent on every response (`next.config.js`).
-- The `/dev/*` pages are part of the production build.
+- The `/dev/*` pages are development-only: `app/dev/layout.tsx` returns 404 for them in production builds.
 - The account id is reversible to a provider account by whoever can read the database (section 1). There is deliberately no secret "pepper" in the hash: losing or rotating it would orphan every account.
 - Deleted rows can persist in Neon's point-in-time restore history for the retention period configured in the Neon project. Check that setting if it matters to you.
 

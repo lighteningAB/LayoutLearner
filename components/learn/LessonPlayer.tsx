@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { GuideViewSwitch, HandsPanel, useGuidePress, useGuideView } from "@/components/typing/HandsPanel";
+import { MobileNotice } from "@/components/typing/Hints";
 import { EmulationHint, useEmulationHint } from "@/components/typing/EmulationHint";
 import { KeyboardGuide, guideForChar, type KeyGuide } from "@/components/typing/KeyboardGuide";
 import { WordsDisplay } from "@/components/typing/WordsDisplay";
@@ -456,6 +457,7 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
       data-drill-state={kind === "drill" ? (drillDone ? "done" : status) : ""}
     >
       <LearnCommands />
+      <MobileNotice />
       <EmulationHint hint={emulationHint} layoutName={active.name} />
       <header className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
