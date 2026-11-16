@@ -21,11 +21,13 @@ import {
   setKeyOverride,
   type FingerOverrides,
 } from "@/lib/layout/overrides";
+import { applyLayers, layersEqual, parsePreset, pruneLayers, setActivators, type Layers } from "@/lib/layout/layers";
 import { displayLegends } from "@/lib/layout/parse";
 import { PRESETS } from "@/lib/layout/presets";
 import type { FingerId, LayoutKey, ParsedLayout } from "@/lib/types";
 import { CodeEditor } from "./CodeEditor";
 import { FingerPicker } from "./FingerPicker";
+import { LayersPanel } from "./LayersPanel";
 
 export interface EditorDraft {
   /** Set when editing a stored custom layout; absent for a new one. */
@@ -34,11 +36,13 @@ export interface EditorDraft {
   source: string;
   /** Per-key finger corrections. */
   fingers?: FingerOverrides;
+  /** Extra firmware layers (Lower / Raise …). */
+  layers?: Layers;
   /** Which view the editor opens in (default "source"). */
   mode?: EditorMode;
 }
 
-export type EditorMode = "source" | "fingers";
+export type EditorMode = "source" | "fingers" | "layers";
 
 const keyName = (k: LayoutKey) => displayLegends(k.label).join(" ").trim() || (k.base === " " ? "Space" : "Key");
 const sameFinger = (a?: FingerId | null, b?: FingerId | null) => (a ?? null) === (b ?? null) || (!!a && !!b && a.hand === b.hand && a.finger === b.finger);
@@ -65,8 +69,8 @@ export async function copyText(text: string, what = "Layout data"): Promise<void
   }
 }
 
-export function downloadLayout(name: string, source: string, fingers?: FingerOverrides): void {
-  const blob = new Blob([exportLayoutJson(name, source, fingers)], { type: "application/json" });
+export function downloadLayout(name: string, source: string, fingers?: FingerOverrides, layers?: Layers): void {
+  const blob = new Blob([exportLayoutJson(name, source, fingers, layers)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -155,6 +159,9 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
   const [mode, setMode] = useState<EditorMode>(draft.mode ?? "source");
   const [overrides, setOverrides] = useState<FingerOverrides | undefined>(draft.fingers);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [layers, setLayers] = useState<Layers>(draft.layers);
+  const [activeLayerId, setActiveLayerId] = useState<string | null>(draft.layers?.[0]?.id ?? null);
+  const [settingActivator, setSettingActivator] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const nameId = useId();
@@ -179,7 +186,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
     : takenNames.has(trimmedName.toLowerCase())
       ? `Another layout is already called "${trimmedName}".`
       : undefined;
-  const dirty = name !== draft.name || source !== draft.source || JSON.stringify(overrides ?? null) !== JSON.stringify(draft.fingers ?? null);
+  const dirty = name !== draft.name || source !== draft.source || JSON.stringify(overrides ?? null) !== JSON.stringify(draft.fingers ?? null) || !layersEqual(layers, draft.layers);
   // `check` lags the text by the debounce; validate the exact text again on save.
   const canSave = !nameError && !empty && !check.error;
 
@@ -191,7 +198,13 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
       return;
     }
     // Overrides whose key is gone or changed are not kept.
-    onSave({ id: draft.id, name: trimmedName, source, fingers: final.base ? pruneOverrides(final.base, overrides).overrides : overrides });
+    onSave({
+      id: draft.id,
+      name: trimmedName,
+      source,
+      fingers: final.base ? pruneOverrides(final.base, overrides).overrides : overrides,
+      layers: final.base ? pruneLayers(final.base, layers) : layers,
+    });
   };
 
   const cancel = () => (dirty ? setConfirmDiscard(true) : onCancel());
@@ -201,6 +214,10 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
     if (!preset) return;
     setSource(preset.source);
     setOverrides(undefined);
+    const presetLayers = parsePreset(preset).layers;
+    setLayers(presetLayers);
+    setActiveLayerId(presetLayers?.[0]?.id ?? null);
+    setSettingActivator(false);
     setSelectedId(null);
     if (!trimmedName || name === draft.name) setName(`${preset.name} copy`.slice(0, MAX_NAME_LENGTH));
   };
@@ -218,12 +235,22 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
       const imported = importLayoutText(await file.text());
       setSource(imported.source);
       setOverrides(imported.fingers);
+      setLayers(imported.layers);
+      setActiveLayerId(imported.layers?.[0]?.id ?? null);
+      setSettingActivator(false);
       setSelectedId(null);
       const fallback = file.name.replace(/(\.kle)?\.(json|txt)$/i, "").replace(/[-_]+/g, " ");
       if (!trimmedName || name === draft.name) setName(cleanName(imported.name ?? fallback) || name);
       toast(`Imported ${file.name}`, {
         variant: "success",
-        description: imported.fingers ? `${Object.keys(imported.fingers).length} finger overrides included.` : undefined,
+        description:
+          [
+            imported.fingers ? `${Object.keys(imported.fingers).length} finger overrides` : "",
+            imported.layers ? `${imported.layers.length} ${imported.layers.length === 1 ? "layer" : "layers"}` : "",
+          ]
+            .filter(Boolean)
+            .join(", ")
+            .replace(/^(.+)$/, "$1 included.") || undefined,
       });
     } catch {
       toast("Couldn't read that file", { variant: "error" });
@@ -232,7 +259,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
 
   const base = check.base ?? lastGood;
   // Overrides apply instantly (no debounce): the preview is always base + overrides.
-  const preview = useMemo(() => (base ? applyFingerOverrides(base, overrides) : null), [base, overrides]);
+  const preview = useMemo(() => (base ? applyLayers(applyFingerOverrides(base, overrides), layers) : null), [base, overrides, layers]);
   const stale = !!check.error && !!preview;
   const staleCount = base ? countStaleOverrides(base, overrides) : 0;
   const markedIds = useMemo(() => {
@@ -245,6 +272,16 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
   }, [overrides, base]);
   const warnings = useMemo(() => (check.layout && preview ? layoutWarnings(preview) : check.warnings), [check, preview]);
   const selectedKey = preview?.keys.find((k) => k.id === selectedId);
+  // The layer on show in the Layers view comes straight from the draft: a new layer has no activator yet
+  // (so the layout drops it), and the board must still show it.
+  const activeLayer = mode === "layers" ? (layers?.find((l) => l.id === activeLayerId) ?? null) : null;
+  const layerKeyClick = (id: string) => {
+    if (!activeLayer) return;
+    if (settingActivator) {
+      const has = activeLayer.activatorIds.includes(id);
+      setLayers((prev) => setActivators(prev, activeLayer.id, has ? activeLayer.activatorIds.filter((a) => a !== id) : [...activeLayer.activatorIds, id]));
+    } else setSelectedId(id);
+  };
   const baseKey = base?.keys.find((k) => k.id === selectedId);
 
   /** Stores a choice; one that equals what the parser guessed is no override at all. */
@@ -380,19 +417,41 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
           data-testid="editor-mode"
           size="sm"
           value={mode}
-          onChange={setMode}
+          onChange={(m) => {
+            setMode(m);
+            setSelectedId(null);
+            setSettingActivator(false);
+            if (m === "layers" && !layers?.some((l) => l.id === activeLayerId)) setActiveLayerId(layers?.[0]?.id ?? null);
+          }}
           options={[
-            { value: "source", label: "Layout data", icon: "code" },
-            { value: "fingers", label: "Fingers", icon: "hand" },
+            { value: "source", label: "Layout data", icon: "code", testId: "editor-mode-source" },
+            { value: "fingers", label: "Fingers", icon: "hand", testId: "editor-mode-fingers" },
+            { value: "layers", label: "Layers", icon: "layers", testId: "editor-mode-layers" },
           ]}
         />
+        {mode === "layers" && <span className="text-xs text-sub">Give keys extra characters while a layer key is held. Changes apply to the keyboard guide and lessons.</span>}
         {mode === "fingers" && <span className="text-xs text-sub">Correct which finger presses a key. Changes apply to tests, lessons and the hands view.</span>}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ── source ── */}
         <div className="flex min-w-0 flex-col gap-4">
-{mode === "fingers" ? (
+{mode === "layers" ? (
+            <>
+              <LayersPanel
+                layout={preview}
+                layers={layers}
+                onChange={setLayers}
+                activeId={activeLayerId}
+                onActiveId={setActiveLayerId}
+                selectedKey={selectedKey ?? null}
+                settingActivator={settingActivator}
+                onSettingActivator={setSettingActivator}
+                onClearSelection={() => setSelectedId(null)}
+              />
+              {nameField}
+            </>
+          ) : mode === "fingers" ? (
             <>
               {fingersPanel}
               {nameField}
@@ -461,7 +520,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
                   icon="download"
                   disabled={empty}
                   data-testid="editor-download"
-                  onClick={() => downloadLayout(trimmedName || "layout", source, overrides)}
+                  onClick={() => downloadLayout(trimmedName || "layout", source, overrides, layers)}
                 >
                   Download
                 </Button>
@@ -473,7 +532,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
         </div>
 
         {/* ── preview ── */}
-        <div className={cx("flex min-w-0 flex-col gap-3", mode === "fingers" && "order-first lg:order-none")}>
+        <div className={cx("flex min-w-0 flex-col gap-3", mode !== "source" && "order-first lg:order-none")}>
           <div className="flex h-[21px] items-center justify-between gap-3 lg:mt-px">
             <span className="text-[13px] font-medium text-text">Preview</span>
             {preview && (
@@ -498,7 +557,14 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
                   fingerColors
                   maxUnit={44}
                   className={cx("transition-opacity duration-150", stale && "opacity-45")}
-                  {...(mode === "fingers" && !stale
+                  {...(mode === "layers" && !stale
+                    ? {
+                        layer: activeLayer,
+                        onKeyClick: layerKeyClick,
+                        selectedKeyIds: selectedId && !settingActivator ? [selectedId] : undefined,
+                        highlightKeyIds: activeLayer?.activatorIds,
+                      }
+                    : mode === "fingers" && !stale
                     ? {
                         onKeyClick: setSelectedId,
                         selectedKeyIds: selectedId ? [selectedId] : undefined,

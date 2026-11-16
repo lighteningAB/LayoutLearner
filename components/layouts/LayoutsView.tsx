@@ -62,25 +62,38 @@ export function LayoutsView() {
 
   const duplicate = useCallback(
     (entry: LayoutEntry) =>
-      openEditor({ name: uniqueName(`${entry.name} copy`, settings.customLayouts), source: entry.source, fingers: entry.fingers }),
+      openEditor({ name: uniqueName(`${entry.name} copy`, settings.customLayouts), source: entry.source, fingers: entry.fingers, layers: entry.layers }),
     [openEditor, settings.customLayouts],
   );
 
   /** Presets are fixed: customising their fingering means working on a copy, opened in the Fingers view. */
   const customise = useCallback(
     (entry: LayoutEntry) =>
-      openEditor({ name: uniqueName(`${entry.name} custom`, settings.customLayouts), source: entry.source, fingers: entry.fingers, mode: "fingers" }),
+      openEditor({ name: uniqueName(`${entry.name} custom`, settings.customLayouts), source: entry.source, fingers: entry.fingers, layers: entry.layers, mode: "fingers" }),
+    [openEditor, settings.customLayouts],
+  );
+
+  /** Same for layers: a preset's default layers are edited on a custom copy, opened in the Layers view. */
+  const customiseLayers = useCallback(
+    (entry: LayoutEntry) =>
+      openEditor({ name: uniqueName(`${entry.name} custom`, settings.customLayouts), source: entry.source, fingers: entry.fingers, layers: entry.layers, mode: "layers" }),
     [openEditor, settings.customLayouts],
   );
 
   const edit = useCallback(
-    (entry: LayoutEntry) => openEditor({ id: entry.id, name: entry.name, source: entry.source, fingers: entry.fingers }),
+    (entry: LayoutEntry) => openEditor({ id: entry.id, name: entry.name, source: entry.source, fingers: entry.fingers, layers: entry.layers }),
     [openEditor],
   );
 
   const saveDraft = (d: EditorDraft) => {
     const id = d.id ?? newCustomId(settings.customLayouts.map((l) => l.id));
-    const record = { id, name: d.name, source: d.source, ...(d.fingers && Object.keys(d.fingers).length > 0 ? { fingers: d.fingers } : {}) };
+    const record = {
+      id,
+      name: d.name,
+      source: d.source,
+      ...(d.fingers && Object.keys(d.fingers).length > 0 ? { fingers: d.fingers } : {}),
+      ...(d.layers && d.layers.length > 0 ? { layers: d.layers } : {}),
+    };
     update((prev) => ({
       customLayouts: prev.customLayouts.some((l) => l.id === id)
         ? prev.customLayouts.map((l) => (l.id === id ? record : l))
@@ -185,9 +198,12 @@ export function LayoutsView() {
     { label: "Show details", icon: "eye", onSelect: () => inspect(entry) },
     ...(entry.isCustom ? [{ label: "Edit", icon: "edit", onSelect: () => edit(entry) } satisfies MenuItem] : []),
     ...(entry.layout && !entry.isCustom ? [{ label: "Customise fingering", icon: "hand", onSelect: () => customise(entry) } satisfies MenuItem] : []),
+    ...(entry.layout && !entry.isCustom && (entry.family === "split" || (entry.layers?.length ?? 0) > 0)
+      ? [{ label: "Customise layers", icon: "layers", onSelect: () => customiseLayers(entry) } satisfies MenuItem]
+      : []),
     { label: entry.isCustom ? "Duplicate" : "Duplicate and edit", icon: "copy", onSelect: () => duplicate(entry) },
     { label: "Copy data", icon: "code", separator: true, onSelect: () => void copyText(entry.source) },
-    { label: "Download .json", icon: "download", onSelect: () => downloadLayout(entry.name, entry.source, entry.fingers) },
+    { label: "Download .json", icon: "download", onSelect: () => downloadLayout(entry.name, entry.source, entry.fingers, entry.layers) },
     ...(entry.isCustom
       ? [{ label: "Delete", icon: "trash", danger: true, separator: true, onSelect: () => setDeleteTarget(entry) } satisfies MenuItem]
       : []),
@@ -270,6 +286,7 @@ export function LayoutsView() {
             onEdit={edit}
             onDuplicate={duplicate}
             onCustomise={customise}
+            onCustomiseLayers={customiseLayers}
             onDelete={setDeleteTarget}
           />
         )}

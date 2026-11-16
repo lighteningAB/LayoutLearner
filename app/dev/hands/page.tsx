@@ -2,9 +2,9 @@
 
 // Dev harness for the 3D hands scene.
 // URL params: ?preset=<preset id | fixture | split-fixture>&camera=top|angled|front&target=<KeyboardEvent.code | key id>
-//             &mod=<code | id>&orbit=1&h=<px>&theme=<data-theme, this page view only>
+//             &hold=<code | id>,<code | id>  (keys held meanwhile; &mod=<code | id> still works)&orbit=1&h=<px>&theme=<data-theme, this page view only>
 // Press any physical key to make the hands reach for and tap it.
-// CLI helpers: window.__handsDev.{setTarget(codeOrId), press(codeOrId), sweep()}, window.__hands (scene internals:
+// CLI helpers: window.__handsDev.{setTarget(codeOrId), setHolds([codeOrId, ...]), press(codeOrId), sweep()}, window.__hands (scene internals:
 // debug(), measureAll(), report() — per-row fingertip error, palm travel and how far the idle fingers leave home).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -26,6 +26,8 @@ interface LiveDebug {
   onKey?: boolean;
   /** Per hand: wrist / palm-centre translation from rest (key units) and yaw change. */
   hands?: { hand: string; wrist: number; palm: number; yaw: number }[];
+  /** Held keys: fingertip distance from its aim, whether it is over the key, how far the key is down (0..1). */
+  holds?: { id: string; finger: string; distance: number; onKey: boolean; down: number }[];
   /** Largest xz distance of a non-reaching fingertip from its home key centre. */
   maxOther?: number;
 }
@@ -48,6 +50,18 @@ function findKey(layout: ParsedLayout, ref: string | null): LayoutKey | undefine
   return layout.keys.find((k) => k.id === ref) ?? layout.keys.find((k) => k.code === ref);
 }
 
+/** Key ids for a list of ids / codes. Unknown ones are dropped, unless prefixed with "!" (passed through as-is, to test ids that are not on the board). */
+function resolveHolds(layout: ParsedLayout, refs: string[]): string[] {
+  const out: string[] = [];
+  for (const raw of refs) {
+    const ref = raw.trim();
+    if (!ref) continue;
+    const id = findKey(layout, ref)?.id ?? (ref.startsWith("!") ? ref.slice(1) : null);
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
 const btn =
   "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:opacity-80 focus-visible:outline focus-visible:outline-2";
 const btnStyle: React.CSSProperties = { borderColor: "var(--border)", background: "var(--bg-alt)", color: "var(--text)" };
@@ -56,7 +70,7 @@ const onStyle: React.CSSProperties = { borderColor: "var(--main)", background: "
 export default function HandsDevPage() {
   const [presetId, setPresetId] = useState("fixture");
   const [targetId, setTargetId] = useState<string | null>(null);
-  const [modifierId, setModifierId] = useState<string | null>(null);
+  const [holdIds, setHoldIds] = useState<string[]>([]);
   const [press, setPress] = useState<{ keyId: string; nonce: number } | null>(null);
   const [ok, setOk] = useState(true);
   const [camera, setCamera] = useState<HandsCamera>("angled");
@@ -82,7 +96,7 @@ export default function HandsDevPage() {
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
 
-  const pending = useRef<{ target?: string; mod?: string }>({});
+  const pending = useRef<{ target?: string; holds?: string[] }>({});
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const p = q.get("preset");
@@ -94,16 +108,17 @@ export default function HandsDevPage() {
     if (q.has("h")) setHeight(Number(q.get("h")) || null);
     const th = q.get("theme");
     if (th && /^[a-z]+$/.test(th)) document.documentElement.setAttribute("data-theme", th);
-    pending.current = { target: q.get("target") ?? undefined, mod: q.get("mod") ?? undefined };
+    const holds = [...(q.get("hold") ?? "").split(","), q.get("mod") ?? ""].map((s) => s.trim()).filter(Boolean);
+    pending.current = { target: q.get("target") ?? undefined, holds };
     setReady(true);
   }, []);
   useEffect(() => {
-    // resolve ?target / ?mod once the URL has been read and the right layout is active
+    // resolve ?target / ?hold once the URL has been read and the right layout is active
     if (!ready) return;
-    const { target, mod } = pending.current;
+    const { target, holds } = pending.current;
     pending.current = {};
     setTargetId(findKey(layout, target ?? null)?.id ?? null);
-    setModifierId(findKey(layout, mod ?? null)?.id ?? null);
+    setHoldIds(resolveHolds(layout, holds ?? []));
     seq.current = -1;
   }, [layout, ready]);
 
@@ -209,7 +224,8 @@ export default function HandsDevPage() {
     const w = window as unknown as { __handsDev?: unknown };
     w.__handsDev = {
       setTarget: (ref: string | null) => setTargetId(findKey(layoutRef.current, ref)?.id ?? null),
-      setModifier: (ref: string | null) => setModifierId(findKey(layoutRef.current, ref)?.id ?? null),
+      setHolds: (refs: string[] | null) => setHoldIds(resolveHolds(layoutRef.current, refs ?? [])),
+      setModifier: (ref: string | null) => setHoldIds(resolveHolds(layoutRef.current, ref ? [ref] : [])),
       press: (ref: string, good = true) => {
         const k = findKey(layoutRef.current, ref);
         if (k) tap(k.id, good);
@@ -222,11 +238,22 @@ export default function HandsDevPage() {
   }, [runSweep, tap]);
 
   const target = findKey(layout, targetId);
+  const isShift = (k: LayoutKey) => /^Shift/.test(k.code ?? "") || /shift/i.test(k.label);
+  const heldShift = holdIds.some((id) => {
+    const k = findKey(layout, id);
+    return !!k && isShift(k);
+  });
   const toggleShift = () => {
-    if (modifierId) return setModifierId(null);
+    if (heldShift) return setHoldIds((ids) => ids.filter((id) => !isShift(findKey(layout, id)!)));
     const hand = target?.finger?.hand ?? "R";
-    const shift = layout.keys.find((k) => k.code === (hand === "L" ? "ShiftRight" : "ShiftLeft")) ?? layout.keys.find((k) => /shift/i.test(k.label));
-    setModifierId(shift?.id ?? null);
+    const shift = layout.keys.find((k) => k.code === (hand === "L" ? "ShiftRight" : "ShiftLeft")) ?? layout.keys.find(isShift);
+    if (shift) setHoldIds((ids) => [...ids, shift.id]);
+  };
+  // "hold target": the current target becomes a held key (then pick the next target); "release": drop all holds
+  const holdTarget = () => {
+    if (!target) return;
+    setHoldIds((ids) => (ids.includes(target.id) ? ids : [...ids, target.id]));
+    setTargetId(null);
   };
   const cycleTheme = () => {
     const el = document.documentElement;
@@ -267,8 +294,27 @@ export default function HandsDevPage() {
         <button data-testid="tap-wrong" className={btn} style={btnStyle} onClick={() => target && tap(target.id, false)}>
           tap (wrong)
         </button>
-        <button data-testid="shift" className={btn} style={modifierId ? onStyle : btnStyle} onClick={toggleShift}>
+        <button data-testid="shift" className={btn} style={heldShift ? onStyle : btnStyle} onClick={toggleShift}>
           hold shift
+        </button>
+        <button data-testid="hold-target" className={btn} style={btnStyle} onClick={holdTarget} title="Keep the current target held, then choose the next target">
+          hold target
+        </button>
+        <input
+          data-testid="holds"
+          aria-label="Held keys (ids or codes, comma separated)"
+          placeholder="held: id,id"
+          key={holdIds.join(",")}
+          defaultValue={holdIds.join(",")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") setHoldIds(resolveHolds(layout, e.currentTarget.value.split(",")));
+          }}
+          onBlur={(e) => setHoldIds(resolveHolds(layout, e.currentTarget.value.split(",")))}
+          className="w-28 rounded-md border px-2 py-1 text-xs"
+          style={btnStyle}
+        />
+        <button data-testid="release" className={btn} style={btnStyle} onClick={() => setHoldIds([])}>
+          release
         </button>
         <button
           data-testid="camera"
@@ -300,7 +346,7 @@ export default function HandsDevPage() {
         <HandsScene
           layout={layout}
           targetKeyId={targetId}
-          modifierKeyId={modifierId}
+          holdKeyIds={holdIds}
           press={press}
           pressedOk={ok}
           camera={camera}

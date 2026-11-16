@@ -9,6 +9,8 @@ export interface SegmentOption<T extends string | number> {
   label: ReactNode;
   icon?: IconName;
   disabled?: boolean;
+  /** data-testid of this option's button. */
+  testId?: string;
 }
 
 export interface SegmentedControlProps<T extends string | number> {
@@ -84,6 +86,7 @@ export function SegmentedControl<T extends string | number>({
             aria-checked={selected}
             data-state={selected ? "on" : "off"}
             data-value={String(o.value)}
+            data-testid={o.testId}
             disabled={disabled || o.disabled}
             tabIndex={selected || (!hasSelection && i === 0) ? 0 : -1}
             onClick={() => onChange(o.value)}

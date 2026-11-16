@@ -127,7 +127,8 @@ function IntroStep({
 }) {
   const color = fingerColors && guide.fingerIndex >= 0 ? `var(--finger-${guide.fingerIndex})` : "var(--main)";
   const shiftFinger = guide.shiftKey?.finger ? `${guide.shiftKey.finger.hand === "L" ? "left" : "right"} ${guide.shiftKey.finger.finger}` : "";
-  const isHome = !!guide.key?.isHome && !guide.shiftKey;
+  const layerFinger = guide.layerKey?.finger ? `${guide.layerKey.finger.hand === "L" ? "left" : "right"} ${guide.layerKey.finger.finger}` : "";
+  const isHome = !!guide.key?.isHome && !guide.shiftKey && !guide.layerKey;
   return (
     <div className="flex flex-col items-center text-center">
       <div
@@ -152,10 +153,24 @@ function IntroStep({
               <span style={{ color }}>{charLabel(guide.char)}</span>
             </div>
             <div className="mt-1 text-[15px] leading-snug text-sub">
-              {guide.shiftKey ? (
+              {guide.shiftKey || guide.layerKey ? (
                 <>
-                  Hold <Kbd className="px-1.5">shift</Kbd>
-                  {shiftFinger ? ` with your ${shiftFinger}` : ""}, then press it with your <span style={{ color }}>{guide.fingerName || "other hand"}</span>
+                  {guide.layerKey && guide.layer && (
+                    <>
+                      Hold <Kbd className="px-1.5">{guide.layer.name}</Kbd>
+                      {layerFinger ? ` with your ${layerFinger}` : ""}
+                      {guide.shiftKey ? " and " : ", "}
+                    </>
+                  )}
+                  {guide.shiftKey && (
+                    <>
+                      {guide.layerKey ? "" : "Hold "}
+                      <Kbd className="px-1.5">shift</Kbd>
+                      {shiftFinger ? ` with your ${shiftFinger}` : ""}
+                      {", "}
+                    </>
+                  )}
+                  then press it with your <span style={{ color }}>{guide.fingerName || "other hand"}</span>
                   {guide.fingerName && guide.fingerName !== "thumb" ? " finger" : ""}.
                 </>
               ) : guide.fingerName ? (

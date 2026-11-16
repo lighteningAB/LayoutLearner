@@ -20,6 +20,7 @@ export const STAGE_NAME: Record<LessonStage, string> = {
   capitals: "Capitals",
   numbers: "Numbers",
   punctuation: "Punctuation",
+  layer: "Layers",
 };
 
 export interface CourseLesson {
@@ -144,11 +145,16 @@ export function dimKeyIdsFor(layout: ParsedLayout, lesson: Pick<Lesson, "chars">
   const known = new Set(lesson.chars);
   const one = (c: string) => typeof c === "string" && c.length === 1 && c !== " ";
   const shiftNeeded = layout.keys.some((k) => !k.isModifier && one(k.shifted) && k.shifted !== k.base && known.has(k.shifted));
+  // A layer's activator is in use as soon as one of its characters is known.
+  const activeActivators = new Set<string>();
+  for (const l of layout.layers ?? []) {
+    if (Object.values(l.keys).some((c) => known.has(c.base) || (!!c.shifted && known.has(c.shifted)))) for (const id of l.activatorIds) activeActivators.add(id);
+  }
   const dim: string[] = [];
   for (const k of layout.keys) {
     if (k.base === " ") continue;
     if (k.isModifier) {
-      if (!(shiftNeeded && /shift/i.test(k.label))) dim.push(k.id);
+      if (!(shiftNeeded && /shift/i.test(k.label)) && !activeActivators.has(k.id)) dim.push(k.id);
       continue;
     }
     if (!one(k.base) && !one(k.shifted)) {

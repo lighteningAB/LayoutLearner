@@ -11,6 +11,8 @@ const BEVEL = 0.055;
 const LEGEND_INSET = 0.2;
 /** How strongly idle keys are tinted with their finger's colour. */
 const ZONE_TINT = 0.16;
+/** Held keys that get a glow (more are still tinted). */
+const MAX_HOLD_GLOWS = 3;
 
 interface KeyRec {
   pl: KeyPlacement;
@@ -98,7 +100,7 @@ export class Keyboard3D implements KeySink {
   private dotTexture: THREE.CanvasTexture;
   private theme: HandsTheme | null = null;
   private targetId: string | null = null;
-  private modifierId: string | null = null;
+  private holdIds: string[] = [];
   private zones = true;
   private disposables: { dispose(): void }[] = [];
 
@@ -165,13 +167,13 @@ export class Keyboard3D implements KeySink {
     this.disposables.push(this.legendMaterial);
     this.buildLegends();
 
-    // --- glows (0: target, 1: modifier)
+    // --- glows (0: target, 1..MAX_HOLD_GLOWS: held keys)
     this.glowTexture = makeGlowTexture();
     this.disposables.push(this.glowTexture);
     const glowGeo = new THREE.PlaneGeometry(1, 1);
     glowGeo.rotateX(-Math.PI / 2);
     this.disposables.push(glowGeo);
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 1 + MAX_HOLD_GLOWS; i++) {
       const mat = new THREE.MeshBasicMaterial({
         map: this.glowTexture,
         transparent: true,
@@ -232,13 +234,23 @@ export class Keyboard3D implements KeySink {
     this.placeGlow(0, id);
   }
 
+  /** Keys shown as held (layer key, Shift, ...). */
+  setHolds(ids: readonly string[]): void {
+    const prev = this.holdIds;
+    if (ids.length === prev.length && ids.every((id, i) => id === prev[i])) return;
+    this.holdIds = ids.slice();
+    for (const id of prev) this.refresh(id);
+    for (const id of ids) this.refresh(id);
+    this.placeHoldGlows();
+  }
+
+  /** @deprecated use `setHolds`. */
   setModifier(id: string | null): void {
-    if (id === this.modifierId) return;
-    const prev = this.modifierId;
-    this.modifierId = id;
-    this.refresh(prev);
-    this.refresh(id);
-    this.placeGlow(1, id);
+    this.setHolds(id ? [id] : []);
+  }
+
+  private placeHoldGlows(): void {
+    for (let i = 0; i < MAX_HOLD_GLOWS; i++) this.placeGlow(1 + i, this.holdIds[i] ?? null);
   }
 
   setFingerZones(on: boolean): void {
@@ -274,7 +286,7 @@ export class Keyboard3D implements KeySink {
     if (fontChanged) this.drawLegends();
     this.refreshAll();
     this.placeGlow(0, this.targetId);
-    this.placeGlow(1, this.modifierId);
+    this.placeHoldGlows();
     for (let i = 0; i < 10; i++) this.dots.setColorAt(i, mixSRGB(col, theme.fingers[i], theme.text, 0.35));
     if (this.dots.instanceColor) this.dots.instanceColor.needsUpdate = true;
   }
@@ -328,7 +340,7 @@ export class Keyboard3D implements KeySink {
     if (id === this.targetId) {
       col.copy(finger ?? t.main);
       legendOnAccent = 1;
-    } else if (id === this.modifierId) {
+    } else if (this.holdIds.includes(id)) {
       mixSRGB(col, col, finger ?? t.main, 0.62);
       legendOnAccent = 0.7;
     }

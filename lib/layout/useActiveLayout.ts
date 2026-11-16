@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import type { ParsedLayout } from "../types";
+import type { LayoutLayer, ParsedLayout } from "../types";
 import { useSettings } from "../settings";
+import { applyLayers, parsePreset } from "./layers";
 import { applyFingerOverrides, type FingerOverrides } from "./overrides";
 import { parseLayout } from "./parse";
 import { DEFAULT_PRESET_ID, getPreset } from "./presets";
@@ -22,7 +23,7 @@ function fallback(error?: string): ActiveLayout {
   return {
     id: preset.id,
     name: preset.name,
-    layout: parseLayout(preset.source, preset.name),
+    layout: parsePreset(preset),
     isCustom: false,
     error,
   };
@@ -31,16 +32,16 @@ function fallback(error?: string): ActiveLayout {
 /** Resolve `settings.layoutId` (preset or custom) into a parsed layout. Never throws. */
 export function resolveLayout(
   layoutId: string,
-  customLayouts: { id: string; name: string; source: string; fingers?: FingerOverrides }[],
+  customLayouts: { id: string; name: string; source: string; fingers?: FingerOverrides; layers?: LayoutLayer[] }[],
 ): ActiveLayout {
   const preset = getPreset(layoutId);
   if (preset) {
-    return { id: preset.id, name: preset.name, layout: parseLayout(preset.source, preset.name), isCustom: false };
+    return { id: preset.id, name: preset.name, layout: parsePreset(preset), isCustom: false };
   }
   const custom = customLayouts.find((c) => c.id === layoutId);
   if (custom) {
     try {
-      return { id: custom.id, name: custom.name, layout: applyFingerOverrides(parseLayout(custom.source, custom.name), custom.fingers), isCustom: true };
+      return { id: custom.id, name: custom.name, layout: applyLayers(applyFingerOverrides(parseLayout(custom.source, custom.name), custom.fingers), custom.layers), isCustom: true };
     } catch (e) {
       return fallback(e instanceof Error ? e.message : String(e));
     }

@@ -1,5 +1,5 @@
 // Pose layer: decides where each hand and fingertip should be for the current
-// target / modifier / key presses, animates towards it with critically damped
+// target / held keys / key presses, animates towards it with critically damped
 // springs, and solves per-digit IK every frame. Layout-agnostic: everything is
 // derived from the keys' positions, `finger` and `isHome`.
 //
@@ -13,7 +13,7 @@ import { KEY_TOP, KEY_TRAVEL, aimPoint, pointInKey, type KeyPlacement, type Plac
 export interface KeySink {
   /** Momentary press: `dip` 0..1 travel, `flash` 0..1 highlight, `ok` picks the colour. */
   setKeyPress(id: string, dip: number, flash: number, ok: boolean): void;
-  /** Held key (modifier): 0..1 travel. */
+  /** Held key (layer key, Shift): 0..1 travel. */
   setKeyHold(id: string, amount: number): void;
   /** Where fingertip `finger` (FINGER_ORDER index) is: world x/z and height above the key tops. */
   setContact(finger: number, x: number, z: number, lift: number): void;
@@ -55,6 +55,15 @@ const THUMB_INSET = 0.5;
 /** Root-frame point used to report how far the palm (not the wrist) has moved. */
 const PALM_Z = -2;
 const ARC = 0.38; // fingertip lift while travelling
+/** Held keys (layer thumb, Shift): pose-search weights, per squared key unit of fingertip error. */
+const HOLD_W = 2500; // a held finger stays on its key...
+const LEAD_W = 60; // ...then the reaching finger gets to the target...
+const STAY_W = 1; // ...then the hand stays close to the pose it would take without the hold
+const STAY_YAW_W = 5;
+/** How far a held contact may turn the hand from its rest yaw (radians). */
+const HOLD_YAW = 0.5;
+const PIN_MARGIN = 0.06;
+const PIN_W = 150;
 const IK_ITERS = 12;
 const IK_TOL = 2e-6; // chain units (~1e-4 key units)
 
@@ -76,7 +85,7 @@ class Digit {
   homeKey: KeyPlacement | null = null;
   /** `home` expressed in the hand's rest root frame — used to carry it along with the hand. */
   homeInRoot = new THREE.Vector3();
-  /** World-space aim while the digit is active (target / modifier). */
+  /** World-space aim while the digit is active (target / held key). */
   goal = new THREE.Vector3();
   /** Current fingertip target, world space. */
   cur = new THREE.Vector3();
@@ -97,6 +106,10 @@ class Digit {
   tapOk = true;
   hold = 0;
   holdVel = 0;
+  /** This digit is assigned a held key right now. */
+  holding = false;
+  /** Key that `hold` presses down (kept while the release animates). */
+  holdKey = "";
   /** Last IK residual, key units. */
   residual = 0;
 }
@@ -130,7 +143,8 @@ class Hand {
   vz = 0;
   vyaw = 0;
   target: Reach | null = null;
-  modifier: Reach | null = null;
+  /** Keys this hand keeps held (at most one per digit; never the target's digit). */
+  holds: Reach[] = [];
   /** Digit whose reach currently decides the hand pose (-1: none). */
   lead = -1;
   constructor(
@@ -164,6 +178,8 @@ export interface TargetDebug {
   settled: boolean;
   /** How far each hand's wrist / palm centre is from its rest pose (key units, radians). */
   hands?: { hand: string; wrist: number; palm: number; yaw: number }[];
+  /** Held keys: the holding fingertip's xz distance from its aim, whether it is over the key, and how far the key is pressed (0..1). */
+  holds?: { id: string; finger: string; distance: number; onKey: boolean; down: number }[];
   /** Fingertips that are NOT reaching: xz distance from their home key centre and height above the key tops. */
   others?: { finger: string; off: number; lift: number }[];
   /** Largest `others[].off`. */
@@ -194,6 +210,11 @@ const v3 = new THREE.Vector3();
 const scratchP = new Float64Array(3);
 const scratchPose = new Pose();
 const measurePose = new Pose();
+const holdFrom = new Pose();
+/** Output of `holdCost`: largest fingertip error among the held keys. */
+let holdWorst = 0;
+/** Output of `digitErr`: smallest distance of a joint from its limits (radians). */
+let digitMargin = 0;
 /** Outputs of `idleParams`. */
 let idleLift = 0;
 let idleFollow = 0;
@@ -213,7 +234,7 @@ export class HandsController {
   readonly hands: Hand[];
   private effects: Effect[] = [];
   private targetId: string | null = null;
-  private modifierId: string | null = null;
+  private holdIds: string[] = [];
   private goalsDirty = true;
   private settled = false;
 
@@ -236,11 +257,20 @@ export class HandsController {
     this.assign();
   }
 
-  setModifier(id: string | null): void {
-    if (id === this.modifierId) return;
-    if (this.modifierId) this.sink.setKeyHold(this.modifierId, 0);
-    this.modifierId = id;
+  /**
+   * Keys to keep held (layer key, Shift, ...), each by its own `finger`. Ids that are not on the
+   * board or have no finger are ignored. A finger that keeps its key across calls stays down.
+   */
+  setHolds(ids: readonly string[]): void {
+    const cur = this.holdIds;
+    if (ids.length === cur.length && ids.every((id) => cur.includes(id))) return;
+    this.holdIds = ids.filter((id, i) => ids.indexOf(id) === i);
     this.assign();
+  }
+
+  /** @deprecated use `setHolds`. */
+  setModifier(id: string | null): void {
+    this.setHolds(id ? [id] : []);
   }
 
   /** Tap animation on a key: the assigned finger travels there (if needed), dips and releases. */
@@ -325,8 +355,7 @@ export class HandsController {
 
       for (let di = 0; di < 5; di++) {
         const d = h.digits[di];
-        const active =
-          d.tapPhase !== 0 || (h.target !== null && h.target.digit === di) || (h.modifier !== null && h.modifier.digit === di);
+        const active = d.tapPhase !== 0 || d.holding || (h.target !== null && h.target.digit === di);
         let wx: number;
         let wy: number;
         let wz: number;
@@ -339,9 +368,10 @@ export class HandsController {
           wz = want.z;
           endX = wx;
           endZ = wz;
-          if (h.lead === di && !snap) {
+          if (h.lead === di && !snap && d.hold < 0.5) {
             // The finger that leads the hand arrives together with it instead of
             // straining ahead: hold it back by however far the hand still has to go.
+            // (not a finger that is already holding its key down: that one stays planted)
             wx -= g.x - c.x;
             wz -= g.z - c.z;
           }
@@ -416,10 +446,8 @@ export class HandsController {
           }
         }
 
-        // Held modifier: press down once the finger has arrived.
-        const mod = h.modifier;
-        const holding = mod !== null && mod.digit === di && !d.tapPhase && !(h.target && h.target.digit === di);
-        const holdWant = holding && arrive < 0.2 ? 1 : 0;
+        // Held key: press down once the finger has arrived; stays down until the hold is dropped.
+        const holdWant = d.holding && !d.tapPhase && arrive < 0.2 ? 1 : 0;
         if (d.hold !== holdWant || d.holdVel !== 0) {
           if (dt > 0) {
             d.hold = smoothDamp(d.hold, holdWant, d.holdVel, 0.045, dt);
@@ -429,7 +457,7 @@ export class HandsController {
             d.hold = holdWant;
             d.holdVel = 0;
           } else moving = true;
-          if (mod && mod.digit === di) this.sink.setKeyHold(mod.pl.key.id, d.hold);
+          if (d.holdKey) this.sink.setKeyHold(d.holdKey, d.hold);
         }
         y -= KEY_TRAVEL * d.hold;
 
@@ -482,12 +510,25 @@ export class HandsController {
     out.others = [];
     this.hands.forEach((h, hi) => {
       h.digits.forEach((d, di) => {
-        if (!d.homeKey || d.tapPhase || h.target?.digit === di || h.modifier?.digit === di) return;
+        if (!d.homeKey || d.tapPhase || h.target?.digit === di || d.holding) return;
         this.tipWorld(hi as 0 | 1, di, t);
         out.others!.push({ finger: `${h.side} ${DIGITS[di]}`, off: r3(Math.hypot(t.x - d.home.x, t.z - d.home.z)), lift: r3(t.y - KEY_TOP) });
       });
     });
     out.maxOther = out.others.reduce((m, o) => Math.max(m, o.off), 0);
+    out.holds = [];
+    this.hands.forEach((h, hi) => {
+      for (const r of h.holds) {
+        this.tipWorld(hi as 0 | 1, r.digit, t);
+        out.holds!.push({
+          id: r.pl.key.id,
+          finger: `${h.side} ${DIGITS[r.digit]}`,
+          distance: r3(Math.hypot(t.x - r.point.x, t.z - r.point.z)),
+          onKey: pointInKey(r.pl, t.x, t.z),
+          down: r3(h.digits[r.digit].hold),
+        });
+      }
+    });
     const pl = this.targetId ? this.placed.byId.get(this.targetId) : undefined;
     if (!pl) return out;
     out.label = pl.key.label.replace(/\n/g, " ");
@@ -531,24 +572,46 @@ export class HandsController {
   private assign(): void {
     for (const h of this.hands) {
       h.target = null;
-      h.modifier = null;
+      h.holds.length = 0;
     }
     this.assignOne(this.targetId, false);
-    this.assignOne(this.modifierId, true);
+    for (const id of this.holdIds) if (id !== this.targetId) this.assignOne(id, true);
+    for (const h of this.hands) {
+      for (let di = 0; di < 5; di++) {
+        const d = h.digits[di];
+        let key = "";
+        for (const r of h.holds) if (r.digit === di) key = r.pl.key.id;
+        d.holding = key !== "";
+        if (key && d.holdKey !== key) {
+          // straight from one held key to another: let go of the old one at once
+          if (d.holdKey) this.sink.setKeyHold(d.holdKey, 0);
+          d.hold = 0;
+          d.holdVel = 0;
+          d.holdKey = key;
+        }
+      }
+    }
     this.goalsDirty = true;
     this.settled = false;
   }
 
-  private assignOne(id: string | null, modifier: boolean): void {
+  private assignOne(id: string | null, hold: boolean): void {
     if (!id) return;
     const pl = this.placed.byId.get(id);
     const f = pl?.key.finger;
     if (!pl || !f) return;
     const h = this.hands[f.hand === "L" ? 0 : 1];
     const di = DIGITS.indexOf(f.finger);
+    if (di < 0) return;
     const d = h.digits[di];
+    if (hold) {
+      // one key per finger, and the finger that has to press the target cannot hold anything
+      if (h.target && h.target.digit === di) return;
+      for (const r of h.holds) if (r.digit === di) return;
+    }
+    // (the aim depends only on the key and the digit's home point: re-assigning the same hold never moves it)
     const reach: Reach = { digit: di, pl, point: aimPoint(pl, d.home, new THREE.Vector3()) };
-    if (modifier) h.modifier = reach;
+    if (hold) h.holds.push(reach);
     else h.target = reach;
   }
 
@@ -886,18 +949,165 @@ export class HandsController {
         }
       }
     }
-    if (leadDigit < 0 && h.modifier) {
-      lead = h.modifier;
-      leadDigit = lead.digit;
-      leadPoint = lead.point;
+    let leadHeld = false;
+    if (leadDigit < 0) {
+      // only held keys on this hand: the one furthest from its home point decides the pose
+      let far = -1;
+      for (const r of h.holds) {
+        const hd = h.digits[r.digit];
+        const dist = Math.hypot(r.point.x - hd.home.x, r.point.z - hd.home.z);
+        if (dist > far) {
+          far = dist;
+          lead = r;
+        }
+      }
+      if (lead) {
+        leadDigit = lead.digit;
+        leadPoint = lead.point;
+        leadHeld = true;
+      }
     }
 
-    if (leadPoint) this.reachPose(h, leadDigit, leadPoint, h.goal);
+    // A thumb that only has to hold a key stretches to it from the rest pose (the hand gives way
+    // just as far as needed, so the fingers stay on the home row); everything else starts from
+    // the pose the lead reach would take on its own.
+    const thumbHold = leadHeld && leadDigit === THUMB;
+    if (leadPoint && !thumbHold) this.reachPose(h, leadDigit, leadPoint, h.goal);
     else h.goal.copy(h.rest);
     h.lead = leadPoint ? leadDigit : -1;
 
     if (h.target) h.digits[h.target.digit].goal.copy(h.target.point);
-    if (h.modifier && !(h.target && h.target.digit === h.modifier.digit)) h.digits[h.modifier.digit].goal.copy(h.modifier.point);
+    for (const r of h.holds) h.digits[r.digit].goal.copy(r.point);
+    if (thumbHold || h.holds.length > (leadHeld ? 1 : 0)) this.holdPose(h, leadDigit, leadPoint, leadHeld, h.goal);
+  }
+
+  /** Fingertip error (key units) of `digit` aiming at world `point` with the key pressed, for the hand at `scratchPose`. */
+  private digitErr(h: Hand, digit: number, point: THREE.Vector3): number {
+    const d = h.digits[digit];
+    scratchP[0] = d.homeP[0];
+    scratchP[1] = d.homeP[1];
+    scratchP[2] = d.homeP[2];
+    v1.copy(point).y -= KEY_TRAVEL;
+    worldToRoot(scratchPose, v1).applyMatrix4(h.rig.fromRoot[digit]);
+    const chain = h.rig.chains[digit];
+    const err = solveChain(chain, v1, scratchP, 24, IK_TOL) * UNIT;
+    let m = 1;
+    for (let j = 0; j < 3; j++) m = Math.min(m, scratchP[j] - chain.min[j], chain.max[j] - scratchP[j]);
+    digitMargin = m;
+    return err;
+  }
+
+  /** Cost of the hand pose (x, z, yaw) while keys are held; see `holdPose`. Also sets `holdWorst`. */
+  private holdCost(h: Hand, x: number, z: number, yaw: number, lead: number, leadPoint: THREE.Vector3 | null, leadHeld: boolean, from: Pose): number {
+    scratchPose.x = x;
+    scratchPose.y = h.rest.y;
+    scratchPose.z = z;
+    scratchPose.yaw = yaw;
+    let sum = STAY_W * ((x - from.x) * (x - from.x) + (z - from.z) * (z - from.z)) + STAY_YAW_W * (yaw - from.yaw) * (yaw - from.yaw);
+    let worst = 0;
+    for (let i = 0; i < h.holds.length; i++) {
+      const r = h.holds[i];
+      if (h.digits[r.digit].tapPhase) continue;
+      const err = this.digitErr(h, r.digit, r.point);
+      if (err > worst) worst = err;
+      sum += HOLD_W * err * err;
+      // (a holding finger jammed against a joint limit looks strained: prefer to give way a little)
+      if (digitMargin < PIN_MARGIN) sum += PIN_W * (PIN_MARGIN - digitMargin) * (PIN_MARGIN - digitMargin);
+    }
+    if (leadPoint && !leadHeld) {
+      const err = this.digitErr(h, lead, leadPoint);
+      sum += LEAD_W * err * err;
+    }
+    holdWorst = worst;
+    return sum;
+  }
+
+  /**
+   * Two (or three) contacts on one hand: fingers that hold a key stay planted on it while the
+   * lead finger reaches. `out` comes in as the pose the lead reach alone would take; if every
+   * held finger still reaches its key from there, nothing changes. Otherwise a bounded pattern
+   * search slides / pivots the hand to the nearest pose where the held contacts are kept
+   * (first priority), the lead fingertip gets as close to its key as it can (second) and the
+   * hand moves as little as possible (third). Joint limits are hard in the IK, so a target that
+   * cannot be reached with the hold in place is approached, never forced.
+   */
+  private holdPose(h: Hand, lead: number, leadPoint: THREE.Vector3 | null, leadHeld: boolean, out: Pose): void {
+    const from = holdFrom.copy(out);
+    const c0 = this.holdCost(h, from.x, from.z, from.yaw, lead, leadPoint, leadHeld, from);
+    if (holdWorst < 0.01) return;
+    const yawLo = h.rest.yaw - HOLD_YAW;
+    const yawHi = h.rest.yaw + HOLD_YAW;
+    // Seeds: the incoming pose, and the hand pivoted about each held contact (the rest pose
+    // carried so that the holding finger sits on its key, turned in steps). The pattern search
+    // alone gets stuck where the held finger is against a joint limit.
+    let sx = from.x;
+    let sz = from.z;
+    let syaw = from.yaw;
+    let sc = c0;
+    for (let i = 0; i < h.holds.length; i++) {
+      const r = h.holds[i];
+      const hr = h.digits[r.digit].homeInRoot;
+      for (let k = -4; k <= 4; k++) {
+        const yaw = h.rest.yaw + (k * HOLD_YAW) / 5;
+        const cy = Math.cos(yaw);
+        const sy = Math.sin(yaw);
+        const x = r.point.x - (hr.x * cy + hr.z * sy);
+        const z = r.point.z - (-hr.x * sy + hr.z * cy);
+        const c = this.holdCost(h, x, z, yaw, lead, leadPoint, leadHeld, from);
+        if (c < sc) {
+          sc = c;
+          sx = x;
+          sz = z;
+          syaw = yaw;
+        }
+      }
+    }
+    let bx = from.x;
+    let bz = from.z;
+    let byaw = from.yaw;
+    let best = Infinity;
+    for (let seed = 0; seed < 2; seed++) {
+      // (seed 0: the incoming pose; seed 1: the best pivot, if it is a different one)
+      if (seed === 1 && sc >= c0) break;
+      let cx = seed ? sx : from.x;
+      let cz = seed ? sz : from.z;
+      let cyaw = seed ? syaw : from.yaw;
+      let cc = seed ? sc : c0;
+      let step = 0.6;
+      let ystep = 0.12;
+      for (let pass = 0; pass < 7; pass++) {
+        for (let it = 0; it < 5; it++) {
+          let improved = false;
+          for (let k = 0; k < 6; k++) {
+            const sgn = k & 1 ? -1 : 1;
+            const x = cx + (k < 2 ? sgn * step : 0);
+            const z = cz + (k >= 2 && k < 4 ? sgn * step : 0);
+            const yaw = cyaw + (k >= 4 ? sgn * ystep : 0);
+            if (yaw < yawLo || yaw > yawHi) continue;
+            const c = this.holdCost(h, x, z, yaw, lead, leadPoint, leadHeld, from);
+            if (c < cc - 1e-9) {
+              cc = c;
+              cx = x;
+              cz = z;
+              cyaw = yaw;
+              improved = true;
+            }
+          }
+          if (!improved) break;
+        }
+        step *= 0.5;
+        ystep *= 0.5;
+      }
+      if (cc < best) {
+        best = cc;
+        bx = cx;
+        bz = cz;
+        byaw = cyaw;
+      }
+    }
+    out.x = bx;
+    out.z = bz;
+    out.yaw = byaw;
   }
 
   /**

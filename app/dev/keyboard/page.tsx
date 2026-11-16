@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
 import { LayoutParseError, parseLayout } from "@/lib/layout/parse";
+import { parsePreset } from "@/lib/layout/layers";
 import { DEFAULT_PRESET_ID, PRESETS, getPreset } from "@/lib/layout/presets";
 import { keyForChar, resolveKeystroke, typableChars } from "@/lib/layout/keys";
 import { keyCenter, layoutHalves } from "@/lib/layout/geometry";
@@ -64,7 +65,7 @@ export default function KeyboardDevPage() {
     try {
       if (presetId === CUSTOM) return { layout: parseLayout(custom, "Custom") };
       const preset = getPreset(presetId)!;
-      return { layout: parseLayout(preset.source, preset.name) };
+      return { layout: parsePreset(preset) };
     } catch (e) {
       return { error: e instanceof LayoutParseError ? e.message : String(e) };
     }
@@ -145,6 +146,7 @@ export default function KeyboardDevPage() {
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__ll = {
       parseLayout,
+      parsePreset,
       PRESETS,
       getPreset,
       keyForChar,

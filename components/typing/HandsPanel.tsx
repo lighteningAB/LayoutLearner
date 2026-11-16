@@ -197,7 +197,7 @@ export function GuideViewSwitch({ className }: GuideViewSwitchProps) {
 
 export interface HandsPanelProps {
   layout: ParsedLayout;
-  /** Character to type next: its finger reaches for the key (and the other hand holds Shift when needed). */
+  /** Character to type next: its finger reaches for the key (and Shift / a layer key is held meanwhile when needed). */
   nextChar: string | null;
   /** Reach for an action key instead (Backspace while the current word has a typo). */
   nextAction?: GuideAction | null;
@@ -280,6 +280,9 @@ export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextCha
   const reduceMotion = usePrefersReducedMotion();
 
   const guide = useMemo(() => guideForTarget(layout, nextChar, nextAction), [layout, nextChar, nextAction]);
+  // Every key held while the target is pressed: [layer key?, Shift?]. (Read defensively: older guides only know Shift.)
+  const holdSig = (guide?.holdKeys ?? (guide?.shiftKey ? [guide.shiftKey] : [])).map((k) => k.id).join(",");
+  const holdKeyIds = useMemo(() => (holdSig ? holdSig.split(",") : []), [holdSig]);
   const scenePress = useMemo(() => (press ? { keyId: press.keyId, nonce: press.nonce } : null), [press]);
 
   const mounted = settings.showHands && webgl === true;
@@ -349,12 +352,13 @@ export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextCha
       data-hands-load={load}
       data-target-key={guide?.key?.id ?? ""}
       data-modifier-key={guide?.shiftKey?.id ?? ""}
+      data-hold-keys={holdSig}
     >
       {mounted && Scene && (
         <Scene
           layout={layout}
           targetKeyId={guide?.key?.id ?? null}
-          modifierKeyId={guide?.shiftKey?.id ?? null}
+          holdKeyIds={holdKeyIds}
           press={scenePress}
           pressedOk={press?.ok ?? true}
           camera={cam}

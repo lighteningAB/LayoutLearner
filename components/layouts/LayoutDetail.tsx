@@ -4,7 +4,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
 import { Badge, Button, Card, Icon, SegmentedControl, cx, type IconName } from "@/components/ui";
 import { homeRowChars, homeRowKeyIds } from "@/lib/layout/analysis";
-import { FINGER_ORDER } from "@/lib/types";
+import { displayLegends } from "@/lib/layout/parse";
+import { FINGER_ORDER, type LayoutKey, type ParsedLayout } from "@/lib/types";
 import { FAMILY_LABEL, pct, type LayoutEntry } from "./catalog";
 import styles from "./layouts.module.css";
 
@@ -21,6 +22,8 @@ export interface LayoutDetailProps {
   onDuplicate: (entry: LayoutEntry) => void;
   /** Copy a preset into a custom layout and open its Fingers view. */
   onCustomise?: (entry: LayoutEntry) => void;
+  /** Copy a preset into a custom layout and open its Layers view. */
+  onCustomiseLayers?: (entry: LayoutEntry) => void;
   onDelete: (entry: LayoutEntry) => void;
 }
 
@@ -131,7 +134,43 @@ function FingerLegend() {
   );
 }
 
-export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdit, onDuplicate, onCustomise, onDelete }: LayoutDetailProps) {
+/** The layers of a layout: each one's activator and characters, with the note that defaults are a suggestion. */
+function LayerList({ layout, isCustom }: { layout: ParsedLayout; isCustom: boolean }) {
+  const byId = new Map(layout.keys.map((k) => [k.id, k]));
+  const name = (k: LayoutKey) => displayLegends(k.label).join(" ").trim() || "key";
+  const hand = (k: LayoutKey) => (k.finger ? ` (${k.finger.hand === "L" ? "left" : "right"} ${k.finger.finger})` : "");
+  return (
+    <Card as="section" className="mt-4" data-testid="layout-layers">
+      <h3 className="text-[15px] font-semibold tracking-tight text-text">Layers</h3>
+      <p className="mt-1 text-[13px] leading-snug text-sub">
+        Hold the activator key and the other keys type these characters instead. {isCustom ? "Edit the layout to change them." : "Default layers are a suggestion. Edit them to match your firmware."}
+      </p>
+      <ul className="mt-4 flex flex-col gap-3">
+        {(layout.layers ?? []).map((l) => {
+          const chars = layout.keys
+            .map((k) => l.keys[k.id])
+            .filter((c): c is NonNullable<typeof c> => !!c)
+            .flatMap((c) => (c.shifted ? [c.base, c.shifted] : [c.base]));
+          return (
+            <li key={l.id} data-testid="layout-layer" data-layer={l.id} className="grid gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,140px)_minmax(0,1fr)]">
+              <div className="text-[13px] text-text">
+                <span className="font-medium">{l.name}</span>
+                <span className="block text-xs text-sub">
+                  hold {l.activatorIds.map((id) => byId.get(id)).filter((k): k is LayoutKey => !!k).map((k) => `${name(k)}${hand(k)}`).join(", ")}
+                </span>
+              </div>
+              <p className="font-mono text-[13px] leading-relaxed break-words text-text" data-testid="layout-layer-chars">
+                {chars.length > 0 ? chars.join(" ") : <span className="font-sans text-sub">No characters.</span>}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
+
+export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdit, onDuplicate, onCustomise, onCustomiseLayers, onDelete }: LayoutDetailProps) {
   const [view, setView] = useState<DetailView>("fingers");
   const { layout, analysis, diff } = entry;
 
@@ -175,6 +214,11 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
             {layout && onCustomise && (
               <Button size="sm" variant="ghost" icon="hand" data-testid="layout-customise" onClick={() => onCustomise(entry)}>
                 Customise fingering
+              </Button>
+            )}
+            {layout && onCustomiseLayers && (entry.family === "split" || (entry.layers?.length ?? 0) > 0) && (
+              <Button size="sm" variant="ghost" icon="layers" data-testid="layout-customise-layers" onClick={() => onCustomiseLayers(entry)}>
+                Customise layers
               </Button>
             )}
             <Button size="sm" variant="ghost" icon="copy" data-testid="layout-duplicate" onClick={() => onDuplicate(entry)}>
@@ -303,6 +347,8 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
           </div>
         </div>
       </Card>
+
+      {layout.layers && layout.layers.length > 0 && <LayerList layout={layout} isCustom={entry.isCustom} />}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2" data-testid="layout-analysis">
         <StatCard

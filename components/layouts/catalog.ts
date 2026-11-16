@@ -1,9 +1,10 @@
 // The list of layouts the Layouts page shows: presets + the user's custom layouts,
 // each parsed and analysed once (results are cached by source text).
 import { useMemo } from "react";
-import type { ParsedLayout } from "@/lib/types";
+import type { LayoutLayer, ParsedLayout } from "@/lib/types";
 import { analyzeLayout, diffFromQwerty, type LayoutAnalysis, type QwertyDiff } from "@/lib/layout/analysis";
 import { checkSource } from "@/lib/layout/custom";
+import { applyLayers, defaultLayersFor } from "@/lib/layout/layers";
 import type { FingerOverrides } from "@/lib/layout/overrides";
 import { PRESETS, type LayoutFamily } from "@/lib/layout/presets";
 
@@ -25,6 +26,8 @@ export interface LayoutEntry {
   source: string;
   /** Finger overrides of a custom layout (already applied to `layout`). */
   fingers?: FingerOverrides;
+  /** Layers of the layout: the stored ones for a custom layout, the (suggested) defaults for a preset. */
+  layers?: LayoutLayer[];
   isCustom: boolean;
   /** null when the stored source no longer parses. */
   layout: ParsedLayout | null;
@@ -46,17 +49,19 @@ interface Computed {
 const cache = new Map<string, Computed>();
 const CACHE_LIMIT = 64;
 
-function compute(source: string, fingers?: FingerOverrides): Computed {
-  const cacheId = fingers ? `${source}\u0000${JSON.stringify(fingers)}` : source;
+function compute(source: string, fingers?: FingerOverrides, layers?: LayoutLayer[], splitPreset = false): Computed {
+  const cacheId = `${source}\u0000${fingers ? JSON.stringify(fingers) : ""}\u0000${layers ? JSON.stringify(layers) : ""}${splitPreset ? "\u0000preset" : ""}`;
   const hit = cache.get(cacheId);
   if (hit) return hit;
-  const check = checkSource(source, undefined, fingers);
-  const out: Computed = check.layout
+  const check = checkSource(source, undefined, fingers, layers);
+  // Split presets come with suggested default layers.
+  const layout = check.layout && splitPreset ? applyLayers(check.layout, defaultLayersFor(check.layout)) : check.layout;
+  const out: Computed = layout
     ? {
-        layout: check.layout,
+        layout,
         warnings: check.warnings,
-        analysis: analyzeLayout(check.layout),
-        diff: diffFromQwerty(check.layout),
+        analysis: analyzeLayout(layout),
+        diff: diffFromQwerty(layout),
       }
     : { layout: null, error: check.error?.message ?? "This layout could not be read.", warnings: [], analysis: null, diff: null };
   if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value as string);
@@ -78,19 +83,22 @@ function getPresetEntries(): LayoutEntry[] {
     family: p.family,
     source: p.source,
     isCustom: false,
-    ...named(compute(p.source), p.name),
+    ...(() => {
+      const c = named(compute(p.source, undefined, undefined, p.family === "split"), p.name);
+      return { ...c, layers: c.layout?.layers };
+    })(),
   })));
 }
 
 const customEntryCache = new Map<string, LayoutEntry>();
 
-type CustomInput = { id: string; name: string; source: string; fingers?: FingerOverrides };
+type CustomInput = { id: string; name: string; source: string; fingers?: FingerOverrides; layers?: LayoutLayer[] };
 
 function customEntry(c: CustomInput): LayoutEntry {
-  const cacheKey = `${c.id}\u0000${c.name}\u0000${c.source}\u0000${c.fingers ? JSON.stringify(c.fingers) : ""}`;
+  const cacheKey = `${c.id}\u0000${c.name}\u0000${c.source}\u0000${c.fingers ? JSON.stringify(c.fingers) : ""}\u0000${c.layers ? JSON.stringify(c.layers) : ""}`;
   const hit = customEntryCache.get(cacheKey);
   if (hit) return hit;
-  const computed = named(compute(c.source, c.fingers), c.name);
+  const computed = named(compute(c.source, c.fingers, c.layers), c.name);
   const entry: LayoutEntry = {
     id: c.id,
     name: c.name,
@@ -100,6 +108,7 @@ function customEntry(c: CustomInput): LayoutEntry {
     family: "custom",
     source: c.source,
     fingers: c.fingers,
+    layers: c.layers,
     isCustom: true,
     ...computed,
   };

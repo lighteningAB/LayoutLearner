@@ -7,7 +7,9 @@ import {
   systemDefaultTheme,
   type ThemeId,
 } from "./themes";
+import { sanitizeLayers } from "../layout/layers";
 import { sanitizeFingerOverrides, type FingerOverrides } from "../layout/overrides";
+import type { LayoutLayer } from "../types";
 
 export interface CustomLayout {
   id: string;
@@ -16,6 +18,8 @@ export interface CustomLayout {
   source: string;
   /** Per-key finger corrections; kept out of the KLE source. */
   fingers?: FingerOverrides;
+  /** Extra firmware layers (Lower / Raise …); kept out of the KLE source. */
+  layers?: LayoutLayer[];
 }
 
 export type TestMode = "time" | "words";
@@ -97,9 +101,10 @@ function sanitize(raw: unknown): Settings {
               typeof l.source === "string",
           )
           .map((l) => {
-            const { fingers: rawFingers, ...rest } = l;
+            const { fingers: rawFingers, layers: rawLayers, ...rest } = l;
             const fingers = sanitizeFingerOverrides(rawFingers);
-            return fingers ? { ...rest, fingers } : rest;
+            const layers = sanitizeLayers(rawLayers);
+            return { ...rest, ...(fingers ? { fingers } : {}), ...(layers ? { layers } : {}) };
           });
       }
     } else if (key === "theme") {

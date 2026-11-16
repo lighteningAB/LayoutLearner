@@ -1,0 +1,82 @@
+/*
+ * Ferris Sweep, home-row mods (hand written for tests)
+ */
+#include <behaviors.dtsi>
+#include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/bt.h>
+
+#define BASE 0
+#define NAV  1
+#define SYM  2
+
+/ {
+    behaviors {
+        // home-row mod: hold = modifier, tap = letter
+        hm: homerow_mods {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "balanced";
+            tapping-term-ms = <220>;
+            quick-tap-ms = <175>;
+            bindings = <&kp>, <&kp>;
+        };
+
+        mt_layer: layer_hold_tap {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "tap-preferred";
+            tapping-term-ms = <200>;
+            bindings = <&mo>, <&kp>;
+        };
+
+        td_x: tap_dance_x {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <200>;
+            bindings = <&kp X>, <&kp Y>;
+        };
+    };
+
+    combos {
+        compatible = "zmk,combos";
+        combo_esc {
+            timeout-ms = <40>;
+            key-positions = <0 1>;
+            bindings = <&kp ESC>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+
+        base_layer {
+            label = "BASE";
+            bindings = <
+&kp Q     &kp W     &kp E     &kp R     &kp T       &kp Y  &kp U     &kp I     &kp O     &kp P
+&hm LGUI A &hm LALT S &hm LCTRL D &hm LSHFT F &kp G   &kp H  &hm RSHFT J &hm RCTRL K &hm RALT L &hm RGUI SEMI
+&kp Z     &kp X     &kp C     &kp V     &kp B       &kp N  &kp M     &kp COMMA &kp DOT   &kp FSLH
+                    &lt NAV TAB &kp SPACE           &kp RET &lt SYM BSPC
+            >;
+        };
+
+        nav_layer {
+            label = "NAV";
+            bindings = <
+&kp N1    &kp N2    &kp N3    &kp N4    &kp N5      &kp N6 &kp N7    &kp N8    &kp N9    &kp N0
+&kp LGUI  &kp LALT  &kp LCTRL &kp LSHIFT &none      &kp LEFT &kp DOWN &kp UP    &kp RIGHT &none
+&bt BT_CLR &bt BT_SEL 0 &td_x &sk LSHFT &tog SYM    &kp HOME &kp PG_DN &kp PG_UP &kp END  &kp C_VOL_UP
+                    &trans    &trans                &trans &mo SYM
+            >;
+        };
+
+        sym_layer {
+            label = "SYM";
+            bindings = <
+&kp EXCL  &kp AT    &kp HASH  &kp DLLR  &kp PRCNT   &kp CARET &kp AMPS &kp STAR  &kp LPAR  &kp RPAR
+&kp MINUS &kp EQUAL &kp LBKT  &kp RBKT  &kp BSLH    &kp GRAVE &kp LS(SEMI) &kp SQT &kp DQT &kp PIPE
+&kp TILDE &kp UNDER &kp PLUS  &kp LBRC  &kp RBRC    &kp LC(C) &kp LT  &kp GT    &kp QMARK &kp LC(LS(LALT))
+                    &trans    &trans                &trans &trans
+            >;
+        };
+    };
+};

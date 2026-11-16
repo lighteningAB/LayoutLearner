@@ -20,7 +20,13 @@ export interface HandsSceneProps {
   layout: ParsedLayout;
   /** Next key to press: the assigned finger reaches for it and the key glows in that finger's colour. */
   targetKeyId?: string | null;
-  /** A key to hold meanwhile (e.g. the Shift on the other hand). */
+  /**
+   * Keys to keep held while `targetKeyId` is pressed (a layer key under a thumb, Shift under a pinky, ...).
+   * Each is held by its own `finger`; ids not on the board or without a finger are ignored. A finger whose
+   * key stays in the list across target changes stays down.
+   */
+  holdKeyIds?: readonly string[] | null;
+  /** @deprecated single held key; use `holdKeyIds`. Appended to `holdKeyIds` when both are given. */
   modifierKeyId?: string | null;
   /** Tap animation on `keyId` whenever `nonce` changes. */
   press?: { keyId: string; nonce: number } | null;
@@ -200,6 +206,7 @@ type ContentsProps = HandsSceneProps;
 function Contents({
   layout,
   targetKeyId = null,
+  holdKeyIds = null,
   modifierKeyId = null,
   press = null,
   pressedOk = true,
@@ -281,7 +288,11 @@ function Contents({
     invalidate();
   }, [keyboard, fingerZones, invalidate]);
 
-  // A new controller starts at its rest pose; its first target/modifier is applied without
+  // Held keys as a stable array: a new but equal `holdKeyIds` array must not re-run the effects.
+  const holdSig = [...(holdKeyIds ?? []), modifierKeyId].filter((id, i, a): id is string => !!id && a.indexOf(id) === i).join("\n");
+  const holdIds = useMemo(() => (holdSig ? holdSig.split("\n") : []), [holdSig]);
+
+  // A new controller starts at its rest pose; its first target/held keys are applied without
   // animation, so the first frame shows the hands where they will be (no glide on appearance).
   const snappedFor = useRef<HandsController | null>(null);
   useEffect(() => {
@@ -291,14 +302,14 @@ function Contents({
   }, [keyboard, controller, targetKeyId, invalidate]);
 
   useEffect(() => {
-    keyboard.setModifier(modifierKeyId);
-    controller?.setModifier(modifierKeyId);
+    keyboard.setHolds(holdIds);
+    controller?.setHolds(holdIds);
     if (controller && snappedFor.current !== controller) {
       snappedFor.current = controller;
       controller.snap();
     }
     invalidate();
-  }, [keyboard, controller, modifierKeyId, invalidate]);
+  }, [keyboard, controller, holdIds, invalidate]);
 
   const lastNonce = useRef<number | null>(press ? press.nonce : null);
   const okRef = useRef(pressedOk);
@@ -317,7 +328,7 @@ function Contents({
   const camGoal = useRef({ pos: new THREE.Vector3(), target: new THREE.Vector3() });
   const camCur = useRef({ pos: new THREE.Vector3(), target: new THREE.Vector3(), aspect: 0, moving: false });
   const fittedFor = useRef<HandsController | null | undefined>(undefined);
-  const extra = outsideMainBlock(placed, [targetKeyId, modifierKeyId]);
+  const extra = outsideMainBlock(placed, [targetKeyId, ...holdIds]);
   useLayoutEffect(() => {
     if (size.width < 2 || size.height < 2) return;
     const aspect = size.width / size.height;

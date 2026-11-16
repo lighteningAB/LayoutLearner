@@ -8,7 +8,7 @@ import { fingerName, guideForChar } from "@/components/typing/KeyboardGuide";
 import "@/components/typing/typing.css";
 import { Badge, Button, Card, Icon, ProgressBar, Skeleton, cx } from "@/components/ui";
 import { PRESETS } from "@/lib/layout/presets";
-import { parseLayout } from "@/lib/layout/parse";
+import { parsePreset } from "@/lib/layout/layers";
 import { buildCurriculum, validateCurriculum } from "@/lib/lessons/curriculum";
 import { useSettings } from "@/lib/settings";
 import type { ParsedLayout } from "@/lib/types";
@@ -233,7 +233,7 @@ function useDevCurriculumCheck() {
     const w = window as unknown as { __learnCheck?: () => unknown };
     w.__learnCheck = () =>
       PRESETS.map((p) => {
-        const layout = parseLayout(p.source, p.name);
+        const layout = parsePreset(p);
         const lessons = buildCurriculum(layout);
         return {
           preset: p.id,

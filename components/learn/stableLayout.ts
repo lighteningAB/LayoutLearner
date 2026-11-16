@@ -11,7 +11,8 @@ function signatureOf(layout: ParsedLayout): string {
     `${layout.name}#${layout.width}x${layout.height}#` +
     layout.keys
       .map((k) => `${k.id},${k.x},${k.y},${k.w},${k.h},${k.label},${k.base},${k.shifted},${k.code ?? ""},${k.finger ? k.finger.hand + k.finger.finger : ""},${k.isHome ? 1 : 0},${k.rotation ? `${k.rotation.angle}/${k.rotation.cx}/${k.rotation.cy}` : ""}`)
-      .join("|")
+      .join("|") +
+    `#${layout.layers ? JSON.stringify(layout.layers) : ""}`
   );
 }
 

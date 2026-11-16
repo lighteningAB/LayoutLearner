@@ -1,7 +1,7 @@
 "use client";
 
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
-import type { LayoutKey, ParsedLayout } from "@/lib/types";
+import type { LayerKeyChars, LayoutKey, LayoutLayer, ParsedLayout } from "@/lib/types";
 import { fingerIndex } from "@/lib/types";
 import { displayLegends } from "@/lib/layout/parse";
 import styles from "./Keyboard2D.module.css";
@@ -36,6 +36,11 @@ export interface Keyboard2DProps {
   selectedKeyIds?: string[];
   /** Keys drawn with a small "customised" marker. */
   markedKeyIds?: string[];
+  /**
+   * Show this layer's legends instead of the base ones: keys with an entry show its characters, other
+   * character keys are dimmed and blank, the layer's activator keys keep their label. Null / absent = the board as usual.
+   */
+  layer?: LayoutLayer | null;
   /** Describes a key for assistive tech when `onKeyClick` is set (default: its legend). */
   keyLabel?: (key: LayoutKey) => string;
 }
@@ -121,8 +126,19 @@ function legendsFor(key: LayoutKey, compact: boolean): LegendSpec[] {
   return out;
 }
 
+/** Legends of a key while a layer is shown: its base character, with the Shift one muted. */
+function layerLegends(c: LayerKeyChars, compact: boolean): LegendSpec[] {
+  const out: LegendSpec[] = [{ text: c.base, size: compact ? 0.44 : 0.38 }];
+  if (c.shifted) out.unshift({ text: c.shifted, size: compact ? 0.3 : 0.26, muted: true });
+  return out;
+}
+
 interface KeyCapProps {
   k: LayoutKey;
+  /** Characters on the layer being shown, when this key has some. */
+  layerChars?: LayerKeyChars;
+  /** A layer is shown and this key is neither on it nor its activator: draw it blank. */
+  layerBlank?: boolean;
   state: KeyVisualState;
   heat: number | undefined;
   fingerColors: boolean;
@@ -143,7 +159,7 @@ function defaultKeyLabel(k: LayoutKey): string {
 
 const u = (n: number) => `calc(var(--u) * ${Math.round(n * 1000) / 1000})`;
 
-const KeyCap = memo(function KeyCap({ k, state, heat, fingerColors, showHome, compact, interactive, selected, marked, focusable, ariaLabel, onActivate }: KeyCapProps) {
+const KeyCap = memo(function KeyCap({ k, layerChars, layerBlank, state, heat, fingerColors, showHome, compact, interactive, selected, marked, focusable, ariaLabel, onActivate }: KeyCapProps) {
   const fi = fingerColors && k.finger ? fingerIndex(k.finger) : -1;
   const hasHeat = heat !== undefined && heat > 0;
   const capClass = [
@@ -179,6 +195,7 @@ const KeyCap = memo(function KeyCap({ k, state, heat, fingerColors, showHome, co
       data-heat={hasHeat ? heat.toFixed(2) : undefined}
       data-selected={selected ? "" : undefined}
       data-marked={marked ? "" : undefined}
+      data-layer-legend={layerChars ? "" : undefined}
       {...(interactive
         ? {
             role: "button",
@@ -197,7 +214,7 @@ const KeyCap = memo(function KeyCap({ k, state, heat, fingerColors, showHome, co
     >
       <div className={capClass} style={capStyle}>
         {marked && <span className={styles.mark} aria-hidden />}
-        {legendsFor(k, compact).map((l, i) => (
+        {(layerChars ? layerLegends(layerChars, compact) : layerBlank ? [] : legendsFor(k, compact)).map((l, i) => (
           <span
             key={i}
             className={[styles.legend, l.muted ? styles.muted : "", l.name ? styles.name : "", l.wrap ? styles.wrap : ""]
@@ -228,6 +245,7 @@ export function Keyboard2D({
   selectedKeyIds,
   markedKeyIds,
   keyLabel,
+  layer,
 }: Keyboard2DProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   // null until measured: CSS container units size the board for SSR / first paint.
@@ -257,6 +275,7 @@ export function Keyboard2D({
   const selected = useMemo(() => new Set(selectedKeyIds), [selectedKeyIds]);
   const marked = useMemo(() => new Set(markedKeyIds), [markedKeyIds]);
   const interactive = !!onKeyClick;
+  const layerActivators = useMemo(() => new Set(layer?.activatorIds), [layer]);
   // Roving tab stop: the selected key, else the one last focused, else the first.
   const [focusId, setFocusId] = useState<string | null>(null);
   const tabStop =
@@ -319,19 +338,23 @@ export function Keyboard2D({
     >
       <div className={styles.board} style={boardStyle}>
         {layout.keys.map((k) => {
+          const layerChars = layer ? layer.keys[k.id] : undefined;
+          const layerOff = !!layer && !layerChars && !layerActivators.has(k.id);
           const state: KeyVisualState = error.has(k.id)
             ? "error"
             : pressed.has(k.id)
               ? "pressed"
               : highlight.has(k.id)
                 ? "highlight"
-                : dim.has(k.id)
+                : dim.has(k.id) || layerOff
                   ? "dim"
                   : "idle";
           return (
             <KeyCap
               key={k.id}
               k={k}
+              layerChars={layerChars}
+              layerBlank={layerOff && !!k.base && k.base !== " "}
               state={state}
               heat={heat?.[k.id]}
               fingerColors={fingerColors}

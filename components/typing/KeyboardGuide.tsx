@@ -3,7 +3,7 @@
 // (plus the Shift on the other hand when needed), shows held keys, flashes wrong keys, and names
 // the finger in one line. The 3D hands view is mounted through `handsSlot` by its own module.
 import { useMemo, type CSSProperties, type ReactNode } from "react";
-import type { FingerId, LayoutKey, ParsedLayout } from "@/lib/types";
+import type { FingerId, LayoutKey, LayoutLayer, ParsedLayout } from "@/lib/types";
 import { fingerIndex } from "@/lib/types";
 import { keyForChar } from "@/lib/layout/keys";
 import { keyAction } from "@/lib/layout/parse";
@@ -18,7 +18,13 @@ export interface KeyGuide {
   key: LayoutKey | null;
   /** Shift to hold with the other hand, when the character is on the shifted layer. */
   shiftKey: LayoutKey | null;
-  /** Ids to highlight: [key, shift?]. */
+  /** Layer activator to hold, when the character lives on a layer. */
+  layerKey: LayoutKey | null;
+  /** The layer the character lives on, or null for base / Shift. */
+  layer: LayoutLayer | null;
+  /** Every key to HOLD while pressing `key`, in order [layerKey?, shiftKey?]. The 3D hands pose these. */
+  holdKeys: LayoutKey[];
+  /** Ids to highlight: [key, ...holdKeys]. */
   keyIds: string[];
   finger: FingerId | null;
   /** Index into --finger-0…9, or -1. */
@@ -51,6 +57,9 @@ export function guideForAction(layout: ParsedLayout, action: GuideAction, count 
     char: "",
     key,
     shiftKey: null,
+    layerKey: null,
+    layer: null,
+    holdKeys: [],
     keyIds: [key.id],
     finger,
     fingerIndex: finger ? fingerIndex(finger) : -1,
@@ -77,14 +86,19 @@ export function guideForChar(layout: ParsedLayout, char: string | null | undefin
   if (char == null || char === "") return null;
   const hit = keyForChar(layout, char);
   const keyLabel = char === " " ? "space" : char.length === 1 && char.toLowerCase() !== char.toUpperCase() ? char.toUpperCase() : char;
-  if (!hit) return { char, key: null, shiftKey: null, keyIds: [], finger: null, fingerIndex: -1, fingerName: "", keyLabel };
+  if (!hit) return { char, key: null, shiftKey: null, layerKey: null, layer: null, holdKeys: [], keyIds: [], finger: null, fingerIndex: -1, fingerName: "", keyLabel };
   const finger = hit.key.finger ?? null;
   const shiftKey = hit.needsShift ? hit.shiftKey ?? null : null;
+  const layerKey = hit.layer ? hit.layerKey ?? null : null;
+  const holdKeys = [layerKey, shiftKey].filter((k): k is LayoutKey => !!k);
   return {
     char,
     key: hit.key,
     shiftKey,
-    keyIds: shiftKey ? [hit.key.id, shiftKey.id] : [hit.key.id],
+    layerKey,
+    layer: layerKey ? hit.layer ?? null : null,
+    holdKeys,
+    keyIds: [hit.key.id, ...holdKeys.map((k) => k.id)],
     finger,
     fingerIndex: finger ? fingerIndex(finger) : -1,
     fingerName: fingerName(finger),
@@ -161,6 +175,7 @@ export function KeyboardGuide({
 
   const color = guide && guide.fingerIndex >= 0 && colors ? `var(--finger-${guide.fingerIndex})` : "var(--main)";
   const shiftFinger = guide?.shiftKey?.finger ? fingerName(guide.shiftKey.finger) : "";
+  const layerFinger = guide?.layerKey?.finger ? `${guide.layerKey.finger.hand === "L" ? "left" : "right"} ${guide.layerKey.finger.finger}` : "";
 
   return (
     <div
@@ -173,12 +188,22 @@ export function KeyboardGuide({
       data-next-key={guide?.key?.id ?? ""}
       data-next-finger={guide?.finger ? `${guide.finger.hand}-${guide.finger.finger}` : ""}
       data-shift-key={guide?.shiftKey?.id ?? ""}
+      data-layer={guide?.layer?.id ?? ""}
+      data-layer-key={guide?.layerKey?.id ?? ""}
     >
       {(showHint || hintEnd) && (
         <div className="mb-3 flex min-h-7 items-center justify-between gap-3 text-[13px] text-sub">
           <div className="flex min-w-0 items-center gap-2" data-testid="key-hint" aria-live="off">
             {showHint && guide && guide.key && (
               <>
+                {guide.layer && guide.layerKey && (
+                  <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap" data-testid="key-hint-layer">
+                    <span className="text-sub/80">hold</span>
+                    <Kbd className="px-2">{guide.layer.name}</Kbd>
+                    {layerFinger && <span className="hidden md:inline">({layerFinger})</span>}
+                    <span className="text-sub/60">+</span>
+                  </span>
+                )}
                 <span aria-hidden className="size-2 shrink-0 rounded-full transition-colors duration-100" style={{ backgroundColor: color }} />
                 <span className="whitespace-nowrap transition-colors duration-100" style={{ color }}>
                   {guide.fingerName || "any finger"}
@@ -228,6 +253,7 @@ export function KeyboardGuide({
               pressedKeyIds={pressedKeyIds}
               errorKeyIds={errorKeyIds}
               dimUnused={dimKeyIds}
+              layer={guide?.layer ?? null}
               fingerColors={colors}
               maxUnit={maxUnit}
             />

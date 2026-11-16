@@ -85,6 +85,15 @@ function baseKeyMap(layout: ParsedLayout): Map<string, LayoutKey> {
   const numpad = (k: LayoutKey) => !!k.code && k.code.startsWith("Numpad");
   for (const k of layout.keys) if (k.base && !numpad(k) && !map.has(k.base)) map.set(k.base, k);
   for (const k of layout.keys) if (k.base && !map.has(k.base)) map.set(k.base, k);
+  // Characters only reachable through a layer still count as typable (the layer key is not counted in the stats).
+  if (layout.layers) {
+    const byId = new Map(layout.keys.map((k) => [k.id, k]));
+    for (const l of layout.layers)
+      for (const [id, c] of Object.entries(l.keys)) {
+        const k = byId.get(id);
+        if (k && c.base && !map.has(c.base)) map.set(c.base, k);
+      }
+  }
   return map;
 }
 

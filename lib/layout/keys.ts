@@ -1,5 +1,5 @@
 // Character / keystroke lookups over a ParsedLayout, used by the typing test.
-import type { LayoutKey, ParsedLayout } from "../types";
+import type { LayoutKey, LayoutLayer, ParsedLayout } from "../types";
 import { keyAction } from "./parse";
 
 export interface CharKey {
@@ -7,6 +7,10 @@ export interface CharKey {
   needsShift: boolean;
   /** The Shift key on the opposite hand from `key` (only when needsShift). */
   shiftKey?: LayoutKey;
+  /** Set when the character lives on a layer: the layer and the activator key to hold. */
+  layer?: LayoutLayer;
+  /** Activator to hold for `layer`: on the opposite hand from `key` when the layer has one there, else any. */
+  layerKey?: LayoutKey;
 }
 
 export type KeyAction = "backspace" | "enter" | "tab" | "escape";
@@ -19,8 +23,17 @@ export interface ResolvedKeystroke {
   action?: KeyAction;
 }
 
+interface Hit {
+  key: LayoutKey;
+  needsShift: boolean;
+  /** Set when the character lives on a layer rather than on the base / Shift layer. */
+  layer?: LayoutLayer;
+}
+
 interface Index {
-  byChar: Map<string, { key: LayoutKey; needsShift: boolean }>;
+  byChar: Map<string, Hit>;
+  /** layer id → its activator keys that exist in the layout (a layer with none can never be held). */
+  activators: Map<string, LayoutKey[]>;
   byCode: Map<string, LayoutKey>;
   shifts: LayoutKey[];
   centre: number;
@@ -33,7 +46,7 @@ const isNumpad = (k: LayoutKey) => !!k.code && k.code.startsWith("Numpad");
 function indexOf(layout: ParsedLayout): Index {
   let idx = cache.get(layout);
   if (idx) return idx;
-  const byChar = new Map<string, { key: LayoutKey; needsShift: boolean }>();
+  const byChar = new Map<string, Hit>();
   const byCode = new Map<string, LayoutKey>();
   // Main-block keys win over numpad duplicates; unshifted wins over shifted.
   const ordered = [...layout.keys.filter((k) => !isNumpad(k)), ...layout.keys.filter(isNumpad)];
@@ -41,7 +54,33 @@ function indexOf(layout: ParsedLayout): Index {
   for (const k of ordered) if (k.shifted && !byChar.has(k.shifted)) byChar.set(k.shifted, { key: k, needsShift: true });
   for (const k of layout.keys) if (k.code && !byCode.has(k.code)) byCode.set(k.code, k);
   const shifts = layout.keys.filter((k) => k.code === "ShiftLeft" || k.code === "ShiftRight");
-  idx = { byChar, byCode, shifts, centre: layout.width / 2 };
+
+  // Layers: a character already typable on base / Shift is never routed through a layer. Order is
+  // layer, then layer + Shift; earlier layers win. Activators, unknown keys and bad strings are ignored.
+  const byId = new Map(layout.keys.map((k) => [k.id, k]));
+  const activators = new Map<string, LayoutKey[]>();
+  const usable: LayoutLayer[] = [];
+  const activatorIds = new Set<string>();
+  for (const layer of layout.layers ?? []) {
+    if (!layer || !Array.isArray(layer.activatorIds) || !layer.keys || typeof layer.keys !== "object" || activators.has(layer.id)) continue;
+    const held = layer.activatorIds.map((id) => byId.get(id)).filter((k): k is LayoutKey => !!k);
+    if (held.length === 0) continue;
+    activators.set(layer.id, held);
+    usable.push(layer);
+    for (const k of held) activatorIds.add(k.id);
+  }
+  const single = (s: unknown): s is string => typeof s === "string" && s !== "" && Array.from(s).length === 1;
+  for (const shifted of [false, true]) {
+    for (const layer of usable) {
+      for (const [id, chars] of Object.entries(layer.keys)) {
+        const key = byId.get(id);
+        if (!key || activatorIds.has(id) || !chars) continue;
+        const ch = shifted ? chars.shifted : chars.base;
+        if (single(ch) && !byChar.has(ch)) byChar.set(ch, { key, needsShift: shifted, layer });
+      }
+    }
+  }
+  idx = { byChar, activators, byCode, shifts, centre: layout.width / 2 };
   cache.set(layout, idx);
   return idx;
 }
@@ -51,11 +90,19 @@ export function keyForChar(layout: ParsedLayout, ch: string): CharKey | undefine
   const idx = indexOf(layout);
   const hit = idx.byChar.get(ch);
   if (!hit) return undefined;
-  if (!hit.needsShift) return { key: hit.key, needsShift: false };
-  const hand = hit.key.finger?.hand ?? (hit.key.x + hit.key.w / 2 < idx.centre ? "L" : "R");
-  const want = hand === "L" ? "ShiftRight" : "ShiftLeft";
-  const shiftKey = idx.shifts.find((k) => k.code === want) ?? idx.shifts[0];
-  return { key: hit.key, needsShift: true, shiftKey };
+  const handOf = (k: LayoutKey) => k.finger?.hand ?? (k.x + k.w / 2 < idx.centre ? "L" : "R");
+  const out: CharKey = { key: hit.key, needsShift: hit.needsShift };
+  if (hit.layer) {
+    // Hold the activator with the opposite hand when the layer has one there, else the first one.
+    const held = idx.activators.get(hit.layer.id) ?? [];
+    out.layer = hit.layer;
+    out.layerKey = held.find((k) => handOf(k) !== handOf(hit.key)) ?? held[0];
+  }
+  if (hit.needsShift) {
+    const want = handOf(hit.key) === "L" ? "ShiftRight" : "ShiftLeft";
+    out.shiftKey = idx.shifts.find((k) => k.code === want) ?? idx.shifts[0];
+  }
+  return out;
 }
 
 /** Layout key at a physical position (KeyboardEvent.code). */
@@ -108,5 +155,6 @@ export function typableChars(layout: ParsedLayout): string[] {
   const out = new Set<string>();
   for (const k of layout.keys) if (k.base) out.add(k.base);
   for (const k of layout.keys) if (k.shifted) out.add(k.shifted);
+  for (const [ch, hit] of indexOf(layout).byChar) if (hit.layer) out.add(ch);
   return [...out];
 }

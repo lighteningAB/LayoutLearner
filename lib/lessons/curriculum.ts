@@ -2,10 +2,11 @@
 // Order: index-finger home keys -> rest of the home row finger by finger -> home review ->
 // top row -> bottom row -> reviews -> capitals (Shift) -> numbers -> punctuation -> final review.
 import type { Finger, LayoutKey, ParsedLayout } from "@/lib/types";
+import { keyForChar } from "@/lib/layout/keys";
 import { ENGLISH_1K } from "@/lib/typing/data/english";
 import { createRng, hashString, isLetter, isTypable, pick, pseudoWord, type Rng } from "@/lib/typing/words";
 
-export type LessonStage = "home" | "top" | "bottom" | "extra" | "capitals" | "numbers" | "punctuation";
+export type LessonStage = "home" | "top" | "bottom" | "extra" | "capitals" | "numbers" | "punctuation" | "layer";
 
 export interface Lesson {
   /** Stable for a given layout, e.g. "home-fj", "top-review", "capitals-left", "numbers-4756". */
@@ -260,6 +261,7 @@ const GOALS: Record<LessonStage, { accuracy: number; wpm: number }> = {
   capitals: { accuracy: 92, wpm: 15 },
   numbers: { accuracy: 90, wpm: 10 },
   punctuation: { accuracy: 92, wpm: 12 },
+  layer: { accuracy: 90, wpm: 10 },
 };
 
 const STAGE_NAME: Record<LessonStage, string> = {
@@ -270,6 +272,7 @@ const STAGE_NAME: Record<LessonStage, string> = {
   capitals: "Capitals",
   numbers: "Numbers",
   punctuation: "Punctuation",
+  layer: "Layers",
 };
 
 const SYMBOL_PRIORITY = ".,';?!-:\"/()";
@@ -541,6 +544,77 @@ export function buildCurriculum(layout: ParsedLayout): Lesson[] {
     });
   }
 
+  // ---- layers: characters only reachable while holding a layer key (Lower / Raise …)
+  for (const layer of layout.layers ?? []) {
+    const entries: Entry[] = [];
+    const layerKeyOf = new Map<string, LayoutKey>();
+    for (const k of layout.keys) {
+      const c = layer.keys[k.id];
+      if (!c) continue;
+      for (const [ch, shifted] of [[c.base, false], [c.shifted ?? "", true]] as const) {
+        if (ch.length !== 1 || ch === " " || introduced.has(ch)) continue;
+        // Only characters this very key types through this layer (never one the board types elsewhere).
+        const hit = keyForChar(layout, ch);
+        if (!hit?.layer || hit.layer.id !== layer.id || hit.key.id !== k.id || !hit.layerKey) continue;
+        introduced.add(ch);
+        entries.push({ char: ch, key: k, shifted });
+        layerKeyOf.set(ch, hit.layerKey);
+      }
+    }
+    if (entries.length < 2) {
+      // Too few to teach on their own: leave them untaught here, but they stay typable.
+      for (const e of entries) introduced.delete(e.char);
+      continue;
+    }
+    const digits = entries.filter((e) => isDigit(e.char));
+    const others = entries.filter((e) => !isDigit(e.char));
+    const prio = (c: string) => {
+      const i = SYMBOL_PRIORITY.indexOf(c);
+      return i === -1 ? SYMBOL_PRIORITY.length : i;
+    };
+    const chunks: { kind: "numbers" | "symbols"; items: Entry[] }[] = [];
+    if (digits.length > 0) {
+      const keysOf = Array.from(new Set(digits.map((e) => e.key)));
+      for (const group of packGroups(fingerGroups(keysOf, homeX), 4)) {
+        const ids = new Set(group.map((k) => k.id));
+        chunks.push({ kind: "numbers", items: digits.filter((e) => ids.has(e.key.id)) });
+      }
+    }
+    const ordered = others.map((e, i) => ({ e, i })).sort((a, b) => prio(a.e.char) - prio(b.e.char) || a.i - b.i).map((x) => x.e);
+    const sym: Entry[][] = [];
+    for (let i = 0; i < ordered.length; i += 3) sym.push(ordered.slice(i, i + 3));
+    if (sym.length > 1 && sym[sym.length - 1].length === 1) sym[sym.length - 2].push(...sym.pop()!);
+    for (const items of sym) chunks.push({ kind: "symbols", items });
+
+    const counters = { numbers: 0, symbols: 0 };
+    for (const chunk of chunks) {
+      const n = ++counters[chunk.kind];
+      const fresh = chunk.items.map((e) => e.char);
+      const holds = Array.from(new Set(chunk.items.map((e) => layerKeyOf.get(e.char)!)));
+      const holdText = Array.from(new Set(holds.map(fingerLabel).filter(Boolean))).join(" or ");
+      const needsShift = chunk.items.some((e) => e.shifted);
+      const before = chunk.kind === "numbers" ? known.digits.slice() : known.symbols.slice();
+      if (chunk.kind === "numbers") known.digits.push(...fresh);
+      else known.symbols.push(...fresh);
+      const snapshot: Known = { ...known, digits: known.digits.slice(), symbols: known.symbols.slice() };
+      add({
+        id: `layer-${layer.id}-${chunk.kind}-${n}`,
+        title: `${layer.name} layer: ${chunk.kind} ${fresh.join(" ")}`,
+        description:
+          `Hold ${layer.name}${holdText ? ` with your ${holdText.replace(/ (pinky|ring|middle|index)$/, " $1 finger")}` : ""} and tap the key.` +
+          (needsShift ? " Some of these also need Shift." : ""),
+        stage: "layer",
+        newChars: fresh,
+        focusKeyIds: [...holds.map((k) => k.id), ...chunk.items.map((e) => e.key.id), ...(needsShift ? shiftKeys.map((s) => s.id) : [])],
+        drills: (rng) => [
+          isolationDrill(rng, fresh, before),
+          chunk.kind === "numbers" ? mixDrill(rng, fresh, snapshot.digits, 16) : richDrill(rng, snapshot, { symbols: fresh }),
+          richDrill(rng, snapshot, chunk.kind === "numbers" ? { digits: fresh } : { symbols: fresh }, DRILL_LENGTH + 5),
+        ],
+      });
+    }
+  }
+
   if (known.capitals.length + known.digits.length + known.symbols.length > 0) {
     const snapshot: Known = { letters: known.letters.slice(), capitals: known.capitals.slice(), digits: known.digits.slice(), symbols: known.symbols.slice() };
     const last = lessons[lessons.length - 1].stage;
@@ -579,6 +653,17 @@ export function validateCurriculum(layout: ParsedLayout, lessons: Lesson[]): str
     if (k.isModifier) continue;
     for (const c of [k.base, k.shifted]) {
       if (typeof c === "string" && c.length === 1 && c !== " " && !introduced.has(c)) problems.push(`"${c}" (key ${k.id}) never introduced`);
+    }
+  }
+  for (const layer of layout.layers ?? []) {
+    for (const [id, c] of Object.entries(layer.keys)) {
+      for (const ch of [c.base, c.shifted ?? ""]) {
+        if (ch.length !== 1 || ch === " ") continue;
+        const hit = keyForChar(layout, ch);
+        // A layer character that is taught must be introduced once; layers with fewer than two typable characters are not taught.
+        if (hit?.layer?.id === layer.id && hit.key.id === id && !introduced.has(ch) && lessons.some((l) => l.stage === "layer" && l.id.startsWith(`layer-${layer.id}-`)))
+          problems.push(`"${ch}" (layer ${layer.id}, key ${id}) never introduced`);
+      }
     }
   }
   return problems;

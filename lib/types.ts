@@ -39,9 +39,38 @@ export interface LayoutKey {
   rotation?: { angle: number; cx: number; cy: number };
 }
 
+/** Characters one key produces while a layer is active. */
+export interface LayerKeyChars {
+  /** Character produced with the layer held ("1", "[", …). */
+  base: string;
+  /** Character produced with the layer AND Shift held. "" or absent = none. */
+  shifted?: string;
+}
+
+/**
+ * One firmware layer of a board (QMK "Lower" / "Raise" style). Momentary only:
+ * the layer is active while one of `activatorIds` is held. The browser never
+ * sees layer keys (the firmware resolves them), so layers drive guidance and
+ * lessons only; typed characters are matched as usual.
+ */
+export interface LayoutLayer {
+  /** Stable within a layout: "lower", "raise", "l3"… */
+  id: string;
+  /** Shown to the user: "Lower", "Raise", "Nav". */
+  name: string;
+  /** Ids of the key(s) that activate this layer while held. At least one. */
+  activatorIds: string[];
+  /** LayoutKey.id → characters on this layer. Keys not listed do nothing on it. */
+  keys: Record<string, LayerKeyChars>;
+}
+
+export const MAX_LAYERS = 4;
+
 export interface ParsedLayout {
   name: string;
   keys: LayoutKey[];
+  /** Extra layers beyond base + Shift, in priority order (earlier wins a duplicate character). */
+  layers?: LayoutLayer[];
   /** Bounding size in key units. */
   width: number;
   height: number;

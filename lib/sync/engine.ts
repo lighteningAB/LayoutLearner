@@ -95,8 +95,13 @@ export type SyncEvent = "first-sync" | "remote-deleted" | "device-cleared" | "se
 const ABSORB_DEBOUNCE_MS = 400;
 const ABSORB_MAX_WAIT_MS = 2_000;
 const PUSH_DELAY_MS = 1_100; // after the absorb: ~1.5 s after the last local change
-const POLL_MS = 60_000;
-const FOCUS_THROTTLE_MS = 5_000;
+// Background check for other devices' changes while a tab stays visible. Deliberately slow: every
+// request wakes the database, and a serverless Postgres that is polled more often than its idle
+// timeout (5 minutes on Neon) never sleeps, which burns the monthly compute allowance with a single
+// open tab. Local edits still push within ~1.5 s, and returning to the tab checks right away.
+const POLL_MS = 15 * 60_000;
+// Returning to the tab pulls at most this often when nothing is pending locally.
+const FOCUS_THROTTLE_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 const BACKOFF_MS = [2_000, 5_000, 15_000, 30_000, 60_000];
 const MAX_ROUNDS = 5;
@@ -958,7 +963,10 @@ const onStorage = guarded((e: StorageEvent) => {
 const onAttention = guarded(() => {
   if (document.visibilityState === "hidden") return;
   const now = Date.now();
-  if (now - lastFocusSyncAt < FOCUS_THROTTLE_MS) return;
+  const sc = currentSidecar();
+  const pending = sc !== null && sc.dirty;
+  // Pending local changes go out promptly; a plain "anything new?" check is rate-limited harder.
+  if (now - lastFocusSyncAt < (pending ? 5_000 : FOCUS_THROTTLE_MS)) return;
   lastFocusSyncAt = now;
   trigger({ allowHardError: true });
 });
