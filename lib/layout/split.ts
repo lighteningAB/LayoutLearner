@@ -195,6 +195,19 @@ function analyseHalf(keys: LayoutKey[], hand: Hand): Map<LayoutKey, SplitKeyInfo
         info.delete(b.key);
       }
     }
+  } else {
+    // A rotated cluster often starts with one unrotated key tucked under the index column (the
+    // outer thumb key of a Corne). It belongs to the thumb, not to the finger above it, when it
+    // sits right next to a key of the rotated cluster.
+    const rotated = [...thumbs];
+    for (const b of belowAlpha) {
+      if (b.col > 1) continue;
+      const near = rotated.some((t) => Math.hypot(px(t) - px(b.key), py(t) - py(b.key)) <= 1.5);
+      if (near) {
+        thumbs.push(b.key);
+        info.delete(b.key);
+      }
+    }
   }
 
   // ---- home keys: index-home, middle, ring, pinky columns on the home row

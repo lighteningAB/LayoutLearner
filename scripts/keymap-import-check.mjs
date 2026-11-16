@@ -276,7 +276,7 @@ rejects("long run of underscores/commas in C", "keymaps[] = { [0] = LAYOUT(" + "
     const o = orderKeysForImport(ferris);
     eq(o.slice(0, 10).map((k) => k.base), ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]);
     eq(o.slice(10, 20).map((k) => k.base), ["a", "s", "d", "f", "g", "h", "j", "k", "l", ";"]);
-    eq(o.slice(30).map((k) => k.label.replace(/\n/g, "")), ["Lower", "Space", "Enter", "Raise"]);
+    eq(o.slice(30).map((k) => k.label.replace(/\n/g, "")), ["Shift", "Space", "Enter", "Raise"]);
   });
 
   const mapped = {};
@@ -310,7 +310,7 @@ rejects("long run of underscores/commas in C", "keymaps[] = { [0] = LAYOUT(" + "
     if (!nav) throw new Error("no NAV layer");
     eq(nav.keys[idOfBase(ferris, "q")].base, "1");
     eq(nav.keys[idOfBase(ferris, "p")].base, "0");
-    eq(nav.activatorIds, [idOfLabel(ferris, "Lower")]);
+    eq(nav.activatorIds, [idOfLabel(ferris, "Shift")]);
     const sym = m.layers.find((l) => l.name.toLowerCase() === "sym");
     eq(sym.activatorIds, [idOfLabel(ferris, "Raise")]);
     eq(sym.keys[idOfBase(ferris, "q")].base, "!");

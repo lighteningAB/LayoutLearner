@@ -174,7 +174,7 @@ export function KeyboardGuide({
   const slot = handsSlot ?? children;
 
   const color = guide && guide.fingerIndex >= 0 && colors ? `var(--finger-${guide.fingerIndex})` : "var(--main)";
-  const shiftFinger = guide?.shiftKey?.finger ? fingerName(guide.shiftKey.finger) : "";
+  const shiftFinger = guide?.shiftKey?.finger ? `${guide.shiftKey.finger.hand === "L" ? "left" : "right"} ${guide.shiftKey.finger.finger}` : "";
   const layerFinger = guide?.layerKey?.finger ? `${guide.layerKey.finger.hand === "L" ? "left" : "right"} ${guide.layerKey.finger.finger}` : "";
 
   return (
@@ -200,7 +200,8 @@ export function KeyboardGuide({
                   <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap" data-testid="key-hint-layer">
                     <span className="text-sub/80">hold</span>
                     <Kbd className="px-2">{guide.layer.name}</Kbd>
-                    {layerFinger && <span className="hidden md:inline">({layerFinger})</span>}
+                    {/* A three-key chord (layer + Shift + key) has no room for the finger names of the held keys. */}
+                    {layerFinger && !guide.shiftKey && <span className="hidden md:inline">({layerFinger})</span>}
                     <span className="text-sub/60">+</span>
                   </span>
                 )}
@@ -218,10 +219,10 @@ export function KeyboardGuide({
                   </span>
                 )}
                 {guide.shiftKey && (
-                  <span className="hidden items-center gap-1.5 truncate sm:inline-flex">
+                  <span className="hidden shrink-0 items-center gap-1.5 whitespace-nowrap sm:inline-flex">
                     <span className="text-sub/60">+</span>
                     <Kbd className="px-2">shift</Kbd>
-                    {shiftFinger && <span className="hidden truncate md:inline">{shiftFinger}</span>}
+                    {shiftFinger && !guide.layer && <span className="hidden md:inline">{shiftFinger}</span>}
                   </span>
                 )}
               </>

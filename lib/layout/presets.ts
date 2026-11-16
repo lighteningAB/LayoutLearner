@@ -295,7 +295,9 @@ function corne(left: string[], right: string[], outer: boolean): string {
   const dx = outer ? 0 : -1;
   return mirrored(outer ? 15 : 13, [
     ...fingerBlock(stagger, left, right),
-    THUMB("Win", "Alt", 4.5 + dx, 4.15),
+    // The 3x5 board has no outer column, so no Shift there: its outer thumb keys are Shift instead
+    // (a common choice on 36-key boards), which gives capitals and shifted symbols a key to hold.
+    outer ? THUMB("Win", "Alt", 4.5 + dx, 4.15) : THUMB("Shift", "Shift", 4.5 + dx, 4.15),
     THUMB("Lower", "Raise", 5.63 + dx, 4.3, 15),
     THUMB("Space", "Enter", 6.69 + dx, 4.74, 30, 1.5),
   ]);
@@ -314,7 +316,9 @@ const BSP = "Bksp";
 function ferris(left: string[], right: string[]): string {
   return mirrored(13, [
     ...fingerBlock(S_FERRIS, left, right),
-    THUMB("Lower", "Raise", 4.0, 4.25),
+    // Two thumb keys per half and no spare: the left outer thumb is Shift, the right one the layer
+    // key (the default layers all fit on Raise). Real Sweep keymaps often use home-row mods instead.
+    THUMB("Shift", "Raise", 4.0, 4.25),
     THUMB("Space", "Enter", 5.0, 4.5),
   ]);
 }
@@ -532,7 +536,7 @@ export const PRESETS: LayoutPreset[] = [
   {
     id: "ferris-sweep",
     name: "Ferris Sweep (QWERTY)",
-    description: "34-key 3×5 split with two thumb keys per half: only the letters, Space/Enter and two layer keys.",
+    description: "34-key 3×5 split with two thumb keys per half: only the letters, Space/Enter, a thumb Shift and one layer key.",
     family: "split",
     source: FERRIS_QWERTY,
   },

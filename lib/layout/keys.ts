@@ -99,8 +99,14 @@ export function keyForChar(layout: ParsedLayout, ch: string): CharKey | undefine
     out.layerKey = held.find((k) => handOf(k) !== handOf(hit.key)) ?? held[0];
   }
   if (hit.needsShift) {
+    // Opposite hand from the target by default. When a layer key is held too, the Shift must not
+    // need the finger that is already holding the layer key (thumb Shift next to a thumb layer key).
     const want = handOf(hit.key) === "L" ? "ShiftRight" : "ShiftLeft";
-    out.shiftKey = idx.shifts.find((k) => k.code === want) ?? idx.shifts[0];
+    const busy = out.layerKey?.finger;
+    const free = (k: LayoutKey) =>
+      !busy || !k.finger || k.finger.hand !== busy.hand || k.finger.finger !== busy.finger;
+    out.shiftKey =
+      idx.shifts.find((k) => k.code === want && free(k)) ?? idx.shifts.find(free) ?? idx.shifts.find((k) => k.code === want) ?? idx.shifts[0];
   }
   return out;
 }
