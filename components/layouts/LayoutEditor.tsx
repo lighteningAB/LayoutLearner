@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
-import { Badge, Button, Card, ConfirmDialog, Icon, Input, Menu, cx, toast, useOutsidePointer } from "@/components/ui";
+import { Badge, Button, Card, ConfirmDialog, Icon, Input, Menu, SegmentedControl, cx, toast, useOutsidePointer } from "@/components/ui";
 import {
   MAX_NAME_LENGTH,
   MAX_SOURCE_BYTES,
@@ -11,18 +11,37 @@ import {
   exportFilename,
   exportLayoutJson,
   importLayoutText,
+  layoutWarnings,
   type SourceCheck,
 } from "@/lib/layout/custom";
+import {
+  applyFingerOverrides,
+  countStaleOverrides,
+  pruneOverrides,
+  setKeyOverride,
+  type FingerOverrides,
+} from "@/lib/layout/overrides";
+import { displayLegends } from "@/lib/layout/parse";
 import { PRESETS } from "@/lib/layout/presets";
-import type { ParsedLayout } from "@/lib/types";
+import type { FingerId, LayoutKey, ParsedLayout } from "@/lib/types";
 import { CodeEditor } from "./CodeEditor";
+import { FingerPicker } from "./FingerPicker";
 
 export interface EditorDraft {
   /** Set when editing a stored custom layout; absent for a new one. */
   id?: string;
   name: string;
   source: string;
+  /** Per-key finger corrections. */
+  fingers?: FingerOverrides;
+  /** Which view the editor opens in (default "source"). */
+  mode?: EditorMode;
 }
+
+export type EditorMode = "source" | "fingers";
+
+const keyName = (k: LayoutKey) => displayLegends(k.label).join(" ").trim() || (k.base === " " ? "Space" : "Key");
+const sameFinger = (a?: FingerId | null, b?: FingerId | null) => (a ?? null) === (b ?? null) || (!!a && !!b && a.hand === b.hand && a.finger === b.finger);
 
 export interface LayoutEditorProps {
   draft: EditorDraft;
@@ -46,8 +65,8 @@ export async function copyText(text: string, what = "Layout data"): Promise<void
   }
 }
 
-export function downloadLayout(name: string, source: string): void {
-  const blob = new Blob([exportLayoutJson(name, source)], { type: "application/json" });
+export function downloadLayout(name: string, source: string, fingers?: FingerOverrides): void {
+  const blob = new Blob([exportLayoutJson(name, source, fingers)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -132,7 +151,10 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
   const [name, setName] = useState(draft.name);
   const [source, setSource] = useState(draft.source);
   const [check, setCheck] = useState<SourceCheck>(() => (draft.source.trim() ? checkSource(draft.source) : EMPTY_CHECK));
-  const [lastGood, setLastGood] = useState<ParsedLayout | null>(() => check.layout ?? null);
+  const [lastGood, setLastGood] = useState<ParsedLayout | null>(() => check.base ?? null);
+  const [mode, setMode] = useState<EditorMode>(draft.mode ?? "source");
+  const [overrides, setOverrides] = useState<FingerOverrides | undefined>(draft.fingers);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const nameId = useId();
@@ -144,7 +166,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
     const t = window.setTimeout(() => {
       const next = source.trim() ? checkSource(source) : EMPTY_CHECK;
       setCheck(next);
-      if (next.layout) setLastGood(next.layout);
+      if (next.base) setLastGood(next.base);
       else if (!source.trim()) setLastGood(null);
     }, PARSE_DEBOUNCE_MS);
     return () => window.clearTimeout(t);
@@ -157,7 +179,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
     : takenNames.has(trimmedName.toLowerCase())
       ? `Another layout is already called "${trimmedName}".`
       : undefined;
-  const dirty = name !== draft.name || source !== draft.source;
+  const dirty = name !== draft.name || source !== draft.source || JSON.stringify(overrides ?? null) !== JSON.stringify(draft.fingers ?? null);
   // `check` lags the text by the debounce; validate the exact text again on save.
   const canSave = !nameError && !empty && !check.error;
 
@@ -168,7 +190,8 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
       setCheck(final);
       return;
     }
-    onSave({ id: draft.id, name: trimmedName, source });
+    // Overrides whose key is gone or changed are not kept.
+    onSave({ id: draft.id, name: trimmedName, source, fingers: final.base ? pruneOverrides(final.base, overrides).overrides : overrides });
   };
 
   const cancel = () => (dirty ? setConfirmDiscard(true) : onCancel());
@@ -177,6 +200,8 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
     const preset = PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
     setSource(preset.source);
+    setOverrides(undefined);
+    setSelectedId(null);
     if (!trimmedName || name === draft.name) setName(`${preset.name} copy`.slice(0, MAX_NAME_LENGTH));
   };
 
@@ -192,17 +217,130 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
     try {
       const imported = importLayoutText(await file.text());
       setSource(imported.source);
+      setOverrides(imported.fingers);
+      setSelectedId(null);
       const fallback = file.name.replace(/(\.kle)?\.(json|txt)$/i, "").replace(/[-_]+/g, " ");
       if (!trimmedName || name === draft.name) setName(cleanName(imported.name ?? fallback) || name);
-      toast(`Imported ${file.name}`, { variant: "success" });
+      toast(`Imported ${file.name}`, {
+        variant: "success",
+        description: imported.fingers ? `${Object.keys(imported.fingers).length} finger overrides included.` : undefined,
+      });
     } catch {
       toast("Couldn't read that file", { variant: "error" });
     }
   };
 
-  const preview = check.layout ?? lastGood;
+  const base = check.base ?? lastGood;
+  // Overrides apply instantly (no debounce): the preview is always base + overrides.
+  const preview = useMemo(() => (base ? applyFingerOverrides(base, overrides) : null), [base, overrides]);
   const stale = !!check.error && !!preview;
+  const staleCount = base ? countStaleOverrides(base, overrides) : 0;
+  const markedIds = useMemo(() => {
+    if (!overrides || !base) return [];
+    const byId = new Map(base.keys.map((k) => [k.id, k]));
+    return Object.keys(overrides).filter((id) => {
+      const k = byId.get(id);
+      return k && (overrides[id].label === undefined || overrides[id].label === k.label);
+    });
+  }, [overrides, base]);
+  const warnings = useMemo(() => (check.layout && preview ? layoutWarnings(preview) : check.warnings), [check, preview]);
+  const selectedKey = preview?.keys.find((k) => k.id === selectedId);
+  const baseKey = base?.keys.find((k) => k.id === selectedId);
+
+  /** Stores a choice; one that equals what the parser guessed is no override at all. */
+  const commit = (choice: { finger: FingerId | null; isHome: boolean }) => {
+    if (!base || !baseKey || !selectedId) return;
+    const automatic = sameFinger(choice.finger, baseKey.finger) && (choice.finger ? !!baseKey.isHome === choice.isHome : true);
+    setOverrides((prev) => setKeyOverride(base, prev, selectedId, automatic ? "auto" : choice));
+  };
+  const chooseFinger = (finger: FingerId | null) => {
+    if (!selectedKey) return;
+    commit({ finger, isHome: finger ? sameFinger(finger, selectedKey.finger) && !!selectedKey.isHome : false });
+  };
+  const chooseHome = (home: boolean) => {
+    if (selectedKey?.finger) commit({ finger: selectedKey.finger, isHome: home });
+  };
+  const resetKey = () => selectedId && base && setOverrides((prev) => setKeyOverride(base, prev, selectedId, "auto"));
+  const customisedCount = markedIds.length;
+  const closePicker = () => {
+    const id = selectedId;
+    setSelectedId(null);
+    if (id) window.setTimeout(() => document.querySelector<HTMLElement>(`[data-testid="editor-preview"] [data-key-id="${id}"]`)?.focus(), 0);
+  };
   const letters = useMemo(() => (preview ? new Set(preview.keys.map((k) => k.base).filter((b) => /^[a-z]$/.test(b))).size : 0), [preview]);
+
+  const nameField = (
+          <div>
+      <label htmlFor={nameId} className="mb-1.5 block text-[13px] font-medium text-text">
+        Name
+      </label>
+      <Input
+        id={nameId}
+        data-testid="editor-name"
+        value={name}
+        maxLength={MAX_NAME_LENGTH}
+        placeholder="e.g. My Colemak mod"
+        aria-invalid={!!nameError && (dirty || !isNew)}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && canSave) save();
+        }}
+      />
+      {nameError && (dirty || !isNew) && (
+        <p className="mt-1.5 text-xs text-error" data-testid="editor-name-error">
+          {nameError}
+        </p>
+      )}
+    </div>
+  );
+
+  const hasFingers = !!preview?.keys.some((k) => k.finger);
+  const fingersPanel = (
+    <div className="flex flex-col gap-4" data-testid="fingers-panel">
+      {selectedKey && baseKey ? (
+        <FingerPicker
+          keyName={keyName(selectedKey)}
+          finger={selectedKey.finger ?? null}
+          isHome={!!selectedKey.isHome}
+          autoFinger={baseKey.finger ?? null}
+          autoHome={!!baseKey.isHome}
+          customised={markedIds.includes(selectedKey.id)}
+          onFinger={chooseFinger}
+          onHome={chooseHome}
+          onReset={resetKey}
+          onClose={closePicker}
+        />
+      ) : (
+        <div className="flex items-start gap-3 rounded-ui-lg border border-dashed border-border px-4 py-4" data-testid="finger-hint">
+          <Icon name="hand" size={20} className="mt-0.5 shrink-0 text-sub" />
+          <p className="text-[13px] leading-snug text-sub">
+            {preview
+              ? "Select a key on the keyboard to choose which finger presses it and whether it is a home key. Arrow keys move between keys; Enter selects."
+              : "Fix the layout data first; the keyboard appears here when it parses."}
+          </p>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <p className="text-[13px] text-sub" data-testid="override-count" data-count={customisedCount} aria-live="polite">
+          {customisedCount === 0 ? "No keys customised" : `${customisedCount} ${customisedCount === 1 ? "key" : "keys"} customised`}
+          {!hasFingers && preview ? " · no automatic fingers for this board" : ""}
+        </p>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon="restart"
+          disabled={customisedCount === 0 && staleCount === 0}
+          data-testid="fingers-reset-all"
+          onClick={() => {
+            setOverrides(undefined);
+            setSelectedId(null);
+          }}
+        >
+          Reset all to automatic
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div data-testid="layout-editor" data-mode={isNew ? "new" : "edit"}>
@@ -236,31 +374,32 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
         </div>
       </div>
 
+      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <SegmentedControl<EditorMode>
+          aria-label="Editor view"
+          data-testid="editor-mode"
+          size="sm"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "source", label: "Layout data", icon: "code" },
+            { value: "fingers", label: "Fingers", icon: "hand" },
+          ]}
+        />
+        {mode === "fingers" && <span className="text-xs text-sub">Correct which finger presses a key. Changes apply to tests, lessons and the hands view.</span>}
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ── source ── */}
         <div className="flex min-w-0 flex-col gap-4">
-          <div>
-            <label htmlFor={nameId} className="mb-1.5 block text-[13px] font-medium text-text">
-              Name
-            </label>
-            <Input
-              id={nameId}
-              data-testid="editor-name"
-              value={name}
-              maxLength={MAX_NAME_LENGTH}
-              placeholder="e.g. My Colemak mod"
-              aria-invalid={!!nameError && (dirty || !isNew)}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && canSave) save();
-              }}
-            />
-            {nameError && (dirty || !isNew) && (
-              <p className="mt-1.5 text-xs text-error" data-testid="editor-name-error">
-                {nameError}
-              </p>
-            )}
-          </div>
+{mode === "fingers" ? (
+            <>
+              {fingersPanel}
+              {nameField}
+            </>
+          ) : (
+          <>
+          {nameField}
 
           <div>
             <div className="relative mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
@@ -322,17 +461,19 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
                   icon="download"
                   disabled={empty}
                   data-testid="editor-download"
-                  onClick={() => downloadLayout(trimmedName || "layout", source)}
+                  onClick={() => downloadLayout(trimmedName || "layout", source, overrides)}
                 >
                   Download
                 </Button>
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* ── preview ── */}
-        <div className="flex min-w-0 flex-col gap-3">
+        <div className={cx("flex min-w-0 flex-col gap-3", mode === "fingers" && "order-first lg:order-none")}>
           <div className="flex h-[21px] items-center justify-between gap-3 lg:mt-px">
             <span className="text-[13px] font-medium text-text">Preview</span>
             {preview && (
@@ -352,7 +493,19 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
           >
             {preview ? (
               <>
-                <Keyboard2D layout={preview} fingerColors maxUnit={44} className={cx("transition-opacity duration-150", stale && "opacity-45")} />
+                <Keyboard2D
+                  layout={preview}
+                  fingerColors
+                  maxUnit={44}
+                  className={cx("transition-opacity duration-150", stale && "opacity-45")}
+                  {...(mode === "fingers" && !stale
+                    ? {
+                        onKeyClick: setSelectedId,
+                        selectedKeyIds: selectedId ? [selectedId] : undefined,
+                        markedKeyIds: markedIds,
+                      }
+                    : { markedKeyIds: mode === "fingers" ? markedIds : undefined })}
+                />
               </>
             ) : (
               <div className="flex max-w-xs flex-col items-center gap-3 px-4 text-center">
@@ -384,9 +537,9 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
                 <p className="text-[13px] leading-snug break-words text-text">{check.error.message.replace(/ \(line \d+, column \d+\)/, "")}</p>
               </div>
             </div>
-          ) : check.warnings.length > 0 ? (
+          ) : warnings.length > 0 ? (
             <ul className="flex flex-col gap-2" data-testid="editor-warnings">
-              {check.warnings.map((w) => (
+              {warnings.map((w) => (
                 <li key={w} data-testid="editor-warning" className="flex items-start gap-3 rounded-ui bg-text/[0.05] px-3.5 py-2.5">
                   <Icon name="info" size={16} className="mt-0.5 shrink-0 text-main" />
                   <span className="text-[13px] leading-snug text-sub">{w}</span>
@@ -399,6 +552,15 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
               Looks good. Fingers and home row were recognised.
             </p>
           ) : null}
+          {staleCount > 0 && (
+            <p className="flex items-start gap-3 rounded-ui bg-text/[0.05] px-3.5 py-2.5 text-[13px] leading-snug text-sub" data-testid="override-dropped" data-count={staleCount} role="status">
+              <Icon name="info" size={16} className="mt-0.5 shrink-0 text-main" />
+              <span>
+                {staleCount === 1 ? "1 finger override no longer matches a key" : `${staleCount} finger overrides no longer match a key`} after your edits to
+                the layout data. {staleCount === 1 ? "It was" : "They were"} dropped and will not be saved.
+              </span>
+            </p>
+          )}
         </div>
       </div>
 

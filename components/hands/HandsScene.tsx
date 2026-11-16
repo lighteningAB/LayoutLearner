@@ -34,6 +34,8 @@ export interface HandsSceneProps {
   fingerZones?: boolean;
   /** Show the hands (default true). With false only the 3D keyboard is drawn. */
   showHands?: boolean;
+  /** Reports "loading" until the first frame with the rest-posed hands and the fitted camera has been drawn, then "ready" (or "error"). */
+  onStatus?: (status: "loading" | "ready" | "error" | "nowebgl") => void;
   /** Dev only: exposes `window.__hands` and keeps the drawing buffer for screenshots. */
   debug?: boolean;
   className?: string;
@@ -193,9 +195,7 @@ function approach(v: THREE.Vector3, to: THREE.Vector3, k: number): boolean {
   return true;
 }
 
-interface ContentsProps extends HandsSceneProps {
-  onStatus: (s: Status) => void;
-}
+type ContentsProps = HandsSceneProps;
 
 function Contents({
   layout,
@@ -209,7 +209,7 @@ function Contents({
   showHands = true,
   debug = false,
   onStatus,
-}: ContentsProps) {
+}: Omit<ContentsProps, "onStatus"> & { onStatus: (s: Status) => void }) {
   const gl = useThree((s) => s.gl);
   const cam = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const size = useThree((s) => s.size);
@@ -234,7 +234,6 @@ function Contents({
   useEffect(() => {
     if (!showHands) return;
     let alive = true;
-    onStatus("loading");
     loadHandTemplate().then(
       (t) => alive && setTemplate(t),
       (e) => {
@@ -256,10 +255,6 @@ function Contents({
   );
   const controller = useMemo(() => (rigs ? new HandsController(placed, rigs[0], rigs[1], keyboard) : null), [rigs, placed, keyboard]);
 
-  useEffect(() => {
-    if (controller) onStatus("ready");
-    else if (!showHands) onStatus("ready");
-  }, [controller, showHands, onStatus]);
 
   // ---- props -> scene
   useLayoutEffect(() => {
@@ -286,6 +281,9 @@ function Contents({
     invalidate();
   }, [keyboard, fingerZones, invalidate]);
 
+  // A new controller starts at its rest pose; its first target/modifier is applied without
+  // animation, so the first frame shows the hands where they will be (no glide on appearance).
+  const snappedFor = useRef<HandsController | null>(null);
   useEffect(() => {
     keyboard.setTarget(targetKeyId);
     controller?.setTarget(targetKeyId);
@@ -295,6 +293,10 @@ function Contents({
   useEffect(() => {
     keyboard.setModifier(modifierKeyId);
     controller?.setModifier(modifierKeyId);
+    if (controller && snappedFor.current !== controller) {
+      snappedFor.current = controller;
+      controller.snap();
+    }
     invalidate();
   }, [keyboard, controller, modifierKeyId, invalidate]);
 
@@ -314,6 +316,7 @@ function Contents({
   const controlsRef = useRef<OrbitControls | null>(null);
   const camGoal = useRef({ pos: new THREE.Vector3(), target: new THREE.Vector3() });
   const camCur = useRef({ pos: new THREE.Vector3(), target: new THREE.Vector3(), aspect: 0, moving: false });
+  const fittedFor = useRef<HandsController | null | undefined>(undefined);
   const extra = outsideMainBlock(placed, [targetKeyId, modifierKeyId]);
   useLayoutEffect(() => {
     if (size.width < 2 || size.height < 2) return;
@@ -322,8 +325,11 @@ function Contents({
     const cur = camCur.current;
     fitCamera(focusPoints(placed, controller, extra ? extra.split(",") : []), ELEVATION[cameraMode], aspect, goal.pos, goal.target);
     const controls = controlsRef.current;
-    if (cur.aspect === 0 || cur.aspect !== aspect || controls) {
-      // first fit, resize, or the user is orbiting: no glide
+    const firstWithController = !!controller && fittedFor.current === null;
+    fittedFor.current = controller;
+    if (cur.aspect === 0 || cur.aspect !== aspect || controls || firstWithController) {
+      // first fit, the hands arriving (fit changes from the default wrist spots to the real rest pose),
+      // resize, or the user is orbiting: no glide
       cur.pos.copy(goal.pos);
       cur.target.copy(goal.target);
       cur.moving = false;
@@ -383,8 +389,16 @@ function Contents({
     };
   }, [gl, invalidate]);
 
+  // Tell the panel when the first complete frame is on the canvas: hands at rest (or no hands needed)
+  // and the camera fitted. Effects have run by the time this frame is requested, so reporting from
+  // inside the frame loop means the reveal can never show an unposed or unfitted scene.
+  const reported = useRef(false);
   const idle = useRef(true);
   useFrame((state, delta) => {
+    if (!reported.current && camCur.current.aspect !== 0 && (controller != null || !showHands) && (snappedFor.current === controller || !controller)) {
+      reported.current = true;
+      onStatus("ready");
+    }
     // after an idle period the clock delta is the whole pause; start with one nominal frame instead
     const dt = idle.current ? 1 / 60 : delta;
     let moving = false;
@@ -533,6 +547,11 @@ const centre: React.CSSProperties = {
 export default function HandsScene(props: HandsSceneProps) {
   const [supported] = useState(() => (typeof document === "undefined" ? true : webglAvailable()));
   const [status, setStatus] = useState<Status>("loading");
+  const { onStatus } = props;
+  const reportStatus = supported ? status : "nowebgl";
+  useEffect(() => {
+    onStatus?.(reportStatus);
+  }, [onStatus, reportStatus]);
 
   if (!supported) {
     return (
@@ -557,8 +576,8 @@ export default function HandsScene(props: HandsSceneProps) {
       >
         <Contents {...props} onStatus={setStatus} />
       </Canvas>
-      {status === "loading" && <div style={note}>loading hands…</div>}
-      {status === "error" && <div style={note}>hand model unavailable</div>}
+      {!onStatus && status === "loading" && <div style={note}>loading hands…</div>}
+      {!onStatus && status === "error" && <div style={note}>hand model unavailable</div>}
     </div>
   );
 }

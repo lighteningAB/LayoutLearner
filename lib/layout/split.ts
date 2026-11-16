@@ -27,6 +27,10 @@ export interface SplitAnalysis {
 }
 
 const COLUMN_TOLERANCE = 0.3;
+/** How much farther than the nearest thumb key (key units) the resting thumb key may be. */
+const THUMB_REACH = 1.3;
+/** Space, Enter, Backspace or a character: a key the thumb actually types with. */
+const isThumbTypingKey = (k: LayoutKey) => k.base !== "" || /^(space|enter|return|bksp|backspace|bspc)$/i.test(k.label.trim());
 const isCharKey = (k: LayoutKey) => k.base !== "" && k.base !== " ";
 const isLetterKey = (k: LayoutKey) => /^\p{L}$/u.test(k.base);
 const isDigitKey = (k: LayoutKey) => /^\d$/.test(k.base);
@@ -211,7 +215,17 @@ function analyseHalf(keys: LayoutKey[], hand: Hand): Map<LayoutKey, SplitKeyInfo
     const anchor = indexHome ?? keyAt(regular[Math.min(1, regular.length - 1)], homeRow) ?? regular[0].keys[0];
     const target = { x: px(anchor) + inward * 0.75, y: py(anchor) + 2.3 };
     const d = (k: LayoutKey) => Math.hypot(px(k) - target.x, py(k) - target.y);
-    const rest = thumbs.reduce((b, k) => (d(k) < d(b) - 1e-6 ? k : b));
+    const nearest = thumbs.reduce((b, k) => (d(k) < d(b) - 1e-6 ? k : b));
+    // Typists rest the thumb on the main thumb key, not on a layer key that happens to be closest:
+    // among the keys within easy reach of the nearest one prefer a bigger key, then one that
+    // types something (space, enter, backspace or a character), then simply the nearest.
+    const reach = thumbs.filter((k) => d(k) <= d(nearest) + THUMB_REACH);
+    const pick = (pool: LayoutKey[]) => pool.reduce((b, k) => (d(k) < d(b) - 1e-6 ? k : b));
+    const big = reach.filter((k) => Math.max(k.w, k.h) > 1.2);
+    const typing = reach.filter(isThumbTypingKey);
+    // Space and Enter outrank Backspace, which is a reach key rather than a resting one.
+    const main = typing.filter((k) => !/^(bksp|backspace|bspc)$/i.test(k.label.trim()));
+    const rest = big.length > 0 ? pick(big) : main.length > 0 ? pick(main) : typing.length > 0 ? pick(typing) : nearest;
     info.get(rest)!.isHome = true;
   }
 

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { ParsedLayout } from "../types";
 import { useSettings } from "../settings";
+import { applyFingerOverrides, type FingerOverrides } from "./overrides";
 import { parseLayout } from "./parse";
 import { DEFAULT_PRESET_ID, getPreset } from "./presets";
 
@@ -30,7 +31,7 @@ function fallback(error?: string): ActiveLayout {
 /** Resolve `settings.layoutId` (preset or custom) into a parsed layout. Never throws. */
 export function resolveLayout(
   layoutId: string,
-  customLayouts: { id: string; name: string; source: string }[],
+  customLayouts: { id: string; name: string; source: string; fingers?: FingerOverrides }[],
 ): ActiveLayout {
   const preset = getPreset(layoutId);
   if (preset) {
@@ -39,7 +40,7 @@ export function resolveLayout(
   const custom = customLayouts.find((c) => c.id === layoutId);
   if (custom) {
     try {
-      return { id: custom.id, name: custom.name, layout: parseLayout(custom.source, custom.name), isCustom: true };
+      return { id: custom.id, name: custom.name, layout: applyFingerOverrides(parseLayout(custom.source, custom.name), custom.fingers), isCustom: true };
     } catch (e) {
       return fallback(e instanceof Error ? e.message : String(e));
     }

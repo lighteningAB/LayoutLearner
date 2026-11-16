@@ -6,6 +6,7 @@ import { useMemo, type CSSProperties, type ReactNode } from "react";
 import type { FingerId, LayoutKey, ParsedLayout } from "@/lib/types";
 import { fingerIndex } from "@/lib/types";
 import { keyForChar } from "@/lib/layout/keys";
+import { keyAction } from "@/lib/layout/parse";
 import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
 import { useSettings } from "@/lib/settings";
 import { Kbd, cx } from "@/components/ui";
@@ -24,8 +25,45 @@ export interface KeyGuide {
   fingerIndex: number;
   /** "left index", "right pinky", "thumb"… ("" when unknown). */
   fingerName: string;
-  /** What to print on the hint keycap: "F", ";", "space". */
+  /** What to print on the hint keycap: "F", ";", "space", "Backspace". */
   keyLabel: string;
+  /** Set when the target is an action key (Backspace) rather than a character. */
+  action?: GuideAction;
+  /** Action guides: how many presses until the typo is gone. */
+  actionCount?: number;
+}
+
+/** Keys the guide can point at besides characters. */
+export type GuideAction = "backspace";
+
+/** The layout's Backspace key; one that has a finger wins (a layout may list several). */
+export function findActionKey(layout: ParsedLayout, action: GuideAction): LayoutKey | null {
+  const keys = layout.keys.filter((k) => keyAction(k) === action);
+  return keys.find((k) => k.finger) ?? keys[0] ?? null;
+}
+
+/** Guide for pressing an action key (same shape as `guideForChar`); null when the layout has no such key. */
+export function guideForAction(layout: ParsedLayout, action: GuideAction, count = 1): KeyGuide | null {
+  const key = findActionKey(layout, action);
+  if (!key) return null;
+  const finger = key.finger ?? null;
+  return {
+    char: "",
+    key,
+    shiftKey: null,
+    keyIds: [key.id],
+    finger,
+    fingerIndex: finger ? fingerIndex(finger) : -1,
+    fingerName: fingerName(finger),
+    keyLabel: "Backspace",
+    action,
+    actionCount: count,
+  };
+}
+
+/** What to point at: the action key when one is wanted and exists, else the key for `char`. */
+export function guideForTarget(layout: ParsedLayout, char: string | null | undefined, action?: GuideAction | null, count = 1): KeyGuide | null {
+  return (action ? guideForAction(layout, action, count) : null) ?? guideForChar(layout, char);
 }
 
 export function fingerName(f: FingerId | null | undefined): string {
@@ -58,6 +96,10 @@ export interface KeyboardGuideProps {
   layout: ParsedLayout;
   /** Character to type next (`useTypingTest().nextChar`); null = nothing to highlight. */
   nextChar: string | null;
+  /** Point at an action key instead of `nextChar` (Backspace while the current word has a typo). */
+  nextAction?: GuideAction | null;
+  /** With `nextAction`: how many presses are needed. */
+  actionCount?: number;
   /** `useKeyboardInput().pressedKeyIds` */
   pressedKeyIds?: string[];
   /** `useKeyboardInput().errorKeyIds` */
@@ -79,6 +121,12 @@ export interface KeyboardGuideProps {
    */
   handsSlot?: ReactNode;
   children?: ReactNode;
+  /**
+   * Size of a box to keep free for the 2D board when no hands slot is shown (pass the 3D hands box
+   * size, `handsBoxStyle(false)`): switching between hands and keys then does not move the text.
+   * The board is centred in it and may be taller than it.
+   */
+  reserveBox?: CSSProperties;
   /** Largest key unit in px (default 46). */
   maxUnit?: number;
   className?: string;
@@ -89,6 +137,8 @@ const NONE: string[] = [];
 export function KeyboardGuide({
   layout,
   nextChar,
+  nextAction = null,
+  actionCount = 1,
   pressedKeyIds = NONE,
   errorKeyIds = NONE,
   dimKeyIds,
@@ -99,12 +149,13 @@ export function KeyboardGuide({
   handsSlot,
   children,
   maxUnit = 46,
+  reserveBox,
   className,
 }: KeyboardGuideProps) {
   const [settings] = useSettings();
   const colors = fingerColors ?? settings.fingerColors;
   const show = showKeyboard ?? settings.showKeyboard;
-  const guide = useMemo(() => guideForChar(layout, nextChar), [layout, nextChar]);
+  const guide = useMemo(() => guideForTarget(layout, nextChar, nextAction, actionCount), [layout, nextChar, nextAction, actionCount]);
   const highlight = guide?.keyIds ?? NONE;
   const slot = handsSlot ?? children;
 
@@ -118,6 +169,7 @@ export function KeyboardGuide({
       style={{ maxWidth: Math.max(640, Math.ceil(layout.width * maxUnit)) } as CSSProperties}
       data-testid="keyboard-guide"
       data-next-char={nextChar ?? ""}
+      data-next-action={guide?.action ?? ""}
       data-next-key={guide?.key?.id ?? ""}
       data-next-finger={guide?.finger ? `${guide.finger.hand}-${guide.finger.finger}` : ""}
       data-shift-key={guide?.shiftKey?.id ?? ""}
@@ -135,6 +187,11 @@ export function KeyboardGuide({
                   ·
                 </span>
                 <Kbd className={guide.keyLabel.length > 1 ? "px-2" : undefined}>{guide.keyLabel}</Kbd>
+                {guide.action && (
+                  <span className="truncate" data-testid="key-hint-action">
+                    <span className="text-sub/60">— </span>fix the typo{guide.actionCount && guide.actionCount > 1 ? ` (×${guide.actionCount})` : ""}
+                  </span>
+                )}
                 {guide.shiftKey && (
                   <span className="hidden items-center gap-1.5 truncate sm:inline-flex">
                     <span className="text-sub/60">+</span>
@@ -162,15 +219,20 @@ export function KeyboardGuide({
       )}
 
       {show && (
-        <Keyboard2D
-          layout={layout}
-          highlightKeyIds={highlight}
-          pressedKeyIds={pressedKeyIds}
-          errorKeyIds={errorKeyIds}
-          dimUnused={dimKeyIds}
-          fingerColors={colors}
-          maxUnit={maxUnit}
-        />
+        <div className={reserveBox && slot == null ? "mb-3 grid w-full items-center" : undefined} data-testid={reserveBox && slot == null ? "keys-reserve" : undefined}>
+          {reserveBox && slot == null && <div aria-hidden className="pointer-events-none invisible" style={{ ...reserveBox, gridArea: "1 / 1" }} />}
+          <div style={reserveBox && slot == null ? { gridArea: "1 / 1" } : undefined}>
+            <Keyboard2D
+              layout={layout}
+              highlightKeyIds={highlight}
+              pressedKeyIds={pressedKeyIds}
+              errorKeyIds={errorKeyIds}
+              dimUnused={dimKeyIds}
+              fingerColors={colors}
+              maxUnit={maxUnit}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -6,13 +6,13 @@ import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
 import { PageHeader } from "@/components/shell";
 import { fingerName, guideForChar } from "@/components/typing/KeyboardGuide";
 import "@/components/typing/typing.css";
-import { Badge, Button, Card, Icon, ProgressBar, Skeleton, Toggle, cx } from "@/components/ui";
+import { Badge, Button, Card, Icon, ProgressBar, Skeleton, cx } from "@/components/ui";
 import { PRESETS } from "@/lib/layout/presets";
 import { parseLayout } from "@/lib/layout/parse";
 import { buildCurriculum, validateCurriculum } from "@/lib/lessons/curriculum";
 import { useSettings } from "@/lib/settings";
 import type { ParsedLayout } from "@/lib/types";
-import { KeyChip, KeyChips, LockIcon, Stars } from "./bits";
+import { KeyChip, KeyChips, Stars } from "./bits";
 import { dimKeyIdsFor, lessonHref, useCourse, type CourseLesson } from "./course";
 import { LearnCommands } from "./LearnCommands";
 import { useHydrated } from "./useHydrated";
@@ -36,7 +36,6 @@ function LessonTile({
   onSelect: (item: CourseLesson) => void;
 }) {
   const { lesson, state, entry } = item;
-  const locked = state === "locked";
   return (
     <button
       type="button"
@@ -44,15 +43,14 @@ function LessonTile({
       data-lesson-id={lesson.id}
       data-state={state}
       data-stars={item.stars}
-      data-unlocked={item.unlocked ? "true" : "false"}
       data-selected={selected ? "true" : "false"}
       aria-pressed={selected}
       aria-label={`Lesson ${item.number}: ${lesson.title} (${state}${item.passed ? `, ${item.stars} of 3 stars` : ""})`}
       onClick={() => onSelect(item)}
       className={cx(
         "learn-tile relative flex min-h-[112px] min-w-0 flex-col rounded-ui-lg border p-3 text-left",
-        locked ? "border-dashed border-border bg-transparent" : "bg-bg-alt",
-        !locked && (state === "current" ? "border-main/70" : "border-transparent"),
+        "bg-bg-alt",
+        state === "current" ? "border-main/70" : "border-transparent",
         selected && "outline-2 outline-offset-2 outline-main",
       )}
     >
@@ -68,16 +66,15 @@ function LessonTile({
             next
           </span>
         )}
-        {locked && <LockIcon size={13} className="text-sub/70" />}
       </span>
 
-      <span className={cx("mt-1.5 truncate text-sm font-medium", locked ? "text-sub" : "text-text")}>{item.shortTitle}</span>
+      <span className={"mt-1.5 truncate text-sm font-medium text-text"}>{item.shortTitle}</span>
 
       <span className="mt-2 flex h-[22px] items-center">
         {lesson.newChars.length > 0 ? (
-          <KeyChips chars={lesson.newChars} layout={layout} fingerColors={fingerColors} max={6} muted={locked} />
+          <KeyChips chars={lesson.newChars} layout={layout} fingerColors={fingerColors} max={6} />
         ) : (
-          <span className={cx("inline-flex items-center gap-1 text-xs text-sub", locked && "opacity-60")}>
+          <span className={"inline-flex items-center gap-1 text-xs text-sub"}>
             <Icon name="restart" size={12} />
             review
           </span>
@@ -85,7 +82,7 @@ function LessonTile({
       </span>
 
       <span className="mt-auto flex items-end justify-between gap-2 pt-2.5">
-        <Stars value={item.stars} size={13} className={locked ? "opacity-40" : undefined} />
+        <Stars value={item.stars} size={13} />
         {entry && entry.attempts > 0 && (
           <span className="truncate font-mono text-[11px] text-sub tabular-nums" title="Best speed and accuracy">
             {Math.round(entry.bestWpm)}
@@ -102,13 +99,11 @@ function LessonTile({
 
 function LessonPreview({
   item,
-  previous,
   layout,
   fingerColors,
   onStart,
 }: {
   item: CourseLesson;
-  previous: CourseLesson | null;
   layout: ParsedLayout;
   fingerColors: boolean;
   onStart: () => void;
@@ -140,12 +135,6 @@ function LessonPreview({
           lesson {item.number} · {lesson.kind === "new" ? "new keys" : "review"}
         </span>
         {item.state === "completed" && <Stars value={item.stars} size={15} />}
-        {item.state === "locked" && (
-          <Badge>
-            <LockIcon size={11} />
-            locked
-          </Badge>
-        )}
         {item.state === "current" && <Badge tone="main">next up</Badge>}
       </div>
       <h2 className="mt-2 text-lg leading-snug font-semibold tracking-tight text-text">{lesson.title}</h2>
@@ -209,21 +198,9 @@ function LessonPreview({
       </dl>
 
       <div className="mt-5">
-        {item.unlocked ? (
-          <Button variant="primary" fullWidth iconRight="arrow-right" onClick={onStart} data-testid="lesson-start" data-lesson-id={lesson.id}>
-            {item.passed ? "Practise again" : entry && entry.attempts > 0 ? "Try again" : "Start lesson"}
-          </Button>
-        ) : (
-          <>
-            <Button variant="subtle" fullWidth disabled data-testid="lesson-start" data-lesson-id={lesson.id}>
-              <LockIcon size={15} />
-              Locked
-            </Button>
-            <p className="mt-2 text-center text-xs text-sub">
-              {previous ? `Pass lesson ${previous.number} (${previous.shortTitle}) to unlock it.` : "Pass the previous lesson to unlock it."}
-            </p>
-          </>
-        )}
+        <Button variant="primary" fullWidth iconRight="arrow-right" onClick={onStart} data-testid="lesson-start" data-lesson-id={lesson.id}>
+          {item.passed ? "Practise again" : entry && entry.attempts > 0 ? "Try again" : "Start lesson"}
+        </Button>
       </div>
     </Card>
   );
@@ -276,7 +253,7 @@ export function CourseMap() {
   const router = useRouter();
   const hydrated = useHydrated();
   const [settings] = useSettings();
-  const { active, course, unlockAll, setUnlockAll } = useCourse();
+  const { active, course } = useCourse();
   const layout = active.layout;
   const fingerColors = settings.fingerColors;
   useDevCurriculumCheck();
@@ -286,12 +263,11 @@ export function CourseMap() {
   const layoutId = active.id;
   useEffect(() => setSelectedId(null), [layoutId]);
   const selected = (selectedId ? course.byId.get(selectedId) : null) ?? course.next ?? course.lessons[course.lessons.length - 1] ?? null;
-  const previous = selected && selected.number > 1 ? course.lessons[selected.number - 2] : null;
 
   const previewRef = useRef<HTMLDivElement>(null);
   const start = useCallback(
     (item: CourseLesson | null) => {
-      if (item?.unlocked) router.push(lessonHref(item.lesson.id));
+      if (item) router.push(lessonHref(item.lesson.id));
     },
     [router],
   );
@@ -335,7 +311,7 @@ export function CourseMap() {
       <PageHeader
         eyebrow={hydrated ? active.name : " "}
         title="Learn"
-        description="A few keys at a time, from the home row out. Pass a lesson to unlock the next one."
+        description="A few keys at a time, from the home row out. Start anywhere; the highlighted lesson is the suggested next step."
         actions={
           hydrated && course.total > 0 ? (
             next ? (
@@ -408,13 +384,6 @@ export function CourseMap() {
               </div>
               <ProgressBar className="mt-2" size="md" value={course.completed} max={course.total} aria-label="Course progress" />
             </div>
-            <Toggle
-              size="sm"
-              checked={unlockAll}
-              onChange={setUnlockAll}
-              data-testid="unlock-all"
-              label={<span className="text-[13px] text-sub">unlock all lessons</span>}
-            />
           </Card>
 
           <div className="mt-8 grid items-start gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -454,7 +423,7 @@ export function CourseMap() {
             <div ref={previewRef} className="order-first min-w-0 scroll-mt-4 lg:sticky lg:top-6 lg:order-none">
               {selected && (
                 <>
-                  <LessonPreview item={selected} previous={previous} layout={layout} fingerColors={fingerColors} onStart={() => start(selected)} />
+                  <LessonPreview item={selected} layout={layout} fingerColors={fingerColors} onStart={() => start(selected)} />
                   <p className="mt-3 hidden items-center justify-center gap-1.5 text-xs text-sub lg:flex">
                     <kbd className="inline-flex h-[18px] items-center rounded-[5px] border border-b-2 border-key-border bg-key-bg px-1 font-mono text-[10px] font-medium text-key-text">
                       enter

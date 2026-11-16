@@ -124,6 +124,11 @@ export default function PrivacyPage() {
               it.
             </li>
             <li>
+              It does not erase the copies kept in your browsers. If you sign in to the same account again on a device
+              that still has its data, that device uploads its copy and the account holds it again. To remove
+              everything, also use Clear all data on each device.
+            </li>
+            <li>
               {COUNTER_RETENTION}
             </li>
             <li>

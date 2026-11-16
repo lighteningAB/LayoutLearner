@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { GuideViewSwitch, HandsPanel, useGuidePress, useGuideView } from "@/components/typing/HandsPanel";
+import { EmulationHint, useEmulationHint } from "@/components/typing/EmulationHint";
 import { KeyboardGuide, guideForChar, type KeyGuide } from "@/components/typing/KeyboardGuide";
 import { WordsDisplay } from "@/components/typing/WordsDisplay";
 import "@/components/typing/typing.css";
@@ -17,7 +18,7 @@ import type { TestConfig, TestInput, TestResult } from "@/lib/typing/engine";
 import { playErrorSound } from "@/lib/typing/sound";
 import { useKeyboardInput, type KeyboardAction, type KeyboardActionEvent } from "@/lib/typing/useKeyboardInput";
 import { useTypingTest } from "@/lib/typing/useTypingTest";
-import { KeyChip, LockIcon, charLabel } from "./bits";
+import { KeyChip, charLabel } from "./bits";
 import { STAGE_NAME, aggregateResults, dimKeyIdsFor, lessonHref, useCourse, type Course, type CourseLesson } from "./course";
 import { LearnCommands } from "./LearnCommands";
 import { LessonSummary, type LessonOutcome } from "./LessonSummary";
@@ -76,7 +77,7 @@ function EmulationToggle({ layoutName }: { layoutName: string }) {
       title={
         on
           ? `Your keys are remapped to ${layoutName} by position. Turn this off if your system is already set to ${layoutName}.`
-          : `Trusting the characters your system sends. Turn emulation on to practise ${layoutName} on a QWERTY system.`
+          : `Using the characters your system sends. If your OS is still on QWERTY, turn emulation on to practise ${layoutName} without changing system settings.`
       }
       onClick={(e) => {
         update({ emulateLayout: !on });
@@ -305,6 +306,8 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
   // ── input ──
   const introGuide = kind === "intro" ? (introKeys[Math.min(intro.index, introKeys.length - 1)] ?? null) : null;
   const nextChar = kind === "intro" ? (intro.done ? null : (introGuide?.char ?? null)) : kind === "drill" && !drillDone ? test.nextChar : null;
+  // Typo in the current word: point at Backspace (drills only, never in the intro).
+  const nextAction = kind === "drill" && !drillDone && test.correction.needed ? ("backspace" as const) : null;
   const live = useRef({ kind, drillDone, expected: nextChar });
   live.current = { kind, drillDone, expected: nextChar };
 
@@ -329,6 +332,7 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
       }
       if (s.kind !== "drill" || s.drillDone) return; // between drills only Enter continues
       if (input.type === "char") notePress(input.keyId, input.char === s.expected);
+      else if (input.keyId) notePress(input.keyId, true); // Backspace is never a mistake
       handleInput(input);
     },
     [notePress, handleInput, needed, introKeys.length, goStep],
@@ -361,9 +365,11 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
     [kind, drillDone, requestLeave, goStep, nextStep],
   );
 
+  const emulationHint = useEmulationHint({ layout, emulate: settings.emulateLayout });
   const kb = useKeyboardInput({
     layout,
     emulate: settings.emulateLayout,
+    onKeystroke: emulationHint.note,
     enabled: kind !== "summary",
     expectedChar: nextChar,
     onInput,
@@ -408,11 +414,14 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
         className={kind === "intro" ? "mt-6" : "mt-5 sm:mt-6"}
         layout={layout}
         nextChar={nextChar}
+        nextAction={nextAction}
+        actionCount={test.correction.count}
         pressedKeyIds={kb.pressedKeyIds}
         errorKeyIds={kb.errorKeyIds}
         dimKeyIds={dimKeyIds}
         showKeyboard={guideView.showKeyboard}
         maxUnit={guideView.keyboardUnit}
+        reserveBox={guideView.reserveBox}
         hintEnd={
           <>
             <GuideViewSwitch className="tt-fade" />
@@ -424,6 +433,7 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
             <HandsPanel
               layout={layout}
               nextChar={nextChar}
+              nextAction={nextAction}
               press={press}
               compact={guideView.showKeyboard}
               camera={kind === "intro" ? "angled" : undefined}
@@ -446,6 +456,7 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
       data-drill-state={kind === "drill" ? (drillDone ? "done" : status) : ""}
     >
       <LearnCommands />
+      <EmulationHint hint={emulationHint} layoutName={active.name} />
       <header className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -638,33 +649,6 @@ export function LessonPlayer({ lessonId }: { lessonId: string }) {
       </Notice>
     );
   }
-  if (!item.unlocked) {
-    const prev = course.lessons[item.number - 2];
-    return (
-      <Notice
-        title="This lesson is still locked"
-        actions={
-          <>
-            {course.next && (
-              <Button variant="primary" href={lessonHref(course.next.lesson.id)} iconRight="arrow-right">
-                Go to lesson {course.next.number}
-              </Button>
-            )}
-            <Button href="/learn" icon="graduation">
-              Back to course
-            </Button>
-          </>
-        }
-      >
-        <span className="inline-flex items-center gap-1.5 align-middle text-text">
-          <LockIcon /> Lesson {item.number}: {item.lesson.title}
-        </span>
-        <br />
-        {prev ? `Pass lesson ${prev.number} (${prev.lesson.title}) first` : "Pass the previous lesson first"}, or turn on “unlock all lessons” on the course page.
-      </Notice>
-    );
-  }
-
   return <LessonSession key={`${active.id}:${lessonId}:${run}`} item={item} course={course} active={active} onRetry={() => setRun((r) => r + 1)} />;
 }
 

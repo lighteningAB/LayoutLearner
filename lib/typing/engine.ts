@@ -23,7 +23,7 @@ export type TestConfig = ({ mode: "words" } | { mode: "time"; seconds: number })
 
 export type TestInput =
   | { type: "char"; char: string; /** physical key (LayoutKey.id) that produced it, if known */ keyId?: string | null }
-  | { type: "backspace"; /** delete the whole word (Ctrl/Alt+Backspace) */ word?: boolean };
+  | { type: "backspace"; /** delete the whole word (Ctrl/Alt+Backspace) */ word?: boolean; /** physical key (LayoutKey.id) that produced it, if known */ keyId?: string | null };
 
 export interface CharStat {
   /** Times this character was expected and typed correctly. */
@@ -437,6 +437,21 @@ export function getWords(state: TestState): WordView[] {
 export function getCaret(state: TestState): Caret {
   const wordIndex = Math.max(0, Math.min(state.wordIndex, state.words.length - 1));
   return { wordIndex, letterIndex: (state.typed[wordIndex] ?? "").length };
+}
+
+/**
+ * Whether the part of the current word typed so far contains a mistake (a wrong letter, or letters
+ * past the word's end), and how many Backspaces bring it back to a correct prefix. Only the word
+ * being typed counts: a wrongly typed word that was already committed with Space is not looked at.
+ */
+export function getCorrection(state: TestState): { needed: boolean; count: number } {
+  if (state.status !== "running" || state.wordIndex >= state.words.length) return { needed: false, count: 0 };
+  const word = state.words[state.wordIndex];
+  const t = state.typed[state.wordIndex] ?? "";
+  let ok = 0;
+  while (ok < t.length && ok < word.length && t[ok] === word[ok]) ok++;
+  const count = t.length - ok;
+  return { needed: count > 0, count };
 }
 
 /**

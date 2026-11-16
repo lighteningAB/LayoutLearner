@@ -12,6 +12,7 @@ import { useKeyboardInput, type KeyboardAction, type KeyboardActionEvent } from 
 import { playErrorSound } from "@/lib/typing/sound";
 import { createWordStream, generateText, type GenerateConfig, type WordListName, type WordStream } from "@/lib/typing/words";
 import { GuideViewSwitch, HandsPanel, useGuidePress, useGuideView } from "./HandsPanel";
+import { EmulationHint, useEmulationHint } from "./EmulationHint";
 import { KeyboardGuide } from "./KeyboardGuide";
 import { ResultsView } from "./ResultsView";
 import { WordsDisplay } from "./WordsDisplay";
@@ -204,14 +205,19 @@ export function TypingTest() {
   const onInput = useCallback(
     (input: TestInput) => {
       if (input.type === "char") notePress(input.keyId, input.char === expectedRef.current);
+      else if (input.keyId) notePress(input.keyId, true); // Backspace is never a mistake
       handleInput(input);
     },
     [handleInput, notePress],
   );
 
+  // The current word has a typo: point at Backspace until the typed part is a correct prefix again.
+  const nextAction = plan && status === "running" && test.correction.needed ? ("backspace" as const) : null;
+  const emulationHint = useEmulationHint({ layout, emulate: settings.emulateLayout });
   const kb = useKeyboardInput({
     layout,
     emulate: settings.emulateLayout,
+    onKeystroke: emulationHint.note,
     enabled: plan != null && status !== "finished",
     expectedChar: test.nextChar,
     onInput,
@@ -339,6 +345,9 @@ export function TypingTest() {
     : `${Math.min(test.state.wordIndex, total)}/${total}`;
   const showCaps = kb.capsLock && !settings.emulateLayout && status !== "finished";
 
+  // Spacing around the guide: the same with the hands and with their reserved box, so switching views does not move the text.
+  const tight = guideView.showHands || !!guideView.reserveBox;
+
   const testLabel = practice ? "weak keys" : `${mode} ${amount}`;
   const testDetail = practice
     ? practice.chars.join(" ")
@@ -446,7 +455,7 @@ export function TypingTest() {
         <span className="block w-60 text-left leading-snug font-normal whitespace-normal">
           {settings.emulateLayout
             ? `Your keys are remapped to ${active.name} by position, so you can practise without changing the system layout. Turn this off if your OS is already set to ${active.name}.`
-            : `Trusting the characters your system sends. Turn emulation on to practise ${active.name} while the OS stays on QWERTY.`}
+            : `Using the characters your system sends. If your OS is still on QWERTY, turn emulation on to practise ${active.name} without changing system settings.`}
         </span>
       }
     >
@@ -478,6 +487,7 @@ export function TypingTest() {
   return (
     <div className="flex min-h-[calc(100dvh-15.5rem)] flex-col" data-testid="typing-test" data-status={status} data-layout={active.id}>
       <h1 className="sr-only">Typing test</h1>
+      <EmulationHint hint={emulationHint} layoutName={active.name} />
       <span className="sr-only" data-testid="test-status" aria-live="polite">
         {status}
       </span>
@@ -498,7 +508,7 @@ export function TypingTest() {
       ) : (
         <>
           {bar}
-          <div className={cx("flex flex-1 flex-col justify-center pb-2", guideView.showHands ? "pt-6 sm:pt-7" : "pt-8 sm:pt-10")}>
+          <div className={cx("flex flex-1 flex-col justify-center pb-2", tight ? "pt-6 sm:pt-7" : "pt-8 sm:pt-10")}>
             <div className="mb-2 flex h-9 items-end justify-between gap-4">
               <div className="flex items-baseline gap-5 font-mono tabular-nums">
                 <span className="text-2xl leading-none font-medium text-main" data-testid="counter" aria-label={isTime ? "Seconds left" : "Words done"}>
@@ -549,13 +559,16 @@ export function TypingTest() {
             </div>
 
             <KeyboardGuide
-              className={guideView.showHands ? "mt-4 sm:mt-5" : "mt-6 sm:mt-8"}
+              className={tight ? "mt-4 sm:mt-5" : "mt-6 sm:mt-8"}
               layout={layout}
               nextChar={plan ? test.nextChar : null}
+              nextAction={nextAction}
+              actionCount={test.correction.count}
               pressedKeyIds={kb.pressedKeyIds}
               errorKeyIds={kb.errorKeyIds}
               showKeyboard={guideView.showKeyboard}
               maxUnit={guideView.keyboardUnit}
+              reserveBox={guideView.reserveBox}
               hintEnd={
                 <>
                   <GuideViewSwitch className="tt-fade" />
@@ -564,7 +577,7 @@ export function TypingTest() {
               }
               handsSlot={
                 guideView.showHands ? (
-                  <HandsPanel layout={layout} nextChar={plan ? test.nextChar : null} press={press} compact={guideView.showKeyboard} />
+                  <HandsPanel layout={layout} nextChar={plan ? test.nextChar : null} nextAction={nextAction} press={press} compact={guideView.showKeyboard} />
                 ) : null
               }
             />

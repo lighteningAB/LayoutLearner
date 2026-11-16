@@ -6,12 +6,15 @@ import {
   isThemeId,
   type ThemeId,
 } from "./themes";
+import { sanitizeFingerOverrides, type FingerOverrides } from "../layout/overrides";
 
 export interface CustomLayout {
   id: string;
   name: string;
   /** Raw KLE JSON source as entered by the user. */
   source: string;
+  /** Per-key finger corrections; kept out of the KLE source. */
+  fingers?: FingerOverrides;
 }
 
 export type TestMode = "time" | "words";
@@ -21,7 +24,7 @@ export interface Settings {
   /** Preset id or custom layout id. The layout module owns the id space. */
   layoutId: string;
   customLayouts: CustomLayout[];
-  /** Remap physical keys so the chosen layout can be practised without changing the OS layout. */
+  /** Remap physical keys so the chosen layout can be practised without changing the OS layout. Off by default: the app trusts the characters the OS produces. */
   emulateLayout: boolean;
   showKeyboard: boolean;
   showHands: boolean;
@@ -42,7 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: DEFAULT_THEME,
   layoutId: "qwerty",
   customLayouts: [],
-  emulateLayout: true,
+  emulateLayout: false,
   showKeyboard: true,
   showHands: true,
   fingerColors: true,
@@ -79,13 +82,19 @@ function sanitize(raw: unknown): Settings {
     if (v === undefined || v === null) continue;
     if (key === "customLayouts") {
       if (Array.isArray(v)) {
-        out.customLayouts = v.filter(
-          (l): l is CustomLayout =>
-            !!l &&
-            typeof l.id === "string" &&
-            typeof l.name === "string" &&
-            typeof l.source === "string",
-        );
+        out.customLayouts = v
+          .filter(
+            (l): l is CustomLayout =>
+              !!l &&
+              typeof l.id === "string" &&
+              typeof l.name === "string" &&
+              typeof l.source === "string",
+          )
+          .map((l) => {
+            const { fingers: rawFingers, ...rest } = l;
+            const fingers = sanitizeFingerOverrides(rawFingers);
+            return fingers ? { ...rest, fingers } : rest;
+          });
       }
     } else if (key === "theme") {
       if (isThemeId(v)) out.theme = v;

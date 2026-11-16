@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { ParsedLayout } from "@/lib/types";
 import { analyzeLayout, diffFromQwerty, type LayoutAnalysis, type QwertyDiff } from "@/lib/layout/analysis";
 import { checkSource } from "@/lib/layout/custom";
+import type { FingerOverrides } from "@/lib/layout/overrides";
 import { PRESETS, type LayoutFamily } from "@/lib/layout/presets";
 
 export type Family = LayoutFamily | "custom";
@@ -22,6 +23,8 @@ export interface LayoutEntry {
   description: string;
   family: Family;
   source: string;
+  /** Finger overrides of a custom layout (already applied to `layout`). */
+  fingers?: FingerOverrides;
   isCustom: boolean;
   /** null when the stored source no longer parses. */
   layout: ParsedLayout | null;
@@ -43,10 +46,11 @@ interface Computed {
 const cache = new Map<string, Computed>();
 const CACHE_LIMIT = 64;
 
-function compute(source: string): Computed {
-  const hit = cache.get(source);
+function compute(source: string, fingers?: FingerOverrides): Computed {
+  const cacheId = fingers ? `${source}\u0000${JSON.stringify(fingers)}` : source;
+  const hit = cache.get(cacheId);
   if (hit) return hit;
-  const check = checkSource(source);
+  const check = checkSource(source, undefined, fingers);
   const out: Computed = check.layout
     ? {
         layout: check.layout,
@@ -56,7 +60,7 @@ function compute(source: string): Computed {
       }
     : { layout: null, error: check.error?.message ?? "This layout could not be read.", warnings: [], analysis: null, diff: null };
   if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value as string);
-  cache.set(source, out);
+  cache.set(cacheId, out);
   return out;
 }
 
@@ -80,11 +84,13 @@ function getPresetEntries(): LayoutEntry[] {
 
 const customEntryCache = new Map<string, LayoutEntry>();
 
-function customEntry(c: { id: string; name: string; source: string }): LayoutEntry {
-  const cacheKey = `${c.id}\u0000${c.name}\u0000${c.source}`;
+type CustomInput = { id: string; name: string; source: string; fingers?: FingerOverrides };
+
+function customEntry(c: CustomInput): LayoutEntry {
+  const cacheKey = `${c.id}\u0000${c.name}\u0000${c.source}\u0000${c.fingers ? JSON.stringify(c.fingers) : ""}`;
   const hit = customEntryCache.get(cacheKey);
   if (hit) return hit;
-  const computed = named(compute(c.source), c.name);
+  const computed = named(compute(c.source, c.fingers), c.name);
   const entry: LayoutEntry = {
     id: c.id,
     name: c.name,
@@ -93,6 +99,7 @@ function customEntry(c: { id: string; name: string; source: string }): LayoutEnt
       : "This layout's data can no longer be read.",
     family: "custom",
     source: c.source,
+    fingers: c.fingers,
     isCustom: true,
     ...computed,
   };
@@ -101,13 +108,13 @@ function customEntry(c: { id: string; name: string; source: string }): LayoutEnt
   return entry;
 }
 
-export function buildCatalog(customLayouts: readonly { id: string; name: string; source: string }[]): LayoutEntry[] {
+export function buildCatalog(customLayouts: readonly CustomInput[]): LayoutEntry[] {
   const presets = getPresetEntries();
   const ids = new Set(presets.map((p) => p.id));
   return [...presets, ...customLayouts.filter((c) => !ids.has(c.id)).map(customEntry)];
 }
 
-export function useLayoutCatalog(customLayouts: readonly { id: string; name: string; source: string }[]): LayoutEntry[] {
+export function useLayoutCatalog(customLayouts: readonly CustomInput[]): LayoutEntry[] {
   return useMemo(() => buildCatalog(customLayouts), [customLayouts]);
 }
 

@@ -5,6 +5,7 @@
 // their local axes we derive anatomical axes (palm normal, per-digit flexion
 // axis) from the bind pose and express them in each joint's parent frame.
 
+import { setHandModelProgress } from "./progress";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -101,8 +102,17 @@ const cache = new Map<string, Promise<HandTemplate>>();
 export function loadHandTemplate(url: string = HAND_MODEL_URL): Promise<HandTemplate> {
   let p = cache.get(url);
   if (!p) {
-    p = new GLTFLoader().loadAsync(url).then((gltf) => buildTemplate(gltf.scene));
-    p.catch(() => cache.delete(url));
+    setHandModelProgress({ phase: "loading", loaded: 0, total: 0 });
+    p = new GLTFLoader()
+      .loadAsync(url, (e) => setHandModelProgress({ loaded: e.loaded, total: e.lengthComputable ? e.total : 0 }))
+      .then((gltf) => buildTemplate(gltf.scene));
+    p.then(
+      () => setHandModelProgress({ phase: "done" }),
+      () => {
+        cache.delete(url);
+        setHandModelProgress({ phase: "error" });
+      },
+    );
     cache.set(url, p);
   }
   return p;

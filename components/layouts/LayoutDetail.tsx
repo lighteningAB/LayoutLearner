@@ -19,6 +19,8 @@ export interface LayoutDetailProps {
   onPractice: (entry: LayoutEntry, href: string) => void;
   onEdit: (entry: LayoutEntry) => void;
   onDuplicate: (entry: LayoutEntry) => void;
+  /** Copy a preset into a custom layout and open its Fingers view. */
+  onCustomise?: (entry: LayoutEntry) => void;
   onDelete: (entry: LayoutEntry) => void;
 }
 
@@ -129,7 +131,7 @@ function FingerLegend() {
   );
 }
 
-export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdit, onDuplicate, onDelete }: LayoutDetailProps) {
+export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdit, onDuplicate, onCustomise, onDelete }: LayoutDetailProps) {
   const [view, setView] = useState<DetailView>("fingers");
   const { layout, analysis, diff } = entry;
 
@@ -169,9 +171,16 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
             </Button>
           </>
         ) : (
-          <Button size="sm" variant="ghost" icon="copy" data-testid="layout-duplicate" onClick={() => onDuplicate(entry)}>
-            Duplicate
-          </Button>
+          <>
+            {layout && onCustomise && (
+              <Button size="sm" variant="ghost" icon="hand" data-testid="layout-customise" onClick={() => onCustomise(entry)}>
+                Customise fingering
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" icon="copy" data-testid="layout-duplicate" onClick={() => onDuplicate(entry)}>
+              Duplicate
+            </Button>
+          </>
         )}
         {layout && !active && (
           <Button size="sm" variant="primary" data-testid="layout-use" icon="check" onClick={() => onUse(entry)}>

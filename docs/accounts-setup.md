@@ -278,3 +278,17 @@ Troubleshooting:
 | `429 rate_limited` | Too many requests for one account; wait for `Retry-After` seconds. |
 | `yarn db:migrate` prints `target: local PGlite directory` or fails to import | No database URL was found (run `vercel env pull`), or Node is older than 22.18. |
 | `reset --yes` prints row counts and "Nothing was deleted" | Expected for a real Postgres database: add `--confirm-host=<the host it printed>` (section 10). |
+
+## 12. Known limits
+
+These were found in review and accepted rather than fixed. None loses data silently on the server.
+
+- **Deleting account data does not empty your devices.** Each device keeps its local copy, and a device that signs in to the same account again uploads it. Use "Clear all data" on each device as well to remove everything.
+- **Very large custom layouts can stop sync on one device.** The device keeps two copies of the synced document in `localStorage` next to the settings themselves. Around 1.8 MB of custom layout data (far above normal use) exceeds the browser quota; the status then reads "Sync needs browser storage" and that device stops syncing until layouts are removed.
+- **A damaged or missing `ll:v1:sync` entry signs that tab out.** Local data survives; signing in again re-links it.
+- **A custom layout containing a NUL character in a key name stays on its device** and is not uploaded. No message is shown.
+- **Two different builds open in one browser during a deploy** can disagree about values only the newer build knows (for example a new theme); the older tab may write its previous value back. Reload old tabs after a deploy.
+- **More than 200 custom layouts (including deleted ones still remembered):** the newest 200 sync, the rest stay on the device, and a layout deleted long ago can reappear from a device that was offline for the whole time.
+- **Lessons done offline on one device after another device reset the account's progress are discarded** when the first device next syncs.
+- **Sessions cannot be revoked from the server.** A session ends 30 days after sign-in, or everywhere at once if `NEXTAUTH_SECRET` is rotated.
+- **Not yet tested against real GitHub or Google sign-in, a real Neon database, or Vercel itself.** Local verification used the development login and PGlite. Run the checks in section 8 after the first deploy.

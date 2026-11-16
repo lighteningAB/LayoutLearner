@@ -25,7 +25,6 @@ export function LearnCommands() {
         run: () => router.push(next ? lessonHref(next.lesson.id) : "/learn"),
       },
       ...course.lessons
-        .filter((l) => l.unlocked)
         .map(
           (l): Command => ({
             id: `learn-lesson-${l.lesson.id}`,

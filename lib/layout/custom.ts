@@ -3,6 +3,8 @@
 import JSON5 from "json5";
 import type { ParsedLayout } from "../types";
 import { LETTERS } from "./analysis";
+import { buildCurriculum } from "../lessons/curriculum";
+import { applyFingerOverrides, sanitizeFingerOverrides, type FingerOverrides } from "./overrides";
 import { LayoutParseError, parseLayout } from "./parse";
 import { PRESETS, getPreset } from "./presets";
 
@@ -10,6 +12,8 @@ export interface CustomLayoutRecord {
   id: string;
   name: string;
   source: string;
+  /** Per-key finger corrections (see ./overrides). */
+  fingers?: FingerOverrides;
 }
 
 export const CUSTOM_ID_PREFIX = "custom-";
@@ -58,7 +62,10 @@ export interface SourceIssue {
 }
 
 export interface SourceCheck {
+  /** The layout with finger overrides applied (what the rest of the app sees). */
   layout?: ParsedLayout;
+  /** The layout exactly as parsed from the source, before overrides. */
+  base?: ParsedLayout;
   error?: SourceIssue;
   /** Non-blocking problems with a layout that did parse. */
   warnings: string[];
@@ -78,7 +85,7 @@ function leadingBlankLines(source: string): number {
 }
 
 /** Size guards + parse + warnings. Never throws. */
-export function checkSource(source: string, name?: string): SourceCheck {
+export function checkSource(source: string, name?: string, overrides?: FingerOverrides): SourceCheck {
   const bytes = byteLength(source);
   if (bytes > MAX_SOURCE_BYTES) {
     return {
@@ -105,7 +112,8 @@ export function checkSource(source: string, name?: string): SourceCheck {
       warnings: [],
     };
   }
-  return { layout, warnings: layoutWarnings(layout) };
+  const applied = applyFingerOverrides(layout, overrides);
+  return { layout: applied, base: layout, warnings: layoutWarnings(applied) };
 }
 
 const quote = (ch: string) => (ch === " " ? "space" : ch);
@@ -136,6 +144,21 @@ export function layoutWarnings(layout: ParsedLayout): string[] {
     out.push("Could not work out which finger presses which key, so finger colours and the hands view will be blank. Row-staggered ANSI boards, ortholinear grids and split boards with a clear gap between the halves are recognised.");
   else if (!layout.keys.some((k) => k.isHome && k.base !== " "))
     out.push("No home-row keys were recognised, so home-row lessons and row statistics are unavailable.");
+  else {
+    for (const hand of ["L", "R"] as const) {
+      const fingered = layout.keys.filter((k) => k.finger?.hand === hand && k.finger.finger !== "thumb" && k.base && k.base !== " ");
+      if (fingered.length > 0 && !fingered.some((k) => k.isHome))
+        out.push(`The ${hand === "L" ? "left" : "right"} hand has no home key, so its fingers have no resting place. Mark one in the Fingers view.`);
+    }
+  }
+
+  if (layout.keys.some((k) => k.finger) && !(layout.keys.length > MAX_CUSTOM_KEYS)) {
+    try {
+      if (buildCurriculum(layout).length === 0) out.push("The lesson course would be empty for this fingering. Check the home keys and finger assignments.");
+    } catch {
+      out.push("The lesson course could not be built for this fingering. Check the home keys and finger assignments.");
+    }
+  }
 
   return out;
 }
@@ -159,6 +182,7 @@ function serialiseRow(row: Item[]): string {
 interface Decoded {
   rows: Item[][];
   name?: string;
+  fingers?: FingerOverrides;
 }
 
 /** Reads KLE data in any accepted shape (raw data, downloaded JSON, with/without a meta object). */
@@ -180,7 +204,9 @@ function decode(text: string): Decoded | undefined {
     const obj = data as Record<string, unknown>;
     if (typeof obj.source === "string") {
       const inner = decode(obj.source);
-      return inner ? { ...inner, name: typeof obj.name === "string" ? obj.name : inner.name } : undefined;
+      return inner
+        ? { ...inner, name: typeof obj.name === "string" ? obj.name : inner.name, fingers: sanitizeFingerOverrides(obj.fingers) ?? inner.fingers }
+        : undefined;
     }
     return undefined;
   }
@@ -188,15 +214,18 @@ function decode(text: string): Decoded | undefined {
   let items = data as Item[];
   if (items.length > 0 && items.some((i) => typeof i === "string") && !items.some(Array.isArray)) items = [items];
   let name: string | undefined;
+  let fingers: FingerOverrides | undefined;
   const rows: Item[][] = [];
   for (const item of items) {
     if (Array.isArray(item)) rows.push(item);
     else if (item && typeof item === "object" && rows.length === 0) {
       const n = (item as Record<string, unknown>).name;
       if (typeof n === "string" && n.trim()) name = n;
+      const ll = (item as Record<string, unknown>).layoutLearner;
+      if (ll && typeof ll === "object") fingers = sanitizeFingerOverrides((ll as Record<string, unknown>).fingers);
     } else return undefined;
   }
-  return rows.length > 0 ? { rows, name } : undefined;
+  return rows.length > 0 ? { rows, name, fingers } : undefined;
 }
 
 /**
@@ -204,20 +233,26 @@ function decode(text: string): Decoded | undefined {
  * the layout name if the file carries one. Text that cannot be decoded is returned unchanged so
  * the editor can show the syntax error in place.
  */
-export function importLayoutText(text: string): { source: string; name?: string } {
+export function importLayoutText(text: string): { source: string; name?: string; fingers?: FingerOverrides } {
   const decoded = decode(text);
   if (!decoded) return { source: text.replace(/\r\n?/g, "\n").trim() };
-  return { source: decoded.rows.map(serialiseRow).join(",\n"), name: decoded.name ? cleanName(decoded.name) : undefined };
+  return {
+    source: decoded.rows.map(serialiseRow).join(",\n"),
+    name: decoded.name ? cleanName(decoded.name) : undefined,
+    fingers: decoded.fingers,
+  };
 }
 
 /**
  * Strict JSON in the shape keyboard-layout-editor.com downloads and uploads
  * (`[{name}, [row], [row]]`). Falls back to the raw text when the source does not parse.
  */
-export function exportLayoutJson(name: string, source: string): string {
+export function exportLayoutJson(name: string, source: string, fingers?: FingerOverrides): string {
   const decoded = decode(source);
   if (!decoded) return source;
-  const lines = [JSON.stringify({ name }), ...decoded.rows.map((r) => JSON.stringify(r))];
+  // Unknown metadata properties are ignored by keyboard-layout-editor.com, so the file stays loadable there.
+  const meta = fingers && Object.keys(fingers).length > 0 ? { name, layoutLearner: { fingers } } : { name };
+  const lines = [JSON.stringify(meta), ...decoded.rows.map((r) => JSON.stringify(r))];
   return "[\n" + lines.map((l) => "  " + l).join(",\n") + "\n]\n";
 }
 

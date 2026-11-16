@@ -40,6 +40,8 @@ export interface UseKeyboardInputOptions {
    */
   expectedChar?: string | null;
   onWrongKey?: (keyId: string | null, char: string) => void;
+  /** Every character keystroke with the character that was expected at that moment (null when none). */
+  onKeystroke?: (char: string, expected: string | null) => void;
   /** How long a wrong key stays in `errorKeyIds`. Default 260 ms. */
   errorFlashMs?: number;
 }
@@ -146,7 +148,7 @@ export function useKeyboardInput(options: UseKeyboardInputOptions): UseKeyboardI
 
       if (r.action === "backspace") {
         ev.preventDefault();
-        o.onInput({ type: "backspace" });
+        o.onInput({ type: "backspace", keyId: r.keyId });
         return;
       }
 
@@ -171,6 +173,7 @@ export function useKeyboardInput(options: UseKeyboardInputOptions): UseKeyboardI
       ev.preventDefault();
       if (ev.repeat) return; // a held key is not typing
 
+      o.onKeystroke?.(r.char, o.expectedChar ?? null);
       if (o.expectedChar != null && r.char !== o.expectedChar) flashError(r.keyId, r.char);
       o.onInput({ type: "char", char: r.char, keyId: r.keyId });
     };

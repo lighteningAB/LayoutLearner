@@ -8,6 +8,7 @@ import {
   createTest,
   finish as finishTest,
   getCaret,
+  getCorrection,
   getLiveStats,
   getNextChar,
   getResult,
@@ -45,6 +46,8 @@ export interface UseTypingTest {
   /** Character to type next (" " = space), null when finished. */
   nextChar: string | null;
   live: LiveStats;
+  /** The current word has a typo: `count` Backspaces fix it (see `getCorrection`). */
+  correction: { needed: boolean; count: number };
   /** Set once the test is finished, else null. */
   result: TestResult | null;
   handleInput: (input: TestInput) => void;
@@ -115,5 +118,7 @@ export function useTypingTest(options: UseTypingTestOptions): UseTypingTest {
   const caret = useMemo(() => getCaret(state), [state]);
   const live = useMemo(() => getLiveStats(state), [state]);
 
-  return { state, status, words, caret, nextChar: getNextChar(state), live, result, handleInput, restart, finish };
+  const correction = useMemo(() => getCorrection(state), [state]);
+
+  return { state, status, words, caret, nextChar: getNextChar(state), live, correction, result, handleInput, restart, finish };
 }
