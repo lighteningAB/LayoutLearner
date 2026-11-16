@@ -20,6 +20,7 @@ process.emitWarning = (w, ...rest) => {
 
 const D = await import("../lib/sync/doc.ts");
 const V = await import("../lib/sync/view.ts");
+const C = await import("../lib/sync/cycle.ts");
 const {
   DOC_SCHEMA, LIMITS, TOMBSTONE_TTL_MS, CLIENT_TOMBSTONE_TTL_MS,
   emptyDoc, canonical, docsEqual, mergeDocs, includesDoc, pruneDoc, clampDocTimes, validateDoc,
@@ -644,6 +645,21 @@ const MALFORMED = [
   ["secret in key", withDoc({ settings: { [SECRET + "x".repeat(80)]: { t: 1, v: 1 } } })],
   ["secret in value", withDoc({ settings: { a: { t: 1, v: { [SECRET]: NaN } } } })],
   ["secret as section", withDoc({ layouts: SECRET })],
+  // Strings Postgres jsonb cannot store, and numbers whose jsonb text is far longer than their JSON.
+  ["NUL in register value", withDoc({ settings: { a: { t: 1, v: "a\u0000b" } } })],
+  ["lone high surrogate in register value", withDoc({ settings: { a: { t: 1, v: ["x\ud83d"] } } })],
+  ["lone low surrogate in layout name", withDoc({ layouts: { L1: { t: 1, v: { id: "L1", name: "\ude00x" } } } })],
+  ["reversed surrogate pair", withDoc({ layouts: { L1: { t: 1, v: { id: "L1", name: "\ude00\ud83d" } } } })],
+  ["NUL in nested layout value", withDoc({ layouts: { L1: { t: 1, v: { id: "L1", f: { k: ["\u0000"] } } } } })],
+  ["NUL in register key", withDoc({ settings: { "a\u0000": { t: 1, v: 1 } } })],
+  ["lone surrogate in layout id", withDoc({ layouts: { "L\ud83d": { t: 1, del: true } } })],
+  ["lone surrogate in nested key", withDoc({ settings: { a: { t: 1, v: { "k\udc00": 1 } } } })],
+  ["lone surrogate in device id", lessonDoc({ att: { "d\ud800": 1 } })],
+  ["lone surrogate in lesson id", withDoc({ lessons: { epoch: 0, by: { q: { "a\udfff": okEntry() } } } })],
+  ["number 1e16 in register", withDoc({ settings: { a: { t: 1, v: 1e16 } } })],
+  ["number -1e300 in layout", withDoc({ layouts: { L1: { t: 1, v: { id: "L1", x: [-1e300] } } } })],
+  ["number 1e-10 in register", withDoc({ settings: { a: { t: 1, v: { x: 1e-10 } } } })],
+  ["number 5e-324 in layout", withDoc({ layouts: { L1: { t: 1, v: { id: "L1", x: 5e-324 } } } })],
 ];
 
 const ACCEPTED = [
@@ -660,6 +676,8 @@ const ACCEPTED = [
   }), null],
   ["accuracy as fraction", lessonDoc({ bestAccuracy: 0.97 }), null],
   ["-0 normalised", withDoc({ settings: { a: { t: 1, v: [-0] } } }), withDoc({ settings: { a: { t: 1, v: [0] } } })],
+  ["surrogate pairs and U+FFFD are fine", withDoc({ settings: { a: { t: 1, v: "😀 �" } }, layouts: { "L😀": { t: 1, v: { name: "😀" } } } }), null],
+  ["numbers at the bounds", withDoc({ settings: { a: { t: 1, v: [1e15, -1e15, 1e-9, -1e-9, 0, 0.5] } } }), null],
 ];
 
 function noAliasing(input, output, path = "doc") {
@@ -703,6 +721,28 @@ property(6, "validateDoc: accepts valid docs, rejects malformed, total", CASES, 
     check(validateDoc(withDoc({ settings: { a: { t: 1, v: 1 } } }), { now: NaN, maxFutureMs: 0 }).ok === false, "NaN clock accepts timestamps");
     check(validateDoc(withDoc({}), undefined).ok === false, "missing opts accepted");
     check(TOMBSTONE_TTL_MS === 180 * 86_400_000 && CLIENT_TOMBSTONE_TTL_MS === 179 * 86_400_000 && LIMITS.docBytes === 262_144, "constants changed");
+    // A device reading back its own replica: count limits off, every other check still on.
+    const big = withDoc({ layouts: many(LIMITS.layouts + 50, (i) => ({ t: 1, v: { id: "k" + i } })) });
+    check(validateDoc(big, OPTS).ok === false && validateDoc(big, { ...OPTS, anyCount: true }).ok === true, "anyCount does not lift the count limit");
+    check(validateDoc(withDoc({ settings: { a: { t: 1, v: "\u0000" } } }), { ...OPTS, anyCount: true }).ok === false, "anyCount lifted more than counts");
+    check(D.isStorableString("a😀b") && !D.isStorableString("a\ud83d") && !D.isStorableString("\u0000"), "isStorableString");
+    check(D.toStorableString("a\u0000b\ud83dc\ude00😀") === "ab�c�😀", "toStorableString");
+
+    // Overflow eviction: more than LIMITS.layouts items -> the OLDEST tombstones go (by t, then id),
+    // live layouts never, and the result is the same on any subset that still contains it.
+    const live = many(150, (i) => ({ t: 5, v: { id: "k" + i } }));
+    const dead = Object.fromEntries(Array.from({ length: 120 }, (_, i) => ["z" + String(i).padStart(3, "0"), { t: 10 + Math.floor(i / 2), del: true }]));
+    const over = withDoc({ layouts: { ...live, ...dead } });
+    const fit = pruneDoc(over, 100, Infinity);
+    check(Object.keys(fit.layouts).length === LIMITS.layouts && validateDoc(fit, OPTS).ok, "overflow eviction does not fit the limit");
+    check(Object.keys(live).every((id) => id in fit.layouts), "overflow eviction dropped a live layout");
+    const kept = Object.keys(dead).filter((id) => id in fit.layouts);
+    check(eq(kept, Object.keys(dead).slice(70)), "overflow eviction did not drop exactly the oldest tombstones", { kept });
+    check(docsEqual(pruneDoc(fit, 100, Infinity), fit), "overflow eviction is not idempotent");
+    const subset = withDoc({ layouts: { ...fit.layouts, z000: dead.z000 } });
+    check(docsEqual(pruneDoc(subset, 100, Infinity), fit), "eviction on a subset that contains the result gives another result");
+    const tooLive = withDoc({ layouts: { ...many(LIMITS.layouts + 3, (i) => ({ t: 1, v: { id: "k" + i } })), dead1: { t: 9, del: true } } });
+    check(Object.keys(pruneDoc(tooLive, 100, Infinity).layouts).length === LIMITS.layouts + 3, "eviction with too many live layouts must drop all tombstones and nothing else");
   }
 
   // Every generated doc validates and round-trips, as an object and after a JSON round trip.
@@ -894,6 +934,117 @@ property(8, "project -> absorb is a fixed point; local edits round-trip", CASES,
   const res = validateDoc(clone(oddDoc), { now: 100, maxFutureMs: 0 });
   check(res.ok && docsEqual(res.doc, oddDoc), "odd view produced an invalid doc: " + (res.ok ? "normalised differently" : res.error), repro);
   check({}.t === undefined && Object.keys(Object.prototype).length === 0, "Object.prototype was polluted");
+});
+
+// ---------------------------------------------------------------------------------------------
+// 9. "no information" is never an edit; unstorable strings are repaired without ping-pong
+// ---------------------------------------------------------------------------------------------
+
+property(9, "missing fields are no information; strings are repaired", CASES, (r) => {
+  const doc = genFrozenDoc(r);
+  const base = genBaseView(r);
+  const now = 100;
+  const ctx = { now, deviceId: r.pick(DEVICES), config: CONFIG };
+  const P = deepFreeze(projectDoc(doc, base, CONFIG));
+
+  // (a) A snapshot that LACKS fields the view has (written by an older build; the store has just
+  // filled in defaults). Nothing may be stamped "now" for them: whatever enters the doc has t = 1.
+  const partial = clone(P);
+  const dropped = [];
+  for (const k of Object.keys(partial.settings)) if (r.chance(0.4)) { delete partial.settings[k]; dropped.push(k); }
+  for (const k of Object.keys(partial.learn)) if (r.chance(0.4)) { delete partial.learn[k]; dropped.push("learn." + k); }
+  const up = absorbView(doc, deepFreeze(partial), P, ctx);
+  const reproA = () => ({ doc, base, dropped, got: up });
+  check(includesDoc(up, doc), "absorb with a partial snapshot lost state", reproA);
+  for (const s of ["settings", "learn", "layouts"]) {
+    for (const k of Object.keys(up[s])) check(eq(up[s][k], doc[s][k]) || up[s][k].t === 1, `field missing from the snapshot was stamped as an edit: ${s}.${k}`, reproA);
+    for (const k of Object.keys(doc[s])) check(doc[s][k].t < 1 || eq(up[s][k], doc[s][k]), `field missing from the snapshot replaced a real value: ${s}.${k}`, reproA);
+  }
+  // ... and a user edit of a field the snapshot DOES have is still a real edit.
+  if (!dropped.includes("theme")) {
+    const E = clone(P);
+    E.settings.theme = "edited-" + r.int(3);
+    const e = absorbView(doc, partial, E, ctx);
+    check(e.settings.theme.v === E.settings.theme && e.settings.theme.t >= now, "real edit next to missing fields was not stamped", reproA);
+  }
+
+  // (b) A view that LACKS fields the snapshot has (a store that lost its key answers nothing for
+  // them): not an edit, not a deletion.
+  const holes = clone(P);
+  for (const k of Object.keys(holes.settings)) if (r.chance(0.4)) delete holes.settings[k];
+  for (const k of Object.keys(holes.learn)) if (r.chance(0.4)) delete holes.learn[k];
+  if (r.chance(0.3)) holes.lessons = {};
+  check(docsEqual(absorbView(doc, P, deepFreeze(holes), ctx), doc), "a view with missing fields changed the doc", { doc, base, holes });
+  check(docsEqual(absorbView(doc, P, { settings: {}, learn: {}, lessons: {} }, ctx), doc), "an empty view changed the doc", { doc, base });
+
+  // (c) Strings Postgres cannot store are repaired on the way in, and that converges: once the
+  // stores hold the projection, nothing is absorbed again (no absorb/project ping-pong).
+  const bad = r.pick(["a\u0000b", "half \ud83d", "\ude00 tail", "ok 😀 \ud83d"]);
+  const E = clone(P);
+  E.settings.theme = bad;
+  E.settings.customLayouts = [...E.settings.customLayouts.filter((l) => l.id !== "L4"), { id: "L4", name: bad, source: "[]", nested: { deep: [bad] } }];
+  E.learn.course = bad;
+  const d2 = absorbView(doc, P, deepFreeze(E), ctx);
+  const reproC = () => ({ doc, base, bad, got: d2 });
+  const strict = validateDoc(clone(d2), { now, maxFutureMs: 0 });
+  check(strict.ok && docsEqual(strict.doc, d2), "repaired doc is not valid: " + (strict.ok ? "normalised differently" : strict.error), reproC);
+  check(d2.settings.theme.v === D.toStorableString(bad) && d2.layouts.L4.v.name === D.toStorableString(bad) && d2.layouts.L4.v.nested.deep[0] === D.toStorableString(bad), "string was not repaired", reproC);
+  check(docsEqual(absorbView(d2, E, E, ctx), d2), "second absorb of the unrepaired view is not a no-op", reproC);
+  const P2 = projectDoc(d2, E, CONFIG);
+  check(D.isStorableString(JSON.stringify(P2)), "projection still holds an unstorable string", reproC);
+  check(docsEqual(absorbView(d2, E, P2, { ...ctx, now: now + 50 }), d2), "store holding the repaired value looks like an edit (ping-pong)", reproC);
+  check(docsEqual(absorbView(d2, P2, P2, { ...ctx, now: now + 50 }), d2) && eq(projectDoc(d2, P2, CONFIG), P2), "repaired projection is not a fixed point", reproC);
+  // A number jsonb would blow up stays device-local instead of blocking the document.
+  const N = clone(P);
+  N.settings.theme = 1e300;
+  check(docsEqual(absorbView(doc, P, N, ctx), doc), "out-of-range number was absorbed", { doc, base });
+});
+
+// ---------------------------------------------------------------------------------------------
+// 10. Tombstones around the TTL: one cycle settles, the client never pushes what it merely forgot
+// ---------------------------------------------------------------------------------------------
+
+const DAY = 86_400_000;
+property(10, "tombstone TTL window: no push loop, replica = server", CASES, (r) => {
+  const now = 400 * DAY;
+  // Ages straddling the client TTL (179 d) and the server TTL (180 d).
+  const age = () => now - Math.floor(r.pick([1, 100, 178.5, 179.2, 179.5, 179.9, 180.5, 200]) * DAY) + r.int(3);
+  const gen = () => {
+    const layouts = {};
+    for (const id of ["L1", "L2", "L3", "L4"]) {
+      if (!r.chance(0.7)) continue;
+      layouts[id] = r.chance(0.5) ? { t: age(), del: true } : { t: age(), v: genLayoutValue(r, id) };
+    }
+    return { schema: 1, settings: r.chance(0.5) ? { theme: { t: age(), v: r.pick(["a", "b"]) } } : {}, learn: {}, layouts, lessons: { epoch: 0, by: {} } };
+  };
+  const local = gen();
+  // The server prunes with its own TTL on every write, so it never holds an older tombstone.
+  let server = pruneDoc(gen(), now, TOMBSTONE_TTL_MS);
+  const serverAtStart = server;
+  let view = projectDoc(local, emptyView(CONFIG), CONFIG);
+  let sc = {
+    v: 1, deviceId: "d1", doc: local, seen: view, dirty: false, lessonsResetPending: false, lastSyncedAt: null, serverOffset: 0, barrier: null,
+    link: { userId: "u_x", name: "x", gen: "g", version: 1, firstSyncDone: true, clockChecked: true },
+  };
+  const repro = () => ({ local, server: serverAtStart });
+  let puts = 0;
+  for (let round = 0; round < 3; round++) {
+    const out = C.integrateRemote(sc, view, { doc: server, version: 1 + puts, gen: "g", serverTime: now }, now, CONFIG);
+    if (round === 0 && includesDoc(serverAtStart, local)) check(!out.needPush, "pushed although the server already has everything the device holds", repro);
+    if (round === 0 && !out.needPush) check(docsEqual(C.integrateRemote({ ...out.sidecar, seen: out.projected }, out.projected, { doc: server, version: 1, gen: "g", serverTime: now }, now, CONFIG).sidecar.doc, out.sidecar.doc), "replica changes again on an identical second cycle", repro);
+    view = out.projected;
+    sc = { ...out.sidecar, seen: view };
+    if (!out.needPush) break;
+    check(validateDoc(clone(out.push), { now, maxFutureMs: 0 }).ok, "pushed document is not valid", repro);
+    server = pruneDoc(mergeDocs(server, out.push), now, TOMBSTONE_TTL_MS);
+    puts++;
+  }
+  check(puts <= 1, `needed ${puts} PUTs to settle`, repro);
+  check(!sc.dirty, "still dirty after settling", repro);
+  check(docsEqual(sc.doc, pruneDoc(server, now, CLIENT_TOMBSTONE_TTL_MS)), "replica differs from the (client-pruned) server document", () => ({ ...repro(), replica: sc.doc, serverNow: server }));
+  // A layout is shown iff the server holds it live.
+  const shown = view.settings.customLayouts.map((l) => l.id).sort();
+  check(eq(shown, Object.keys(server.layouts).filter((id) => !isDel(server.layouts[id])).sort()), "stores show other layouts than the server holds", () => ({ ...repro(), shown }));
 });
 
 // ---------------------------------------------------------------------------------------------

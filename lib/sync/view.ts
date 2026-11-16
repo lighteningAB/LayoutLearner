@@ -123,9 +123,15 @@ interface Clean {
 
 /**
  * A view value as it may enter the document: a normalised deep copy plus its canonical string, or
- * null if the value is undefined, not JSON, too deep or larger than `maxBytes`. Those are exactly
- * the things validateDoc would reject, and one rejected value would block the whole document, so
- * such values are left out of sync instead (they stay device-local).
+ * null if the value is undefined, not JSON, too deep, larger than `maxBytes` or holds a number
+ * outside the storable range. Those are exactly the things validateDoc would reject, and one
+ * rejected value would block the whole document, so such values are left out of sync instead (they
+ * stay device-local).
+ *
+ * Strings the server cannot store (U+0000, half a surrogate pair) are REPAIRED in the copy rather
+ * than left out. The document then holds a slightly different string than the store. That does not
+ * ping-pong: both sides of every comparison in absorbView go through this function, so the raw and
+ * the repaired string compare equal, and the next projection writes the repaired one to the store.
  */
 function clean(value: unknown, maxBytes: number): Clean | null {
   if (value === undefined) return null;
@@ -185,6 +191,106 @@ function sameLesson(a: ViewLessonEntry, b: ViewLessonEntry): boolean {
   );
 }
 
+function sumAttempts(entry: LessonEntry | undefined): number {
+  let n = 0;
+  if (entry) for (const d of Object.keys(entry.att)) n += entry.att[d];
+  return n;
+}
+
+/**
+ * Copy of `att` with `delta` more attempts for `deviceId`. A lesson entry holds at most
+ * LIMITS.devices counters (validateDoc rejects more, which would block the whole document), so a
+ * device that would be the 65th does not get one: its attempts for that lesson are not counted.
+ * Folding them into another device's counter instead is not an option, since a counter may only
+ * ever be raised by its own device (see mergeLessonEntry).
+ */
+function addAttempts(att: Dict<number> | undefined, deviceId: string | null, delta: number): Dict<number> {
+  const out = copyDict(att);
+  if (delta <= 0 || deviceId === null) return out;
+  const own = getOwn(out, deviceId);
+  if (own === undefined && Object.keys(out).length >= LIMITS.devices) return out;
+  setOwn(out, deviceId, Math.min(LIMITS.maxAttempts, (own || 0) + delta));
+  return out;
+}
+
+/**
+ * Pseudo device id under which a replica that has NOT met its account yet keeps attempts of
+ * unknown origin: the totals the stores held when tracking began (`seen === null`). They may be
+ * this device's own or history downloaded from an account earlier, and only a comparison with the
+ * account's document can tell. Until then they sit under this key, so that the replica still adds
+ * up to what the stores show. The key never leaves the device: the first contact removes it
+ * (stripUnattributed) before anything is merged or uploaded, and credits what is due
+ * (creditAttempts).
+ */
+export const UNATTRIBUTED = "_unattributed";
+
+/** `doc` with `fn` applied to every lesson entry (`fn` returns the entry itself to keep it). */
+function mapLessonEntries(
+  doc: SyncDoc,
+  fn: (entry: LessonEntry, layoutId: string, lessonId: string) => LessonEntry,
+): SyncDoc {
+  let by: SyncDoc["lessons"]["by"] | null = null;
+  for (const layoutId of Object.keys(doc.lessons.by)) {
+    const entries = doc.lessons.by[layoutId];
+    let target: Dict<LessonEntry> | null = null;
+    for (const lessonId of Object.keys(entries)) {
+      const next = fn(entries[lessonId], layoutId, lessonId);
+      if (next === entries[lessonId]) continue;
+      if (target === null) target = copyDict(entries);
+      setOwn(target, lessonId, next);
+    }
+    if (target !== null) {
+      if (by === null) by = copyDict(doc.lessons.by);
+      setOwn(by, layoutId, target);
+    }
+  }
+  if (by === null) return doc;
+  return { schema: DOC_SCHEMA, settings: doc.settings, learn: doc.learn, layouts: doc.layouts, lessons: { epoch: doc.lessons.epoch, by } };
+}
+
+function withAtt(entry: LessonEntry, att: Dict<number>): LessonEntry {
+  return {
+    stars: entry.stars,
+    bestWpm: entry.bestWpm,
+    bestAccuracy: entry.bestAccuracy,
+    completedAt: entry.completedAt,
+    lastAt: entry.lastAt,
+    att,
+  };
+}
+
+/** `doc` without the UNATTRIBUTED counters (the same object if it has none). */
+export function stripUnattributed(doc: SyncDoc): SyncDoc {
+  return mapLessonEntries(doc, (entry) => {
+    if (getOwn(entry.att, UNATTRIBUTED) === undefined) return entry;
+    const att: Dict<number> = {};
+    for (const d of Object.keys(entry.att)) if (d !== UNATTRIBUTED) setOwn(att, d, entry.att[d]);
+    return withAtt(entry, att);
+  });
+}
+
+/**
+ * First contact, after the account's document has been merged into the stripped replica: for every
+ * lesson for which `local` (the replica BEFORE stripping) held unattributed attempts, the amount by
+ * which local's total exceeds what `merged` accounts for is credited to `deviceId`.
+ *
+ * So the lesson's total becomes max(local total, merged total). If the unattributed attempts were
+ * downloaded history, the account's counters already cover them and nothing is added (a device
+ * that lost its sync state and signs in again does not double its attempts). If the account knows
+ * nothing of the lesson, they are all credited. In between, where a device with pre-sync history
+ * of its own joins an account that has history for the same lesson, the smaller total disappears
+ * in the larger: under-counting is the price of never counting twice.
+ */
+export function creditAttempts(merged: SyncDoc, local: SyncDoc, deviceId: string): SyncDoc {
+  if (!isSafeKey(deviceId)) return merged;
+  return mapLessonEntries(merged, (entry, layoutId, lessonId) => {
+    const mine = getOwn(getOwn(local.lessons.by, layoutId), lessonId);
+    if (mine === undefined || getOwn(mine.att, UNATTRIBUTED) === undefined) return entry;
+    const att = addAttempts(entry.att, deviceId, sumAttempts(mine) - sumAttempts(entry));
+    return getOwn(att, deviceId) === getOwn(entry.att, deviceId) ? entry : withAtt(entry, att);
+  });
+}
+
 function groupKey(group: string[]): string {
   return group.join("+");
 }
@@ -229,6 +335,28 @@ export function emptyView(config: ViewConfig): LocalView {
  * `ctx.lessonsReset`: the user reset lesson progress since `seen`. Bumps the lessons epoch (which
  * discards every device's results on merge) and then records whatever `view.lessons` holds now.
  *
+ * A key that is in the view but NOT in `seen` (while `seen` exists) carries no information either:
+ * the snapshot was taken by an app version that did not know the field, and the store has just
+ * filled in its default. Stamping that default "now" would override the value another device chose
+ * on purpose. Such a key is compared against the configured default and, if it differs, written
+ * with the legacy stamp, exactly as on the first absorb. The same goes for the layouts when `seen`
+ * has no layouts array, and for a group none of whose known members changed.
+ *
+ * Attempts. The view only has a total per lesson; the document has a grow-only counter per device.
+ *   - entry in `seen`: this device made (total - seen total) attempts since the snapshot; that
+ *     many are added to its counter.
+ *   - entry not in `seen`: whatever the total exceeds the counters the replica already holds for
+ *     that lesson is credited to this device, `max(0, total - sum(counters))`. For a lesson done
+ *     for the first time that is the whole total. For a store whose snapshot was lost it is the
+ *     part the replica does not know about, so history that was DOWNLOADED from other devices is
+ *     not counted a second time under this device's name.
+ *   - first absorb (`seen === null`) with `ctx.legacyAttempts === "defer"`: the same amount is
+ *     parked under the UNATTRIBUTED pseudo device instead. The caller is a replica that has not
+ *     met its account yet and so cannot tell downloaded history from its own; `creditAttempts`
+ *     settles it once the remote document is merged.
+ * A lesson entry never gets more than LIMITS.devices counters: on the 65th device of an account
+ * the attempts for that lesson are not counted (stars and bests still merge).
+ *
  * `ctx.deviceId` must be a stable, per-device key (1..80 chars). If it is not a valid key, bests are
  * still recorded but attempts are not counted.
  */
@@ -236,7 +364,15 @@ export function absorbView(
   doc: SyncDoc,
   seen: LocalView | null,
   view: LocalView,
-  ctx: { now: number; deviceId: string; config: ViewConfig; lessonsReset?: boolean },
+  ctx: {
+    now: number;
+    deviceId: string;
+    config: ViewConfig;
+    lessonsReset?: boolean;
+    legacyAttempts?: "credit" | "defer";
+    /** Credit `max(0, total - sum(counters))` for every CHANGED lesson, whether it is in `seen` or not. */
+    reconcileAttempts?: boolean;
+  },
 ): SyncDoc {
   const config = ctx.config;
   const legacy = seen === null;
@@ -249,9 +385,9 @@ export function absorbView(
   // One register write. Normal case: strictly newer than what the replica holds, so it wins there
   // and on every replica that has seen nothing newer. Legacy case: a candidate with t = 1 that goes
   // through the ordinary register join, so it can only fill a gap, never replace a real value.
-  const writeRegister = (map: Dict<Register>, key: string, v: Json) => {
+  const writeRegister = (map: Dict<Register>, key: string, v: Json, asLegacy: boolean) => {
     const prev = getOwn(map, key);
-    if (legacy) {
+    if (asLegacy) {
       const candidate: Register = { t: LEGACY_T, v };
       setOwn(map, key, prev === undefined ? candidate : mergeRegister(prev, candidate));
     } else {
@@ -259,8 +395,22 @@ export function absorbView(
     }
   };
 
+  // The value a field is compared against, and whether a difference is a real edit (`known`) or
+  // only "the snapshot did not have this field" (compared against the default, legacy stamp).
+  const baseline = (old: Dict<unknown>, defaults: Dict<unknown>, k: string): { o: Clean | null; known: boolean } => {
+    const raw = getOwn(old, k);
+    if (raw !== undefined || legacy) return { o: clean(raw, LIMITS.registerBytes), known: !legacy };
+    return { o: clean(getOwn(defaults, k), LIMITS.registerBytes), known: false };
+  };
+
   // Plain per-field registers: every key of `cur` or `old` not in `excluded` whose value changed.
-  const absorbFields = (map: Dict<Register>, cur: Dict<unknown>, old: Dict<unknown>, excluded: Set<string>) => {
+  const absorbFields = (
+    map: Dict<Register>,
+    cur: Dict<unknown>,
+    old: Dict<unknown>,
+    defaults: Dict<unknown>,
+    excluded: Set<string>,
+  ) => {
     const keys = new Set<string>(Object.keys(cur));
     for (const k of Object.keys(old)) keys.add(k);
     for (const k of keys) {
@@ -269,21 +419,22 @@ export function absorbView(
       // know), not an edit; so is a value that cannot be represented.
       const c = clean(getOwn(cur, k), LIMITS.registerBytes);
       if (c === null) continue;
-      const o = clean(getOwn(old, k), LIMITS.registerBytes);
-      if (o !== null && o.c === c.c) continue;
-      writeRegister(map, k, c.v);
+      const b = baseline(old, defaults, k);
+      if (b.o !== null && b.o.c === c.c) continue;
+      writeRegister(map, k, c.v, !b.known);
     }
   };
 
   // --- settings -------------------------------------------------------------------------------
   const viewSettings = asDict(view.settings);
   const seenSettings = asDict(base.settings);
+  const settingsDefaults = asDict(config.settingsDefaults);
   const settings = copyDict(doc.settings);
 
   const excluded = new Set<string>([layoutsField]);
   for (const f of config.deviceLocal) excluded.add(f);
   for (const g of config.groups) for (const f of g) excluded.add(f);
-  absorbFields(settings, viewSettings, seenSettings, excluded);
+  absorbFields(settings, viewSettings, seenSettings, settingsDefaults, excluded);
 
   // Groups: if ANY member changed, the whole combination is rewritten as one register, so that the
   // combination is what wins or loses a merge, never half of it.
@@ -291,31 +442,38 @@ export function absorbView(
     const key = groupKey(group);
     if (!isSafeKey(key)) continue;
     const value: Dict<Json> = {};
-    let changed = false;
+    let changed = false; // a member the snapshot knew has a new value: a real edit
+    let unknown = false; // a member the snapshot did not know differs from its default
     let any = false;
     for (const m of groupMembers(group, config)) {
       const c = clean(getOwn(viewSettings, m), LIMITS.registerBytes);
       if (c === null) continue;
       setOwn(value, m, c.v);
       any = true;
-      const o = clean(getOwn(seenSettings, m), LIMITS.registerBytes);
-      if (o === null || o.c !== c.c) changed = true;
+      const b = baseline(seenSettings, settingsDefaults, m);
+      if (b.o !== null && b.o.c === c.c) continue;
+      if (b.known) changed = true;
+      else unknown = true;
     }
-    if (!any || !changed || utf8Length(canonical(value)) > LIMITS.registerBytes) continue;
-    writeRegister(settings, key, value);
+    if (!any || !(changed || unknown) || utf8Length(canonical(value)) > LIMITS.registerBytes) continue;
+    writeRegister(settings, key, value, !changed);
   }
 
   // --- learn prefs: per-field registers, no exclusions ----------------------------------------
   const learn = copyDict(doc.learn);
-  absorbFields(learn, asDict(view.learn), asDict(base.learn), new Set<string>());
+  absorbFields(learn, asDict(view.learn), asDict(base.learn), asDict(config.learnDefaults), new Set<string>());
 
   // --- custom layouts -------------------------------------------------------------------------
   const layouts = copyDict(doc.layouts);
   const viewLayoutsRaw = getOwn(viewSettings, layoutsField);
+  const seenLayoutsRaw = getOwn(seenSettings, layoutsField);
+  // A snapshot without a layouts array knows nothing about layouts: what the view holds is of
+  // unknown age (legacy stamp) and nothing can have been deleted.
+  const layoutsLegacy = legacy || !Array.isArray(seenLayoutsRaw);
   // No array in the view = no information about layouts (not "everything was deleted").
   if (Array.isArray(viewLayoutsRaw)) {
     const cur = indexLayouts(viewLayoutsRaw);
-    const old = indexLayouts(getOwn(seenSettings, layoutsField));
+    const old = indexLayouts(seenLayoutsRaw);
     // Added or edited: a live item. (A layout that exists but cannot be synced is left alone.)
     for (const [id, c] of cur) {
       if (c === null) continue;
@@ -323,7 +481,7 @@ export function absorbView(
       if (o && o.c === c.c) continue;
       const prev = getOwn(layouts, id);
       const v = c.v as Dict<Json>;
-      if (legacy) {
+      if (layoutsLegacy) {
         const candidate: LayoutItem = { t: LEGACY_T, v };
         setOwn(layouts, id, prev === undefined ? candidate : mergeLayoutItem(prev, candidate));
       } else {
@@ -368,14 +526,18 @@ export function absorbView(
       const prev = getOwn(target, lessonId);
       // Same join as mergeLessonEntry (max / max / max / min non-null / max), so the entry can only
       // grow; a view that shows LESS than the replica (stale storage) changes nothing.
-      const att = copyDict(prev ? prev.att : undefined);
-      // The view only has a total. What this device contributed since the snapshot is the
-      // difference, and it is added to THIS device's counter only (see mergeLessonEntry for why
-      // per-device counters are what makes attempts mergeable without double counting).
-      const delta = Math.max(0, cur.attempts - (old === null ? 0 : old.attempts));
-      if (delta > 0 && deviceId !== null) {
-        setOwn(att, deviceId, Math.min(LIMITS.maxAttempts, (getOwn(att, deviceId) || 0) + delta));
+      // The view only has a total; see "Attempts" in the doc comment for what is credited. It is
+      // added to THIS device's counter only (see mergeLessonEntry for why per-device counters are
+      // what makes attempts mergeable without double counting).
+      let delta: number;
+      let counter = deviceId;
+      if (old !== null && !ctx.reconcileAttempts) {
+        delta = Math.max(0, cur.attempts - old.attempts);
+      } else {
+        delta = Math.max(0, cur.attempts - sumAttempts(prev));
+        if (old === null && legacy && ctx.legacyAttempts === "defer") counter = UNATTRIBUTED;
       }
+      const att = addAttempts(prev ? prev.att : undefined, counter, delta);
       const prevCompleted = prev ? prev.completedAt : null;
       setOwn(target, lessonId, {
         stars: Math.max(prev ? prev.stars : 0, cur.stars) as 0 | 1 | 2 | 3,

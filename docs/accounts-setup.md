@@ -6,7 +6,7 @@ This document turns on optional accounts and cross-device sync for a deployment 
 
 Without any configuration the app is fully local: settings, custom layouts and lesson progress live in the browser's `localStorage` and nothing is sent to a server.
 
-With accounts enabled, a visitor can sign in with GitHub or Google. While signed in, the app keeps one JSON document per account in a Postgres database and merges it with the local data on every device the person signs in on. The document holds lesson progress, settings and custom layouts. Three settings stay device-local because they depend on the device: `emulateLayout`, `showHands` and `fontSize`. The database key is an opaque id (`u_` plus a SHA-256 of provider and provider account id); no email, name or avatar is written to the database. The same person signing in with GitHub and with Google gets two separate accounts.
+With accounts enabled, a visitor can sign in with GitHub or Google. While signed in, the app keeps one JSON document per account in a Postgres database and merges it with the local data on every device the person signs in on. The document holds lesson progress, settings and custom layouts. Three settings stay device-local because they depend on the device: `emulateLayout`, `showHands` and `fontSize`. The database key is a pseudonymous account id (`u_` plus an unsalted SHA-256 of the provider name and the provider's account number); no email, name or avatar is written to the database. The id is not anonymous: anyone who can read the database can find out which GitHub or Google account an id belongs to by hashing candidate account numbers (GitHub's are small sequential integers, so the whole space can be tried in minutes). Treat the table as personal data. The same person signing in with GitHub and with Google gets two separate accounts.
 
 The feature is off by default and fails closed. It is on only when all of these hold:
 
@@ -16,7 +16,7 @@ The feature is off by default and fails closed. It is on only when all of these 
 
 If any of these is missing, the site shows no sign-in UI, and `/api/auth/*` and `/api/sync` answer `404` with `{"error":"disabled"}`. The rest of the app is unaffected. If no provider is configured the app logs nothing; if a provider is configured but the secret or database is missing, it logs one line saying why (section 11).
 
-Sessions are JWTs in a cookie, valid for 30 days. There is no session table.
+Sessions are encrypted JWTs in a cookie. A session ends 30 days after the sign-in, no matter how often it is used (the sign-in time is stored in the token as `authTime` and checked on every request). There is no session table and therefore no way to revoke a session from the server; section 11 lists what follows from that.
 
 The on/off decision is read on the server and baked into statically rendered pages at build time. After changing any environment variable you must redeploy.
 
@@ -118,12 +118,14 @@ vercel env pull .env.local --environment=production
 DATABASE_URL='<connection string from the Vercel Storage tab>' yarn db:migrate
 ```
 
-`yarn db:migrate` is `node scripts/db.mjs migrate`. It runs two `CREATE TABLE IF NOT EXISTS` statements, so it is idempotent and safe to repeat, and prints `migrate: Postgres (DATABASE_URL): ensured tables ll_sync_docs, ll_sync_rate`.
+`yarn db:migrate` is `node scripts/db.mjs migrate`. It runs two `CREATE TABLE IF NOT EXISTS` statements, so it is idempotent and safe to repeat. Before it does anything it prints its target, for example `migrate: target: Postgres at host ep-example-123.eu-central-1.aws.neon.tech (DATABASE_URL from .env.local)`, and when it is done `migrate: Postgres at host ... (DATABASE_URL): ensured tables ll_sync_docs, ll_sync_rate`.
 
 - `ll_sync_docs`: one row per account: `user_id`, `gen`, `version`, `doc` (jsonb, limited to 1 MiB by a constraint and to 256 KB by the API), `updated_at`.
 - `ll_sync_rate`: rate-limit counters per account and bucket.
 
-The script reads `DATABASE_URL` (or `POSTGRES_URL`) from the shell environment first, then from `.env.local`, and never prints the connection string. If neither is set it silently uses the local PGlite database, so check that the first output line says `Postgres (DATABASE_URL)` and not `PGlite`. It needs Node 22.18 or newer.
+The script reads `DATABASE_URL` (or `POSTGRES_URL`) from the shell environment first, then from `.env.local`. Every command (`migrate`, `dump`, `reset`) prints its target on the first line, before it opens the database: either `Postgres at host <host>` with the variable and where it was found, or `local PGlite directory <dir>`. Only the host is shown; the connection string with its user and password is never printed. If no URL is set the script uses the local PGlite database, so read that first line. It needs Node 22.18 or newer.
+
+Warning: a production `DATABASE_URL` left in `.env.local` stays in effect for every later `scripts/db.mjs` command (and for `yarn dev`, which would then run against production data). Delete the file, or at least that line, when you are done.
 
 Check the result:
 
@@ -152,7 +154,7 @@ Checklist:
    ```bash
    yarn db:dump
    ```
-   After step 4 your account has a row; after the delete it is gone. A `delete` rate-limit counter for the id may remain for up to an hour; it holds only the opaque id, a timestamp and a count, and is cleaned up on a later deletion.
+   After step 4 your account has a row; after the delete it is gone. The `rate` lines for the id (`read`, `write`, `delete`) are still there: deleting account data does not remove rate-limit counters. Each holds only the account id, the counter name, a count and a timestamp, and is removed by the cleanup described in section 11.
 7. The API gate, from a terminal and signed out:
    ```bash
    curl -i https://layout-learner.vercel.app/api/sync
@@ -168,6 +170,11 @@ Local development needs no OAuth app and no cloud database. Create `.env.local` 
 AUTH_DEV_LOGIN=1
 NEXTAUTH_URL=http://localhost:3000
 ```
+
+Warning: `AUTH_DEV_LOGIN=1` lets anyone who can reach the dev server sign in as any user without a password, and `next dev` listens on every network interface by default. Never enable it on a machine that other people can reach (shared Wi-Fi, an office network, a tunnel, a cloud VM). Prefer to bind the server to loopback: `yarn dev -H 127.0.0.1`. Two guards exist in the code, and neither replaces that advice, because both look at the request's `Host` header, which a hand-written request can set freely:
+
+- the dev login refuses any request whose `Host` is not `localhost`, `*.localhost`, `127.x.x.x` or `[::1]`;
+- while `NEXTAUTH_SECRET` is unset (so the built-in, publicly known development secret signs the sessions), `/api/auth/*` answers `404 {"error":"disabled"}` and `/api/sync` answers `401` for any other `Host`, and the server logs one `[auth] refused a sign-in/sync request whose Host is not localhost` line. To test from another device, set a real `NEXTAUTH_SECRET` and a real OAuth provider.
 
 Then run `yarn dev`. With no `DATABASE_URL` set the server uses PGlite (Postgres compiled to WASM) in `.data/pglite` and creates the tables itself on first use, so `yarn db:migrate` is not needed locally. With no `NEXTAUTH_SECRET` a fixed insecure development secret is used; a secret that is set but shorter than 32 characters turns the feature off even in development. The "Dev login" provider accepts any username matching `[a-z0-9_-]{1,24}` with no password, which makes it easy to test as several users. It exists only when `NODE_ENV` is not production and the app is not running on Vercel.
 
@@ -203,13 +210,35 @@ The data in Neon stays until you delete it. To erase every account's data while 
 
 ```bash
 node scripts/db.mjs reset --yes
+node scripts/db.mjs reset --yes --confirm-host=<host printed by the previous command>
 ```
 
-It needs the production `DATABASE_URL` in the environment or `.env.local`, refuses to run without `--yes`, and deletes all rows in `ll_sync_docs` and `ll_sync_rate`. To remove the tables as well, delete the database in the Vercel Storage tab or the Neon console. Users can also delete their own server copy from Settings.
+`reset` deletes all rows in `ll_sync_docs` and `ll_sync_rate` of whatever database the script finds: `DATABASE_URL` from the environment, else from `.env.local`, else the local PGlite directory. Because a forgotten `.env.local` can point it at production, it is guarded:
+
+- it always prints the target first (the host, never the credentials) and refuses without `--yes`;
+- for a real Postgres database, `--yes` alone only prints the row counts that would be deleted and stops. It deletes only when `--confirm-host=` is also given and equals the printed host exactly (including a port, if one is shown);
+- for the local PGlite directory, `--yes` is enough (stop the dev server first). To remove the tables as well, delete the database in the Vercel Storage tab or the Neon console. Users can also delete their own server copy from Settings.
 
 ## 11. Operations
 
-Rotating `NEXTAUTH_SECRET`. Sessions are JWTs signed with this secret, so a new secret signs everyone out; they see "Session expired" and sign in again. No data is lost: the account id is a SHA-256 of the provider name and the provider's account id (`deriveUserId` in `lib/auth/options.ts`) and does not involve the secret. Local data on each device is kept and merges on the next sign-in.
+Rotating `NEXTAUTH_SECRET`. Sessions are JWTs encrypted with a key derived from this secret, so a new secret signs everyone out; they see "Session expired" and sign in again. This is also the only way to end sessions from the server side, and it ends all of them. No data is lost: the account id is a SHA-256 of the provider name and the provider's account id (`deriveUserId` in `lib/auth/options.ts`) and does not involve the secret. Local data on each device is kept and merges on the next sign-in.
+
+Session lifetime and revocation (`lib/auth/options.ts`, `lib/auth/session.ts`):
+
+- A session is valid for at most 30 days from the sign-in. next-auth re-issues the cookie on every session check, but the sign-in time (`authTime`) is copied, never renewed, and both the session endpoint and `/api/sync` reject a token whose `authTime` is missing, in the future, or 30 days old. `/api/auth/session` then answers `{}` and deletes the cookie; the app shows "Session expired".
+- Signing out deletes the cookie in that browser only. There is no server-side revocation list, so a copy of a session cookie (taken from a compromised device, for example) remains usable until 30 days after the sign-in it came from. Rotating `NEXTAUTH_SECRET` is the only remedy.
+- "Delete account data" does not revoke sessions either. The device that deletes signs itself out. Other signed-in devices notice the deletion the next time they sync, sign themselves out and keep their local data.
+
+Accepted risks. These are known and deliberately not fixed:
+
+- A write (`PUT`) from another signed-in device that races a `DELETE` can re-create the account's row just after it was deleted. Deleting again removes it.
+- Storage per account is free for anyone with a GitHub or Google account: up to 256 KB of JSON through the API (the table constraint allows up to 1 MiB as `jsonb`).
+- Timestamps inside a document are client-supplied and accepted up to one hour ahead of the server clock.
+- Rate limiting is per signed-in account with a fixed window (a burst of up to twice the limit can straddle two windows), and there is no limit per IP address or for signed-out requests.
+- No Content-Security-Policy header is sent (the app uses an inline theme script and WebGL assets; a policy is deferred). `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and `X-Frame-Options: DENY` are sent on every response (`next.config.js`).
+- The `/dev/*` pages are part of the production build.
+- The account id is reversible to a provider account by whoever can read the database (section 1). There is deliberately no secret "pepper" in the hash: losing or rotating it would orphan every account.
+- Deleted rows can persist in Neon's point-in-time restore history for the retention period configured in the Neon project. Check that setting if it matters to you.
 
 Limits (from `app/api/sync/route.ts` and `lib/sync/doc.ts`):
 
@@ -218,13 +247,20 @@ Limits (from `app/api/sync/route.ts` and `lib/sync/doc.ts`):
 - Deleted custom layouts leave a tombstone for 180 days so that deletions propagate; a device offline for longer than that may bring a deleted layout back.
 - The server merges every incoming document into the stored one instead of overwriting it, so a stale device cannot lower best scores.
 
-What is stored: per account, the opaque user id, the synced document (lesson stars, best WPM and accuracy, attempt counters, settings, custom layouts) and timestamps. No email, name or avatar is stored; the display name and avatar live in the session cookie to show who is signed in. The public statement is at `/privacy`; keep it in step with this document if what is stored changes.
+What is stored: per account, the pseudonymous account id (section 1), the synced document (lesson stars, best WPM and accuracy, attempt counters, settings, custom layouts) and timestamps; plus up to three rate-limit counter rows (account id, counter name `read`/`write`/`delete`, count, window start). No email, name or avatar is stored; the display name and avatar address live in the session cookie to show who is signed in. The public statement is at `/privacy`; keep it in step with this document if what is stored changes.
+
+Rate-limit counters and deletion. The following sentence appears word for word on `/privacy`:
+
+> After you delete your account data, the short-lived request counters (account id, counter name, count and timestamp) are not erased with it. They are removed by a periodic cleanup once they are more than a day old. The cleanup runs when someone uses sync, so normally they are gone a little over a day after your last request; while nobody uses sync at all they stay until the next request. A device that is still signed in creates new counters when it next syncs.
+
+How that works: `deleteDoc` removes only the document row, so a `DELETE` cannot be used to reset the limits. The cleanup (`sweepRate` in `lib/db/store.ts`) deletes every counter row whose window started more than a day ago; it runs inside a sync request, at most once an hour per server process, as one extra statement. There is no scheduled job.
 
 Server log lines the code prints (Vercel runtime logs):
 
 - `[auth] NEXTAUTH_SECRET is missing or shorter than 32 characters; accounts and sync are disabled. Generate one with: openssl rand -base64 32`
 - `[auth] DATABASE_URL is not set; accounts and sync are disabled in production.`
-- `[auth] <code>`: a next-auth error code (full error objects are not logged).
+- `[auth] <code>`: a next-auth error code such as `OAUTH_CALLBACK_ERROR` (full error objects are not logged). Only codes made of capital letters, digits and underscores are printed; anything else appears as `UNRECOGNISED_CODE`. next-auth's browser log relay, `POST /api/auth/_log`, is switched off and answers `404`.
+- `[auth] dev login refused: the request's Host is not localhost` and `[auth] refused a sign-in/sync request whose Host is not localhost: ...`: development only (section 9).
 - `[sync] database query failed (...)`, `[sync] database client could not be created (...)`: storage problems. Connection strings are redacted.
 - `[sync] unexpected error: <name>` and `[sync] stored document failed validation: ...`: unexpected failures.
 
@@ -237,7 +273,8 @@ Troubleshooting:
 | `redirect_uri_mismatch` (Google) or a redirect URI mismatch message (GitHub) | The callback URL registered with the provider does not match exactly. It must be `<site origin>/api/auth/callback/github` or `/google`: same scheme and host, no trailing slash. `localhost` and `127.0.0.1` are different hosts. Google changes can take minutes to hours. |
 | Google "Access blocked" for other people | The audience is still Testing. Publish it (section 4). |
 | Sync error, `/api/sync` answers `503 {"error":"unavailable"}` | The database is unreachable or the tables are missing. Run `yarn db:migrate` against the production database, check the Neon project is not suspended, and read the `[sync] database ...` log line. |
-| "Session expired" | The server answered 401: the 30-day session ended, the cookie was cleared, or `NEXTAUTH_SECRET` changed. Sign in again; local data is untouched. |
+| "Session expired" | The session is no longer valid: 30 days have passed since the sign-in, the cookie was cleared, or `NEXTAUTH_SECRET` changed. Sessions created before the 30-day limit was introduced carry no sign-in time and are also ended. Sign in again; local data is untouched. |
 | `403 forbidden_origin` in the browser | The request did not come from an origin the server recognises, for example a custom domain that differs from `NEXTAUTH_URL`. Set `NEXTAUTH_URL` to the domain people actually use. |
 | `429 rate_limited` | Too many requests for one account; wait for `Retry-After` seconds. |
-| `yarn db:migrate` prints "PGlite" or fails to import | No database URL was found (run `vercel env pull`), or Node is older than 22.18. |
+| `yarn db:migrate` prints `target: local PGlite directory` or fails to import | No database URL was found (run `vercel env pull`), or Node is older than 22.18. |
+| `reset --yes` prints row counts and "Nothing was deleted" | Expected for a real Postgres database: add `--confirm-host=<the host it printed>` (section 10). |

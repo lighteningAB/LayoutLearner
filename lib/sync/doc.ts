@@ -102,6 +102,13 @@ export const LIMITS = {
   maxAttempts: 1_000_000,
   /** Max serialized size of a whole document. NOT enforced by validateDoc; the API enforces it. */
   docBytes: 256 * 1024,
+  /**
+   * Bounds of a non-zero number inside an OPAQUE value (a register value, a layout). jsonb prints
+   * numbers in full decimal notation, so 1e300 takes 300 bytes where JSON took 5, and a document
+   * could outgrow `docBytes` once stored. Nothing the app syncs comes near these bounds.
+   */
+  maxNumber: 1e15,
+  minNumber: 1e-9,
 } as const;
 
 // ---------------------------------------------------------------------------------------------
@@ -129,7 +136,56 @@ export function setOwn<T>(map: { [k: string]: T }, key: string, value: T): void 
   }
 }
 
-/** Keys that may appear in a document: 1..LIMITS.keyLen chars and not a prototype-related name. */
+// ---------------------------------------------------------------------------------------------
+// Storable strings
+//
+// The server keeps documents in a Postgres `jsonb` column, which cannot hold U+0000 and rejects
+// strings that are not well-formed UTF-16 (a surrogate without its partner). Such a string would
+// pass a purely structural check, make the INSERT fail and block the whole document. Both are easy
+// to produce by accident: `name.slice(0, 40)` can cut an emoji in half. So every string in a
+// document, values AND keys, must be "storable"; view.ts repairs values before they enter one.
+// ---------------------------------------------------------------------------------------------
+
+/** True iff `s` has no U+0000 and no lone surrogate (String.prototype.isWellFormed is too new to rely on). */
+export function isStorableString(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 0) return false;
+    if (c < 0xd800 || c > 0xdfff) continue;
+    // A high surrogate must be followed by a low one; a low one is only legal as that follower.
+    if (c > 0xdbff || i + 1 >= s.length) return false;
+    const d = s.charCodeAt(i + 1);
+    if (d < 0xdc00 || d > 0xdfff) return false;
+    i++;
+  }
+  return true;
+}
+
+/** `s` made storable: U+0000 removed, every lone surrogate replaced by U+FFFD (like toWellFormed). */
+export function toStorableString(s: string): string {
+  if (isStorableString(s)) return s;
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 0) continue;
+    if (c < 0xd800 || c > 0xdfff) {
+      out += s[i];
+      continue;
+    }
+    if (c <= 0xdbff && i + 1 < s.length) {
+      const d = s.charCodeAt(i + 1);
+      if (d >= 0xdc00 && d <= 0xdfff) {
+        out += s[i] + s[i + 1];
+        i++;
+        continue;
+      }
+    }
+    out += "�";
+  }
+  return out;
+}
+
+/** Keys that may appear in a document: 1..LIMITS.keyLen chars, storable, not a prototype-related name. */
 export function isSafeKey(key: unknown): key is string {
   return (
     typeof key === "string" &&
@@ -137,7 +193,8 @@ export function isSafeKey(key: unknown): key is string {
     key.length <= LIMITS.keyLen &&
     key !== "__proto__" &&
     key !== "constructor" &&
-    key !== "prototype"
+    key !== "prototype" &&
+    isStorableString(key)
   );
 }
 
@@ -351,19 +408,39 @@ export function includesDoc(a: SyncDoc, b: SyncDoc): boolean {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Drops layout tombstones with `t < now - ttlMs`. Nothing else changes.
+ * Drops layout tombstones with `t < now - ttlMs`, and then, if there are still more than
+ * `LIMITS.layouts` layout items, the OLDEST remaining tombstones (by `t`, then by id) until the
+ * items fit or no tombstone is left. Nothing else changes; live layouts are never dropped.
  *
  * Caveat (inherent to expiring tombstones): pruning forgets a deletion. A replica that was offline
  * for longer than the TTL and still holds the live layout will bring it back on its next sync,
- * because nobody remembers that it was deleted. Within the TTL deletes never resurrect.
+ * because nobody remembers that it was deleted. Within the TTL deletes never resurrect, unless the
+ * overflow rule had to evict the tombstone: a user who creates and deletes hundreds of layouts
+ * would otherwise fill the collection with tombstones and could never sync again. A possible
+ * resurrection of a long-deleted layout on a stale device is the smaller evil.
+ *
+ * The overflow rule depends on the document alone (no clock), and "the newest N of a set" does not
+ * change when it is taken again on a subset that contains it. So a client and the server that both
+ * apply it to the same union keep the same tombstones instead of pushing evicted ones back and
+ * forth.
  */
 export function pruneDoc(doc: SyncDoc, now: number, ttlMs: number): SyncDoc {
   const cutoff = now - ttlMs;
   const layouts: SyncDoc["layouts"] = {};
+  const dead: { id: string; t: number }[] = [];
+  let count = 0;
   for (const id of Object.keys(doc.layouts)) {
     const item = doc.layouts[id];
-    if (isTombstone(item) && item.t < cutoff) continue;
+    if (isTombstone(item)) {
+      if (item.t < cutoff) continue;
+      dead.push({ id, t: item.t });
+    }
     setOwn(layouts, id, item);
+    count++;
+  }
+  if (count > LIMITS.layouts && dead.length > 0) {
+    dead.sort((a, b) => (a.t !== b.t ? a.t - b.t : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    for (let i = 0; i < dead.length && count > LIMITS.layouts; i++, count--) delete layouts[dead[i].id];
   }
   return { schema: DOC_SCHEMA, settings: doc.settings, learn: doc.learn, layouts, lessons: doc.lessons };
 }
@@ -378,7 +455,35 @@ export function pruneDoc(doc: SyncDoc, now: number, ttlMs: number): SyncDoc {
  * merge. Use it only on state that has not been pushed yet.
  */
 export function clampDocTimes(doc: SyncDoc, maxT: number): SyncDoc {
-  const clamp = (t: number) => (t > maxT ? maxT : t);
+  return retime(doc, maxT, maxT, maxT, doc.lessons.epoch > maxT ? maxT : doc.lessons.epoch);
+}
+
+/**
+ * For the FIRST contact of a replica with an account (see integrateRemote in cycle.ts). Nothing of
+ * such a replica has reached that account yet, and its timestamps come from a clock nobody has
+ * verified:
+ *
+ *   registers, layouts   a stamp later than `serverTime + toleranceMs` is of unverifiable age (the
+ *                        edit may be a year old, made on a device whose clock runs a year ahead).
+ *                        It is DEMOTED to the legacy stamp 1, "age unknown": any value with a real
+ *                        timestamp beats it, and it still fills a gap. Clamping it to the server's
+ *                        present instead would let an old edit beat every genuinely newer one.
+ *   lastAt, completedAt  clamped to `serverTime` (facts about attempts, not competing writes).
+ *   lessons.epoch        replaced by `epoch`: an epoch only means something inside the account it
+ *                        was minted for, so the replica adopts the account's and the lesson results
+ *                        of both sides are JOINED (a first link is always a union of progress).
+ *
+ * Like clamping, this is not a lattice operation; it is sound only because no other replica has
+ * seen these stamps yet.
+ */
+export function adoptDocTimes(doc: SyncDoc, serverTime: number, toleranceMs: number, epoch: number): SyncDoc {
+  return retime(doc, serverTime + toleranceMs, 1, serverTime, epoch);
+}
+
+/** Stamps above `limit` become `over`; lesson times are clamped to `lessonMax`; the epoch is set. */
+function retime(doc: SyncDoc, limit: number, over: number, lessonMax: number, epoch: number): SyncDoc {
+  const clamp = (t: number) => (t > limit ? over : t);
+  const clampLesson = (t: number) => (t > lessonMax ? lessonMax : t);
   const registers = (src: { [k: string]: Register }) => {
     const out: { [k: string]: Register } = {};
     for (const k of Object.keys(src)) setOwn(out, k, { t: clamp(src[k].t), v: src[k].v });
@@ -399,8 +504,8 @@ export function clampDocTimes(doc: SyncDoc, maxT: number): SyncDoc {
         stars: e.stars,
         bestWpm: e.bestWpm,
         bestAccuracy: e.bestAccuracy,
-        completedAt: e.completedAt === null ? null : clamp(e.completedAt),
-        lastAt: clamp(e.lastAt),
+        completedAt: e.completedAt === null ? null : clampLesson(e.completedAt),
+        lastAt: clampLesson(e.lastAt),
         att: e.att,
       });
     }
@@ -411,7 +516,7 @@ export function clampDocTimes(doc: SyncDoc, maxT: number): SyncDoc {
     settings: registers(doc.settings),
     learn: registers(doc.learn),
     layouts,
-    lessons: { epoch: clamp(doc.lessons.epoch), by },
+    lessons: { epoch, by },
   };
 }
 
@@ -446,38 +551,50 @@ function section<T>(name: string, fn: () => T): T {
  * allowed, which also bounds the recursion. Output objects are built with setOwn after isSafeKey, so
  * no input key can reach a prototype. -0 is normalised to 0 (canonical() prints both as "0").
  */
-function cleanValue(x: unknown, depthLeft: number): Json {
+function cleanValue(x: unknown, depthLeft: number, repair: boolean): Json {
   if (x === null) return null;
   const type = typeof x;
-  if (type === "boolean" || type === "string") return x as boolean | string;
+  if (type === "boolean") return x as boolean;
+  if (type === "string") {
+    if (isStorableString(x as string)) return x as string;
+    if (!repair) fail("bad string");
+    return toStorableString(x as string);
+  }
   if (type === "number") {
     if (!Number.isFinite(x)) fail("number not finite");
-    return x === 0 ? 0 : (x as number);
+    if (x === 0) return 0;
+    const abs = Math.abs(x as number);
+    if (abs > LIMITS.maxNumber || abs < LIMITS.minNumber) fail("number out of range");
+    return x as number;
   }
   if (type !== "object") fail("not json");
   if (depthLeft <= 0) fail("too deep");
   if (Array.isArray(x)) {
     const out: Json[] = [];
-    for (let i = 0; i < x.length; i++) out.push(cleanValue(x[i], depthLeft - 1));
+    for (let i = 0; i < x.length; i++) out.push(cleanValue(x[i], depthLeft - 1, repair));
     return out;
   }
   if (!isPlainObject(x)) fail("not json");
   const out: { [k: string]: Json } = {};
   for (const k of Object.keys(x as object)) {
+    // Keys are never repaired: two keys could collapse into one and the survivor would depend on
+    // their order.
     if (!isSafeKey(k)) fail("bad key");
-    setOwn(out, k, cleanValue((x as { [k: string]: unknown })[k], depthLeft - 1));
+    setOwn(out, k, cleanValue((x as { [k: string]: unknown })[k], depthLeft - 1, repair));
   }
   return out;
 }
 
 /**
  * Total (never throws) version of the opaque-value check, for callers outside this file: returns a
- * normalised deep copy of `value` if it is Json with safe keys and at most `maxDepth` container
- * levels. view.ts uses it so that it never puts something into a document that validateDoc rejects.
+ * normalised deep copy of `value` if it is Json with safe keys, numbers in range and at most
+ * `maxDepth` container levels. view.ts uses it so that it never puts something into a document that
+ * validateDoc rejects. String VALUES that are not storable (see isStorableString) are REPAIRED in
+ * the copy instead of being rejected, so a layout whose name ends in half an emoji still syncs.
  */
 export function cleanJson(value: unknown, maxDepth: number = LIMITS.depth): { ok: true; v: Json } | { ok: false } {
   try {
-    return { ok: true, v: cleanValue(value, maxDepth) };
+    return { ok: true, v: cleanValue(value, maxDepth, true) };
   } catch {
     return { ok: false };
   }
@@ -506,27 +623,27 @@ function checkMap(x: unknown, maxEntries: number): { [k: string]: unknown } {
   return x as { [k: string]: unknown };
 }
 
-function validateRegisters(input: unknown, maxT: number): { [k: string]: Register } {
+function validateRegisters(input: unknown, maxT: number, cap: (n: number) => number): { [k: string]: Register } {
   const out: { [k: string]: Register } = {};
   if (input === undefined) return out;
-  const map = checkMap(input, LIMITS.registers);
+  const map = checkMap(input, cap(LIMITS.registers));
   for (const k of Object.keys(map)) {
     checkKey(k);
     const r = map[k];
     if (!isPlainObject(r)) fail("bad register");
     if (!hasOwn.call(r, "v")) fail("missing value");
     const t = checkTime(r.t, maxT);
-    const v = cleanValue(r.v, LIMITS.depth);
+    const v = cleanValue(r.v, LIMITS.depth, false);
     if (utf8Length(canonical(v)) > LIMITS.registerBytes) fail("value too large");
     setOwn(out, k, { t, v });
   }
   return out;
 }
 
-function validateLayouts(input: unknown, maxT: number): SyncDoc["layouts"] {
+function validateLayouts(input: unknown, maxT: number, cap: (n: number) => number): SyncDoc["layouts"] {
   const out: SyncDoc["layouts"] = {};
   if (input === undefined) return out;
-  const map = checkMap(input, LIMITS.layouts);
+  const map = checkMap(input, cap(LIMITS.layouts));
   for (const id of Object.keys(map)) {
     checkKey(id);
     const item = map[id];
@@ -541,7 +658,7 @@ function validateLayouts(input: unknown, maxT: number): SyncDoc["layouts"] {
       continue;
     }
     if (!hasV || !isPlainObject(item.v)) fail("bad value");
-    const v = cleanValue(item.v, LIMITS.depth) as { [k: string]: Json };
+    const v = cleanValue(item.v, LIMITS.depth, false) as { [k: string]: Json };
     // The map key is the identity. A value claiming another id would make two replicas disagree
     // about which layout this is.
     if (hasOwn.call(v, "id") && v.id !== id) fail("id mismatch");
@@ -551,11 +668,11 @@ function validateLayouts(input: unknown, maxT: number): SyncDoc["layouts"] {
   return out;
 }
 
-function validateLessonEntry(input: unknown, maxT: number): LessonEntry {
+function validateLessonEntry(input: unknown, maxT: number, cap: (n: number) => number): LessonEntry {
   if (!isPlainObject(input)) fail("bad entry");
   const e = input as { [k: string]: unknown };
   if (e.stars !== 0 && e.stars !== 1 && e.stars !== 2 && e.stars !== 3) fail("bad stars");
-  const attIn = checkMap(e.att, LIMITS.devices);
+  const attIn = checkMap(e.att, cap(LIMITS.devices));
   const att: { [deviceId: string]: number } = {};
   for (const d of Object.keys(attIn)) {
     checkKey(d);
@@ -574,19 +691,19 @@ function validateLessonEntry(input: unknown, maxT: number): LessonEntry {
   };
 }
 
-function validateLessons(input: unknown, maxT: number): SyncDoc["lessons"] {
+function validateLessons(input: unknown, maxT: number, cap: (n: number) => number): SyncDoc["lessons"] {
   if (input === undefined) return { epoch: 0, by: {} };
   if (!isPlainObject(input)) fail("not an object");
   const epoch = checkTime(input.epoch, maxT);
   const by: SyncDoc["lessons"]["by"] = {};
-  const layoutsIn = checkMap(input.by, LIMITS.lessonLayouts);
+  const layoutsIn = checkMap(input.by, cap(LIMITS.lessonLayouts));
   for (const layoutId of Object.keys(layoutsIn)) {
     checkKey(layoutId);
-    const lessonsIn = checkMap(layoutsIn[layoutId], LIMITS.lessonsPerLayout);
+    const lessonsIn = checkMap(layoutsIn[layoutId], cap(LIMITS.lessonsPerLayout));
     const lessons: { [lessonId: string]: LessonEntry } = {};
     for (const lessonId of Object.keys(lessonsIn)) {
       checkKey(lessonId);
-      setOwn(lessons, lessonId, validateLessonEntry(lessonsIn[lessonId], maxT));
+      setOwn(lessons, lessonId, validateLessonEntry(lessonsIn[lessonId], maxT, cap));
     }
     setOwn(by, layoutId, lessons);
   }
@@ -604,23 +721,28 @@ function validateLessons(input: unknown, maxT: number): SyncDoc["lessons"] {
  * Timestamps later than `opts.now + opts.maxFutureMs` are REJECTED, not clamped: a far-future `t`
  * would win every last-writer-wins comparison forever.
  *
+ * `opts.anyCount` switches off the limits on the NUMBER of entries per collection (every other
+ * check stays). It is for a device reading back its own replica: a replica may legitimately hold
+ * more than can sync (see fitForPush in cycle.ts) and must still load.
+ *
  * Total: never throws, whatever the input. `error` is a fixed machine-readable string such as
  * "layouts: too many"; it never contains user content.
  */
 export function validateDoc(
   input: unknown,
-  opts: { now: number; maxFutureMs: number },
+  opts: { now: number; maxFutureMs: number; anyCount?: boolean },
 ): { ok: true; doc: SyncDoc } | { ok: false; error: string } {
   try {
     const maxT = opts.now + opts.maxFutureMs;
+    const cap = opts.anyCount === true ? () => Infinity : (n: number) => n;
     if (!isPlainObject(input)) return { ok: false, error: "not an object" };
     if (getOwn(input, "schema") !== DOC_SCHEMA) return { ok: false, error: "unsupported schema" };
     const doc: SyncDoc = {
       schema: DOC_SCHEMA,
-      settings: section("settings", () => validateRegisters(getOwn(input, "settings"), maxT)),
-      learn: section("learn", () => validateRegisters(getOwn(input, "learn"), maxT)),
-      layouts: section("layouts", () => validateLayouts(getOwn(input, "layouts"), maxT)),
-      lessons: section("lessons", () => validateLessons(getOwn(input, "lessons"), maxT)),
+      settings: section("settings", () => validateRegisters(getOwn(input, "settings"), maxT, cap)),
+      learn: section("learn", () => validateRegisters(getOwn(input, "learn"), maxT, cap)),
+      layouts: section("layouts", () => validateLayouts(getOwn(input, "layouts"), maxT, cap)),
+      lessons: section("lessons", () => validateLessons(getOwn(input, "lessons"), maxT, cap)),
     };
     return { ok: true, doc };
   } catch (e) {

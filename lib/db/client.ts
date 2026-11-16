@@ -18,6 +18,16 @@ export class DbUnavailableError extends Error {
   }
 }
 
+/**
+ * Is `err` a DbUnavailableError? Deliberately NOT `instanceof`: in development
+ * the PGlite query function lives on globalThis across hot reloads, so the
+ * errors it throws can come from an earlier copy of this module, whose class
+ * is a different object from the one the importer sees.
+ */
+export function isDbUnavailable(err: unknown): err is DbUnavailableError {
+  return typeof err === "object" && err !== null && (err as { name?: unknown }).name === "DbUnavailableError";
+}
+
 const QUERY_TIMEOUT_MS = 8000;
 
 interface DbGlobal {

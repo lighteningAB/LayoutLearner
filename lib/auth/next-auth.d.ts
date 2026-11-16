@@ -13,5 +13,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     uid?: string;
+    /** Epoch seconds of the sign-in this session came from. Set once, never refreshed. */
+    authTime?: number;
   }
 }

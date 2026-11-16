@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getAuthConfig } from "@/lib/auth/config";
 import { getUserId } from "@/lib/auth/session";
-import { DbUnavailableError } from "@/lib/db/client";
+import { isDbUnavailable } from "@/lib/db/client";
 import { deleteDoc, getDoc, hitRate, putDoc, DELETE_BUCKET, type StoredDoc } from "@/lib/db/store";
 import {
   LIMITS,
@@ -235,7 +235,9 @@ async function handlePut(req: NextRequest, userId: string): Promise<Response> {
   const rechecked = validateDoc(joined, { now, maxFutureMs: STORED_MAX_FUTURE_MS });
   if (rechecked.ok === false) {
     console.error(`[sync] joined document failed validation: ${rechecked.error}`);
-    return fail(413, "too_large");
+    // A count limit (e.g. more live layouts than LIMITS.layouts; pruneDoc has already evicted the
+    // oldest tombstones to make room), not a size problem: a distinct code so the client can say so.
+    return fail(413, "limit_exceeded");
   }
   const next = rechecked.doc;
   if (Buffer.byteLength(JSON.stringify(next), "utf8") > LIMITS.docBytes) return fail(413, "too_large");
@@ -292,8 +294,8 @@ async function handle(req: NextRequest): Promise<Response> {
     if (method === "DELETE") return await handleDelete(userId);
     return await handleGet(userId);
   } catch (err) {
-    if (err instanceof DbUnavailableError) {
-      console.error(`[sync] ${err.message}`);
+    if (isDbUnavailable(err)) {
+      console.error(`[sync] ${String(err.message).slice(0, 400)}`);
       return fail(503, "unavailable");
     }
     // Never log the error object itself: it could carry request data.

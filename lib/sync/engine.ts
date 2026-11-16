@@ -50,16 +50,32 @@ import type { PublicAuthConfig } from "@/lib/auth/types";
 import {
   absorbLocal,
   adoptAccount,
+  hasMetAccount,
   integrateRemote,
   isRemoteDeleted,
   linkSidecar,
+  localOwner,
+  redoApply,
+  resetLessonsLocal,
+  sameView,
+  trackLocal,
   unlinkSidecar,
   type RemoteState,
   type Sidecar,
 } from "./cycle";
 import { clampDocTimes, emptyDoc, validateDoc, type SyncDoc } from "./doc";
-import { DATA_CLEARED_EVENT, LESSONS_RESET_EVENT, getViewConfig, readView, subscribeStores, writeView } from "./local";
-import { SIDECAR_KEY, newSidecar, rawSidecar, readSidecar, writeSidecar } from "./meta";
+import {
+  DATA_CLEARED_EVENT,
+  LESSONS_RESET_EVENT,
+  ackStores,
+  getViewConfig,
+  readStores,
+  readView,
+  subscribeStores,
+  writeView,
+} from "./local";
+import type { LocalView } from "./view";
+import { SIDECAR_KEY, newDeviceId, newSidecar, rawSidecar, readSidecar, writeSidecar } from "./meta";
 
 export type SyncPhase = "disabled" | "signed-out" | "idle" | "syncing" | "synced" | "offline" | "error" | "mismatch";
 
@@ -184,11 +200,30 @@ function storageFailed(): null {
   return null;
 }
 
-/** The sidecar as stored right now; created if absent or unusable. Null: storage does not work. */
+/**
+ * The stored sidecar was written by a NEWER build of the app (a deploy happened while this tab was
+ * open). This tab must not touch it: rewriting it in the old format would destroy the newer tab's
+ * replica, link and snapshot. Sync is paused here until the tab is reloaded; no retry, no
+ * sign-out, and nothing is written.
+ */
+function pausedForUpdate(): null {
+  setStatus({
+    phase: "error",
+    error: { code: "update", message: "Reload to finish updating", retryAt: null },
+  });
+  return null;
+}
+
+/**
+ * The sidecar as stored right now, ready to work with: created if absent or unusable, and with an
+ * interrupted projection finished (see `commit`). Null: storage does not work, or the stored
+ * sidecar belongs to a newer build.
+ */
 function load(): Sidecar | null {
   const read = readSidecar();
   if (read.ok === false) return storageFailed();
-  if (read.sidecar !== null) return read.sidecar;
+  if (read.newer) return pausedForUpdate();
+  if (read.sidecar !== null) return read.sidecar.applying ? recover(read.sidecar) : read.sidecar;
   // Absent (first run, cleared by another tab or by hand) or unusable. If this tab is signed in,
   // the session that was current when the data vanished must not pull it back (see `barrier`).
   const fresh = newSidecar(sessionStamp());
@@ -201,6 +236,43 @@ function save(sc: Sidecar): boolean {
   return false;
 }
 
+/**
+ * Brings the stores to `target` and records `next` as the sidecar, in a way that survives dying
+ * in the middle. Writing three stores and the sidecar is not atomic, and a sidecar whose `seen`
+ * does not match the stores is poison: the next absorb would take every projected (remote) value
+ * for a local edit, stamp it "now" and count downloaded attempts as this device's own.
+ *
+ *   1. save `next` with the `applying` marker (its `seen` is the view from before the projection)
+ *   2. write the stores
+ *   3. save `next` with `seen` re-read from the stores and the marker cleared
+ *
+ * If 1 fails nothing has happened. If the tab dies after 1, or 3 fails, the marker stays, and
+ * whichever tab loads the sidecar next finishes the job first (`recover`). `current` is the view
+ * read at the start of this synchronous block; when it already equals `target` there is nothing
+ * to protect and the sidecar is saved once.
+ */
+function commit(next: Sidecar, target: LocalView, current: LocalView, mode: "merge" | "replace", marked = false): Sidecar | null {
+  let done: Sidecar;
+  if (!marked && sameView(target, current)) {
+    done = { ...next, seen: current, applying: null };
+  } else {
+    if (!save({ ...next, applying: mode })) return null;
+    writeView(target, current);
+    // `seen` is what the stores actually hold now (they may have normalised or refused a value).
+    done = { ...next, seen: readStores().view, applying: null };
+  }
+  if (!save(done)) return null;
+  ackStores();
+  return done;
+}
+
+/** Finishes the projection another tab (or an earlier life of this one) did not complete. */
+function recover(sc: Sidecar): Sidecar | null {
+  const rd = readStores();
+  const out = redoApply(sc, rd.view, nowFor(sc), getViewConfig());
+  return commit(out.sidecar, out.projected, rd.view, sc.applying === "replace" ? "replace" : "merge", true);
+}
+
 /** Timestamps are taken from the server's clock once its offset is known. */
 function nowFor(sc: Sidecar): number {
   return Date.now() + (sc.serverOffset ?? 0);
@@ -208,22 +280,39 @@ function nowFor(sc: Sidecar): number {
 
 function reflect(sc: Sidecar): void {
   const patch: Partial<SyncStatus> = { pending: sc.link !== null && sc.dirty, lastSyncedAt: sc.lastSyncedAt };
-  if (status.phase === "mismatch" && sc.link !== null) {
-    patch.mismatch = { localAccountName: sc.link.name, hasUnsyncedLocalChanges: sc.dirty };
-  }
+  const owner = localOwner(sc);
+  if (status.phase === "mismatch" && owner !== null) patch.mismatch = mismatchInfo(sc, owner);
   setStatus(patch);
+}
+
+/** Orphaned data (its account's copy was deleted) is by definition not stored in any account. */
+function mismatchInfo(sc: Sidecar, owner: { name: string }): NonNullable<SyncStatus["mismatch"]> {
+  return { localAccountName: owner.name || null, hasUnsyncedLocalChanges: sc.link === null || sc.dirty };
 }
 
 // ---------------------------------------------------------------------------------------------
 // Tracking: stores -> replica
 // ---------------------------------------------------------------------------------------------
 
-/** One synchronous block: read sidecar, read the stores, absorb, write the sidecar. */
+/**
+ * One synchronous block: read sidecar, read the stores, absorb, write the sidecar. If a store had
+ * lost data (its localStorage key is gone or unreadable), nothing of it is absorbed and the
+ * replica's values are written back into it instead.
+ */
 function absorbNow(): Sidecar | null {
   const sc = load();
   if (sc === null) return null;
-  const next = absorbLocal(sc, readView(), nowFor(sc), getViewConfig());
-  if (next !== sc && !save(next)) return null;
+  const rd = readStores();
+  const out = trackLocal(sc, rd, nowFor(sc), getViewConfig());
+  let next = out.sidecar;
+  if (out.restore !== null) {
+    const done = commit(next, out.restore, rd.view, "merge");
+    if (done === null) return null;
+    next = done;
+  } else {
+    if (next !== sc && !save(next)) return null;
+    ackStores();
+  }
   reflect(next);
   return next;
 }
@@ -426,6 +515,8 @@ function hard(code: string, message: string): void {
 
 const offline = () => typeof navigator !== "undefined" && navigator.onLine === false;
 
+const TOO_MANY_LAYOUTS = "Too many custom layouts to sync";
+
 async function fail(ctx: Ctx, r: ApiResult, clockRetried = false): Promise<void> {
   if (ctx.epoch !== epoch) return; // the situation changed; whoever changed it set the phase
   switch (r.kind) {
@@ -466,7 +557,13 @@ async function fail(ctx: Ctx, r: ApiResult, clockRetried = false): Promise<void>
     );
     return;
   }
+  // A count limit (as opposed to the size limit): the server's join would hold more custom layouts
+  // than an account may have. Retrying cannot help; the user has to delete some.
+  if (r.status === 413 && r.error === "limit_exceeded") return hard("limit_exceeded", TOO_MANY_LAYOUTS);
   if (r.status === 413) return hard("too_large", "Account data is too large to sync");
+  if (r.status === 400 && r.error === "invalid_document" && /too many/.test(r.detail)) {
+    return hard("limit_exceeded", /^layouts/.test(r.detail) ? TOO_MANY_LAYOUTS : "Account data is too large to sync");
+  }
   if (r.status === 400 && r.error === "invalid_document" && clockRetried && /future/.test(r.detail)) {
     return hard("clock", "This device's clock looks wrong");
   }
@@ -494,16 +591,26 @@ function withLock<T>(fn: () => Promise<T>): Promise<T> {
   return result;
 }
 
-type Applied = "stale" | "deleted" | "concurrent" | { needPush: boolean; version: number; gen: string | null; doc: SyncDoc };
+type Applied =
+  | "stale"
+  | "deleted"
+  | "concurrent"
+  /** `doc` is what to upload if `needPush`; `overflow`: some layouts did not fit into it. */
+  | { needPush: boolean; version: number; gen: string | null; doc: SyncDoc; overflow: boolean };
 
 /**
  * Design step 3 + 5 as ONE synchronous block: re-read the sidecar, check the invariant, detect
  * "deleted elsewhere", absorb, merge, project to the stores, take `seen` from the stores, write
- * the sidecar.
+ * the sidecar (`commit`).
  */
 function applyRemote(ctx: Ctx, r: { remote: RemoteState; receivedAt: number }, sent: { gen: string | null; version: number }): Applied {
-  const sc = currentSidecar();
+  let sc = currentSidecar();
   if (!stillValid(ctx, sc) || sc.link === null) return "stale";
+  if (sc.applying) {
+    // Another tab died in the middle of a projection: finish that before judging anything.
+    sc = recover(sc);
+    if (sc === null || sc.link === null) return "stale";
+  }
   // Another tab advanced the link while this request was in flight (only possible without Web
   // Locks): this response describes an older server state. Do not judge anything by it.
   if (sc.link.gen !== sent.gen || sc.link.version !== sent.version) return "concurrent";
@@ -520,15 +627,13 @@ function applyRemote(ctx: Ctx, r: { remote: RemoteState; receivedAt: number }, s
   }
   const serverOffset = remote.serverTime - r.receivedAt;
   const now = Date.now() + serverOffset;
-  const view = readView();
-  const out = integrateRemote({ ...sc, serverOffset }, view, remote, now, getViewConfig());
-  writeView(out.projected, view);
-  // `seen` is what the stores actually hold now (they may have normalised or refused a value).
-  const next: Sidecar = { ...out.sidecar, seen: readView() };
-  if (!save(next)) return "stale";
+  const rd = readStores();
+  const out = integrateRemote({ ...sc, serverOffset }, rd.view, remote, now, getViewConfig(), rd.known);
+  const next = commit(out.sidecar, out.projected, rd.view, "merge");
+  if (next === null) return "stale";
   reflect(next);
   const link = next.link as NonNullable<Sidecar["link"]>;
-  return { needPush: out.needPush, version: link.version, gen: link.gen, doc: next.doc };
+  return { needPush: out.needPush, version: link.version, gen: link.gen, doc: out.push, overflow: out.overflow };
 }
 
 async function cycle(): Promise<void> {
@@ -562,7 +667,7 @@ async function cycle(): Promise<void> {
       server = null;
       continue;
     }
-    if (!applied.needPush) return succeed(ctx);
+    if (!applied.needPush) return succeed(ctx, applied.overflow);
 
     // The server lacks something: push the whole replica. Never reached when nothing is missing,
     // so an idle signed-in tab only ever makes GETs (no version churn).
@@ -577,6 +682,9 @@ async function cycle(): Promise<void> {
     if (put.kind === "http" && put.status === 400 && put.error === "invalid_document" && /future/.test(put.detail) && !clockRetried) {
       // The replica carries timestamps the server considers to be in the future (this device's
       // clock changed after the offset was learned). Clamp ONCE to the server's time and retry.
+      // Clamped, not demoted as at the first contact (adoptDocTimes): these stamps were written
+      // after this replica last synced, so the edits ARE recent, at most as new as the server's
+      // present; the server has rejected the document, so nobody has seen the stamps.
       clockRetried = true;
       const fresh = await api(ctx, "GET");
       if (fresh.kind !== "ok") return fail(ctx, fresh);
@@ -594,7 +702,7 @@ async function cycle(): Promise<void> {
   if (ctx.epoch === epoch) transient("error", "busy", "Sync is busy, retrying", backoffDelay());
 }
 
-function succeed(ctx: Ctx): void {
+function succeed(ctx: Ctx, overflow: boolean): void {
   const sc = currentSidecar();
   if (!stillValid(ctx, sc) || sc.link === null) {
     void fail(ctx, { kind: "stale" });
@@ -605,7 +713,19 @@ function succeed(ctx: Ctx): void {
   if (!save(next)) return;
   backoffIndex = 0;
   hardError = false;
-  setStatus({ phase: "synced", error: null, pending: next.dirty, lastSyncedAt: next.lastSyncedAt });
+  if (overflow) {
+    // Everything else is in sync, but this device has more custom layouts than an account may
+    // hold; the ones that did not fit stay here (see fitForPush). Shown as an error so that the
+    // user learns of it; polling goes on.
+    setStatus({
+      phase: "error",
+      error: { code: "limit_exceeded", message: TOO_MANY_LAYOUTS + "; the oldest stay on this device only", retryAt: null },
+      pending: next.dirty,
+      lastSyncedAt: next.lastSyncedAt,
+    });
+  } else {
+    setStatus({ phase: "synced", error: null, pending: next.dirty, lastSyncedAt: next.lastSyncedAt });
+  }
   if (firstSync) emit("first-sync");
 }
 
@@ -692,13 +812,12 @@ function evaluate(): boolean {
     return false;
   }
 
-  if (sc.link === null) {
-    // Anonymous local data (or a brand-new device): it joins the account on the next cycle.
-    sc = linkSidecar(sc, user);
-    if (!save(sc)) return false;
-  } else if (sc.link.userId !== user.id) {
-    // The local data belongs to ANOTHER account. Nothing is synced in either direction until the
-    // user decides (resolveMismatch). Derived from persisted state, so it survives a reload.
+  const owner = localOwner(sc);
+  if (owner !== null && owner.userId !== user.id) {
+    // The local data belongs to ANOTHER account: it is linked to one, or it is what was left on
+    // this device when another account's data was deleted. Nothing is synced in either direction
+    // until the user decides (resolveMismatch). Derived from persisted state, so it survives a
+    // reload.
     syncableKey = null;
     if (pushTimer !== null) clearTimeout(pushTimer);
     if (retryTimer !== null) clearTimeout(retryTimer);
@@ -706,10 +825,16 @@ function evaluate(): boolean {
     setStatus({
       phase: "mismatch",
       error: status.phase === "mismatch" ? status.error : null,
-      mismatch: { localAccountName: sc.link.name, hasUnsyncedLocalChanges: sc.dirty },
+      mismatch: mismatchInfo(sc, owner),
       pending: sc.dirty,
     });
     return false;
+  }
+  if (sc.link === null) {
+    // Data that never belonged to an account (or a brand-new device), or data this very user left
+    // here when deleting the account's copy: it joins the account on the next cycle.
+    sc = linkSidecar(sc, user);
+    if (!save(sc)) return false;
   } else if (sc.link.name !== user.name) {
     sc = { ...sc, link: { ...sc.link, name: user.name } };
     if (!save(sc)) return false;
@@ -745,13 +870,32 @@ function trigger(opts: { allowHardError: boolean }): void {
 // dirty while the error lasts, so the absorb that follows schedules a push.
 const onStoreChange = guarded(() => scheduleAbsorb());
 
+/**
+ * "Reset progress" was used (the lesson store is already empty). Handled at once, because what
+ * the reset means depends on the situation at THIS moment (see absorbLocal in cycle.ts):
+ *
+ *   signed in, and this device has synced with that account   the ACCOUNT is reset: the lessons
+ *       epoch is bumped, which erases the results on every device of the account;
+ *   anything else (signed out, never signed in, another account's data, not synced yet)   only
+ *       THIS BROWSER is reset. If it is or becomes linked to an account, that account's lessons
+ *       come back with the next sync.
+ */
 const onLessonsReset = guarded(() => {
   const sc = load();
   if (sc === null) return;
-  // Consumed by the next absorb. While linked, that bumps the lessons epoch, so the reset
-  // propagates to the account and to every other device of it (see absorbLocal in cycle.ts).
-  save({ ...sc, lessonsResetPending: true });
-  scheduleAbsorb();
+  if (absorbTimer !== null) clearTimeout(absorbTimer);
+  absorbTimer = null;
+  if (canSync(sc) && hasMetAccount(sc)) {
+    if (!save({ ...sc, lessonsResetPending: true })) return;
+  } else {
+    // May renew the device id; a cycle in flight then finds the sidecar changed and starts over.
+    if (!save(resetLessonsLocal(sc, newDeviceId()))) return;
+    syncableKey = null;
+  }
+  const next = absorbNow();
+  if (next === null) return;
+  if (next.dirty && canSync(next)) schedulePush();
+  else evaluate();
 });
 
 /**
@@ -943,7 +1087,8 @@ export async function resolveMismatch(choice: "merge" | "use-account" | "cancel"
   try {
     const user = signedInUser();
     const sc = absorbNow();
-    if (user === null || sc === null || sc.link === null || sc.link.userId === user.id) return;
+    const owner = sc === null ? null : localOwner(sc);
+    if (user === null || sc === null || owner === null || owner.userId === user.id) return;
 
     if (choice === "cancel") {
       await signOutAccount({ skipFlush: true });
@@ -979,11 +1124,12 @@ export async function resolveMismatch(choice: "merge" | "use-account" | "cancel"
     if (absorbTimer !== null) clearTimeout(absorbTimer);
     absorbTimer = null;
     const serverOffset = got.remote.serverTime - got.receivedAt;
-    const view = readView();
-    const out = adoptAccount({ ...now, serverOffset }, view, got.remote, Date.now() + serverOffset, getViewConfig(), user);
-    writeView(out.projected, view);
+    const rd = readStores();
+    const out = adoptAccount({ ...now, serverOffset }, rd.view, got.remote, Date.now() + serverOffset, getViewConfig(), user);
     bumpEpoch();
-    if (!save({ ...out.sidecar, seen: readView() })) return;
+    // Everything on this device is replaced, so an interrupted projection (`now.applying`) is
+    // simply superseded.
+    if (commit(out.sidecar, out.projected, rd.view, "replace") === null) return;
     if (!evaluate()) void requestCycle();
     if (running !== null) await running;
   } catch {
@@ -1023,7 +1169,8 @@ export async function deleteAccountData(): Promise<{ ok: boolean; error?: string
     const user = signedInUser();
     const sc = absorbNow();
     if (user === null || sc === null) return { ok: false, error: "Not signed in" };
-    if (sc.link !== null && sc.link.userId !== user.id) return { ok: false, error: "This device holds another account's data" };
+    const owner = localOwner(sc);
+    if (owner !== null && owner.userId !== user.id) return { ok: false, error: "This device holds another account's data" };
     // Let a cycle that is in flight finish first, and take the lock for the DELETE: a first
     // upload still on the wire must not re-create the row right after it was deleted.
     if (running !== null) await running;

@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { DbUnavailableError, getSql, type Row } from "./client";
+import { DbUnavailableError, getSql, type Row, type Sql } from "./client";
 
 // Storage for sync documents: one row per user, optimistic concurrency by
 // (gen, version). Every write is a single compare-and-set statement, so no
@@ -100,28 +100,52 @@ export async function putDoc(
   return { ok: true, version: toVersion(rows[0].version), gen: rows[0].gen };
 }
 
-/** The rate bucket that survives account deletion until its window ends (see deleteDoc). */
 export const DELETE_BUCKET = "delete";
 
 /**
- * Erase the user's document and rate counters. Idempotent.
+ * Erase the user's document. Idempotent. One statement.
  *
- * The one exception is the still-running `delete` rate window: removing it
- * would let a client reset every limit by calling DELETE in a loop. That row
- * holds only the opaque user id, a timestamp and a counter, and it is removed
- * by the garbage collection below once its window is over (the next time
- * anyone deletes an account).
+ * The rate counters are deliberately left alone: removing them would let a
+ * client reset every limit by calling DELETE. A counter row holds only the
+ * account id, the bucket name, a count and the start of its time window; it
+ * is removed by `sweepRate` once that window started more than a day ago.
  */
 export async function deleteDoc(userId: string): Promise<void> {
   const sql = await getSql();
   await sql("DELETE FROM ll_sync_docs WHERE user_id = $1", [userId]);
-  await sql("DELETE FROM ll_sync_rate WHERE user_id = $1 AND bucket <> $2", [userId, DELETE_BUCKET]);
-  await sql("DELETE FROM ll_sync_rate WHERE window_start < now() - interval '1 day'");
+}
+
+/** Rate rows are dead long before this (the longest window is one hour). */
+const RATE_SWEEP_EVERY_MS = 60 * 60 * 1000;
+const sweepState = globalThis as unknown as { __llRateSweptAt?: number };
+
+/**
+ * Housekeeping for ll_sync_rate: delete every row (anyone's) whose window
+ * started more than a day ago. Runs as part of a rate-limited request, at
+ * most once an hour per server process (so: on the first sync request a
+ * process handles, then hourly while it keeps getting requests). It costs
+ * that request one extra statement and never fails it.
+ *
+ * Consequence worth knowing: nothing runs when nobody uses sync, so on an
+ * idle site old counter rows stay until the next sync request by any user.
+ */
+async function sweepRate(sql: Sql): Promise<void> {
+  const now = Date.now();
+  const last = sweepState.__llRateSweptAt;
+  if (typeof last === "number" && now >= last && now - last < RATE_SWEEP_EVERY_MS) return;
+  sweepState.__llRateSweptAt = now;
+  try {
+    await sql("DELETE FROM ll_sync_rate WHERE window_start < now() - interval '1 day'");
+  } catch {
+    // Best effort; try again with the next request rather than in an hour.
+    sweepState.__llRateSweptAt = last;
+  }
 }
 
 /**
  * Fixed-window rate limiter in a single upsert. Counts this hit and reports
  * whether the caller is still within `limit` hits per `windowSeconds`.
+ * Occasionally (see sweepRate) one more statement removes long-dead rows.
  */
 export async function hitRate(
   userId: string,
@@ -146,6 +170,7 @@ export async function hitRate(
   const count = Number(rows[0].count);
   const retryAfter = Number(rows[0].retry_after);
   if (!Number.isFinite(count)) throw new DbUnavailableError("rate limiter returned a bad count");
+  await sweepRate(sql);
   return {
     allowed: count <= limit,
     retryAfter: Number.isFinite(retryAfter) && retryAfter >= 1 ? Math.min(retryAfter, windowSeconds) : windowSeconds,

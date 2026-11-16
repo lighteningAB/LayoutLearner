@@ -53,7 +53,7 @@ export function MismatchDialog() {
           data-testid="mismatch-unsynced"
           className="mb-4 rounded-ui bg-error/[0.1] px-3 py-2 text-[13px] text-error"
         >
-          Some of the data on this device never reached that account.
+          Some of the data on this device is not stored in that account.
         </p>
       )}
       <div className="flex flex-col gap-4">
@@ -80,7 +80,8 @@ export function MismatchDialog() {
             </Button>
           }
         >
-          Adds this device&rsquo;s data to the account. Nothing is removed from either side.
+          Adds this device&rsquo;s progress and layouts to the account; nothing is removed from the account. Where both
+          have a setting, the newer one is kept.
         </Choice>
         <Choice
           button={

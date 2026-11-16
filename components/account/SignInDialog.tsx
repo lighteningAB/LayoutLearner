@@ -83,7 +83,7 @@ export function SignInDialog() {
       description={
         <>
           Sign in to sync your lesson progress, settings and custom layouts across devices. We store only that data and
-          an anonymous account id — not your email.{" "}
+          a pseudonymous account id — not your email.{" "}
           <Link href="/privacy" onClick={closeSignIn} className="text-main underline-offset-2 hover:underline">
             Privacy
           </Link>

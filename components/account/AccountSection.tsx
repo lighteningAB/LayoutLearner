@@ -146,7 +146,8 @@ function SignedIn({ name }: { name: string }) {
           label="Delete account data"
           description={
             <>
-              Erases everything stored for your account on the server and signs you out. Data on this device is kept.{" "}
+              Erases the synced data stored for your account on the server and signs this device out. Data on your
+              devices is kept; a device that signs in again uploads its copy.{" "}
               <Link href="/privacy" className="text-main underline-offset-2 hover:underline">
                 Privacy
               </Link>
@@ -171,7 +172,7 @@ function SignedIn({ name }: { name: string }) {
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => void remove()}
         title="Delete account data?"
-        description="This erases everything stored in your account on the server and signs you out. Data on this device is kept."
+        description="This erases the synced data (progress, settings, layouts) stored for your account on the server and signs this device out. Request counters used for rate limiting are not erased. This device and your other devices keep their own copies: the others are signed out when they next sync, and any device that signs in again uploads its copy to the account."
         confirmLabel="Delete account data"
         tone="danger"
         data-testid="confirm-delete-account"
