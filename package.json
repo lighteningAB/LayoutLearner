@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "(test -z \"$DATABASE_URL$POSTGRES_URL\" || node scripts/db.mjs migrate) && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "verify": "node scripts/verify.mjs",
