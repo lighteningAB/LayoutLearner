@@ -302,7 +302,7 @@ const tmpQ3 = new THREE.Quaternion();
 const tmpV2 = new THREE.Vector2();
 
 /** Silhouette line weight (CSS px): heavier than the key outlines, like an object line over construction lines. */
-const OUTLINE_W = 2;
+const OUTLINE_W = 2.75;
 /** Contour (section) lines across the hand: spacing along the hand in key units, weight in CSS px. */
 const CONTOUR_STEP = 0.5;
 const CONTOUR_W = 1;
@@ -341,7 +341,7 @@ export class HandRig {
     uBody: { value: new THREE.Color() },
     uLine: { value: new THREE.Color() },
     /** x: body alpha, y: extra alpha towards the silhouette, z: fingertip alpha, w: contour line alpha. */
-    uLook: { value: new THREE.Vector4(0.24, 0.1, 0.36, 0.3) },
+    uLook: { value: new THREE.Vector4(0.3, 0.16, 0.26, 0.36) },
     /** x: outline px, y: contour px, z: device pixel ratio, w: contour spacing. */
     uLines: { value: new THREE.Vector4(OUTLINE_W, CONTOUR_W, 1, CONTOUR_STEP) },
     uFade: { value: new THREE.Vector2(FOREARM_FADE[0], FOREARM_FADE[1]) },
@@ -500,7 +500,7 @@ export class HandRig {
     // reads as a region of the drawing, not an object lying on it), linework in the line colour,
     // fingertips in the finger colours.
     const u = this.uniforms;
-    mixSRGB(u.uBody.value, theme.bg, theme.text, 0.1);
+    mixSRGB(u.uBody.value, theme.bg, theme.text, 0.14);
     u.uLine.value.copy(theme.text);
     for (let d = 0; d < 5; d++) {
       // FINGER_ORDER: L pinky..thumb = 0..4, R thumb..pinky = 5..9

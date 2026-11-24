@@ -107,6 +107,30 @@ function fillMaterial(side: { value: THREE.Color }): THREE.MeshBasicMaterial {
   return m;
 }
 
+/** Word legends as lettered on the caps: short enough to be drawn at a readable size. */
+const SHORT_LEGEND: Record<string, string> = {
+  backspace: "Bksp",
+  "caps lock": "Caps",
+  capslock: "Caps",
+  control: "Ctrl",
+  escape: "Esc",
+  delete: "Del",
+  insert: "Ins",
+  "page up": "PgUp",
+  "page down": "PgDn",
+  "print screen": "PrtSc",
+  "scroll lock": "ScrLk",
+  "num lock": "Num",
+  command: "Cmd",
+  option: "Opt",
+};
+/** Sizes (key units) of a single character and of a word. */
+const CHAR_SIZE = 0.44;
+const WORD_SIZE = 0.28;
+
+/** "full": every legend. "letters": single characters only, drawn large (for framings where words would be illegible). */
+export type LegendDetail = "full" | "letters";
+
 const ENTITIES: Record<string, string> = { "&lt;": "<", "&gt;": ">", "&amp;": "&", "&quot;": '"', "&nbsp;": " " };
 
 function legendTexts(pl: KeyPlacement): string[] {
@@ -184,6 +208,7 @@ export class Keyboard3D implements KeySink {
   private legendCanvas: HTMLCanvasElement | null = null;
   /** The layer whose legends are on the keycaps (null = base), and one cached atlas per layer shown so far. */
   private layer: LayoutLayer | null = null;
+  private detail: LegendDetail = "full";
   private layerAtlases = new Map<LayoutLayer, { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture }>();
   private legendCells: { pl: KeyPlacement; x: number; y: number; w: number; h: number }[] = [];
   private pxPerUnit = 128;
@@ -320,7 +345,7 @@ export class Keyboard3D implements KeySink {
   setContact(finger: number, x: number, z: number, lift: number): void {
     // shrink away as the fingertip lifts off the keys
     const k = lift <= 0.03 ? 1 : Math.max(0, 1 - (lift - 0.03) / 0.5);
-    const s = 0.62 * k;
+    const s = CONTACT_SIZE * k;
     m4.makeScale(s, 1, s).setPosition(x, KEY_TOP + Math.min(0, lift) + 0.012, z);
     this.dots.setMatrixAt(finger, m4);
     this.dots.instanceMatrix.needsUpdate = true;
@@ -392,6 +417,13 @@ export class Keyboard3D implements KeySink {
     this.refreshAll();
     for (let i = 0; i < 10; i++) this.dots.setColorAt(i, theme.fingers[i]);
     if (this.dots.instanceColor) this.dots.instanceColor.needsUpdate = true;
+  }
+
+  /** How much the caps say (see LegendDetail). Re-rasterises only when it changes. */
+  setLegendDetail(detail: LegendDetail): void {
+    if (detail === this.detail) return;
+    this.detail = detail;
+    this.drawLegends();
   }
 
   /** Re-rasterise legends (e.g. after web fonts finish loading). */
@@ -488,7 +520,7 @@ export class Keyboard3D implements KeySink {
     }
     // A press blinks the whole cap in the accent (or error) colour: a hard switch, not a fade, as on a drawing.
     if (rec.flash > FLASH_ON) {
-      col.copy(rec.ok ? t.main : t.error);
+      col.copy(rec.ok ? t.main : t.errorAlt);
       legendOnAccent = 1;
     }
     rec.mesh.setColorAt(rec.index, col);
@@ -636,13 +668,19 @@ export class Keyboard3D implements KeySink {
         }
         ctx.fillText(text, cx, y);
       };
+      const letters = this.detail === "letters";
       if (texts.length === 1) {
         const t = texts[0];
-        if (t.length <= 2) draw(t, 0.44, y0 + h * 0.5);
-        else draw(t, 0.21, y0 + h * 0.5, 500);
+        if (t.length <= 2) draw(t, CHAR_SIZE, y0 + h * 0.5);
+        else if (!letters) draw(SHORT_LEGEND[t.toLowerCase()] ?? t, WORD_SIZE, y0 + h * 0.5, 500);
       } else if (texts.length >= 2) {
-        draw(texts[0], 0.27, y0 + h * 0.29);
-        draw(texts[1], 0.3, y0 + h * 0.72);
+        if (!letters) {
+          draw(texts[0], 0.27, y0 + h * 0.29);
+          draw(texts[1], 0.3, y0 + h * 0.72);
+        } else if (texts[1].length <= 2) {
+          // the unshifted character alone, at full size
+          draw(texts[1], CHAR_SIZE, y0 + h * 0.5);
+        }
       }
       // tactile bump on index-finger home keys
       const f = c.pl.key.finger;
@@ -667,7 +705,10 @@ function luma(c: THREE.Color): number {
   return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 }
 
-/** Contact mark: a crisp ring with a centre point, like a drafted hole centre. */
+/** Width of a contact mark in key units: its ring runs round the legend, never across it. */
+const CONTACT_SIZE = 0.9;
+
+/** Contact mark: a thin ring that circles the legend of the key a fingertip touches, like an item balloon. */
 function makeDotTexture(): THREE.CanvasTexture {
   const s = 128;
   const canvas = document.createElement("canvas");
@@ -675,14 +716,10 @@ function makeDotTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
   const c = s / 2;
   ctx.strokeStyle = "#fff";
-  ctx.fillStyle = "#fff";
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.arc(c, c, s * 0.34, 0, Math.PI * 2);
+  ctx.arc(c, c, s * 0.42, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(c, c, s * 0.07, 0, Math.PI * 2);
-  ctx.fill();
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

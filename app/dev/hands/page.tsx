@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import HandsScene, { type HandsCamera } from "@/components/hands";
+import { HandsPanel } from "@/components/typing/HandsPanel";
 import { QWERTY_FIXTURE, SPLIT_FIXTURE } from "@/lib/hands/fixture";
 import { parseLayout } from "@/lib/layout/parse";
 import { PRESETS, getPreset } from "@/lib/layout/presets";
@@ -255,6 +256,9 @@ export default function HandsDevPage() {
     setHoldIds((ids) => (ids.includes(target.id) ? ids : [...ids, target.id]));
     setTargetId(null);
   };
+  // what the HandsPanel preview is asked to type: the target's character (its capital while Shift is held)
+  const panelBase = target && target.base.length === 1 ? target.base : null;
+  const panelChar = panelBase && heldShift && panelBase.toUpperCase() !== panelBase ? panelBase.toUpperCase() : panelBase;
   const cycleTheme = () => {
     const el = document.documentElement;
     const i = THEMES.indexOf(el.getAttribute("data-theme") ?? "");
@@ -354,6 +358,11 @@ export default function HandsDevPage() {
           fingerZones={zones}
           debug
         />
+      </div>
+
+      {/* The plate as the app embeds it (HandsPanel): the same target with its leader line and label, in the chosen camera. */}
+      <div data-testid="panel-stage" className="w-full border px-3 pb-3" style={{ borderColor: "var(--border)", background: "var(--bg)" }}>
+        <HandsPanel layout={layout} nextChar={panelChar} camera={camera} size="large" />
       </div>
 
       <p className="text-xs" style={{ color: "var(--sub)" }}>
