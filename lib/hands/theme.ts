@@ -18,8 +18,10 @@ export interface HandsTheme {
   keyText: THREE.Color;
   /** --finger-0 … --finger-9, left pinky → right pinky. */
   fingers: THREE.Color[];
-  /** Resolved font-family for legends. */
+  /** Resolved UI font-family (--font-sans). */
   font: string;
+  /** Resolved font-family for key legends (--font-mono, else the UI font). */
+  legendFont: string;
   /** Relative luminance of the page background, 0..1. */
   bgLuma: number;
   /** Changes whenever any token value changes. */
@@ -91,6 +93,8 @@ export function readTheme(): HandsTheme {
   const bg = get("--bg");
   const fontRaw = cs.getPropertyValue("--font-sans").trim();
   sig.push(fontRaw);
+  const monoRaw = cs.getPropertyValue("--font-mono").trim();
+  sig.push(monoRaw);
   const hsl = { h: 0, s: 0, l: 0 };
   bg.getHSL(hsl, THREE.SRGBColorSpace);
   const theme: HandsTheme = {
@@ -108,6 +112,7 @@ export function readTheme(): HandsTheme {
     keyText: get("--key-text", "--text"),
     fingers: Array.from({ length: 10 }, (_, i) => get(`--finger-${i}`)),
     font: fontRaw || 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+    legendFont: monoRaw || fontRaw || "ui-monospace, SFMono-Regular, Menlo, monospace",
     bgLuma: hsl.l,
     signature: "",
   };

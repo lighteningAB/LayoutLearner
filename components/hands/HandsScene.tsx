@@ -1,6 +1,8 @@
 "use client";
 
-// 3D keyboard + two rigged hands that show which finger presses which key.
+// 3D keyboard + two rigged hands that show which finger presses which key,
+// rendered as a drafted line drawing: unlit fills and constant-width lines, no
+// lights and no shadows, on a transparent canvas so the sheet shows through.
 // Client-only (WebGL). Import the SSR-safe wrapper from "components/hands".
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -18,7 +20,7 @@ export type HandsCamera = "top" | "angled" | "front";
 
 export interface HandsSceneProps {
   layout: ParsedLayout;
-  /** Next key to press: the assigned finger reaches for it and the key glows in that finger's colour. */
+  /** Next key to press: the assigned finger reaches for it and the key is filled in that finger's colour. */
   targetKeyId?: string | null;
   /**
    * Keys to keep held while `targetKeyId` is pressed (a layer key under a thumb, Shift under a pinky, ...).
@@ -49,8 +51,6 @@ export interface HandsSceneProps {
 
 type Status = "loading" | "ready" | "error" | "nowebgl";
 
-// (plain `shadows` asks three for PCFSoftShadowMap, which r18x no longer has and warns about every frame)
-const SHADOWS = { enabled: true, type: THREE.PCFShadowMap };
 const ELEVATION: Record<HandsCamera, number> = { angled: 62, top: 89.6, front: 27 };
 const FOV = 30;
 
@@ -412,6 +412,7 @@ function Contents({
   // and the camera fitted. Effects have run by the time this frame is requested, so reporting from
   // inside the frame loop means the reveal can never show an unposed or unfitted scene.
   const reported = useRef(false);
+  const emphSnapped = useRef<HandsController | null>(null);
   const idle = useRef(true);
   useFrame((state, delta) => {
     if (!reported.current && camCur.current.aspect !== 0 && (controller != null || !showHands) && (snappedFor.current === controller || !controller)) {
@@ -421,7 +422,16 @@ function Contents({
     // after an idle period the clock delta is the whole pause; start with one nominal frame instead
     const dt = idle.current ? 1 / 60 : delta;
     let moving = false;
-    if (controller) moving = controller.update(dt);
+    if (controller) {
+      moving = controller.update(dt);
+      // the reaching finger (and, less so, fingers holding a key) is drawn emphasised
+      for (const h of controller.hands) {
+        let holding = 0;
+        for (const r of h.holds) holding |= 1 << r.digit;
+        if (h.rig.updateEmphasis(h.target ? h.target.digit : -1, holding, emphSnapped.current === controller ? dt : 0)) moving = true;
+      }
+      emphSnapped.current = controller;
+    }
     const fx = fallbackFx.current;
     if (fx.length) {
       // key press feedback while the hands are not (yet) available
@@ -507,32 +517,8 @@ function Contents({
     };
   }, [debug, controller, keyboard, placed, cam, gl, invalidate]);
 
-  const shadowCam = useMemo(() => {
-    const b = new THREE.Box3().setFromPoints(focusPoints(placed, null));
-    return { cx: (b.min.x + b.max.x) / 2, cz: (b.min.z + b.max.z) / 2 + 2, half: Math.max(b.max.x - b.min.x, b.max.z - b.min.z + 8) / 2 + 1 };
-  }, [placed]);
-  const lightTarget = useMemo(() => new THREE.Object3D(), []);
-  lightTarget.position.set(shadowCam.cx, 0, shadowCam.cz);
-
-  const dark = theme.bgLuma < 0.5;
   return (
     <>
-      <ambientLight intensity={dark ? 1.35 : 1.6} />
-      <hemisphereLight args={[0xffffff, dark ? 0x30343c : 0x9a958c, 0.5]} />
-      <primitive object={lightTarget} />
-      <directionalLight
-        position={[shadowCam.cx - 5, 16, shadowCam.cz + 3]}
-        target={lightTarget}
-        intensity={1.75}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-bias={-0.0006}
-        shadow-normalBias={0.02}
-        shadow-radius={5}
-        shadow-intensity={dark ? 0.55 : 0.3}
-      >
-        <orthographicCamera attach="shadow-camera" args={[-shadowCam.half, shadowCam.half, shadowCam.half, -shadowCam.half, 1, 40]} />
-      </directionalLight>
       <primitive object={keyboard.group} />
       {rigs && <primitive object={rigs[0].root} />}
       {rigs && <primitive object={rigs[1].root} />}
@@ -586,7 +572,6 @@ export default function HandsScene(props: HandsSceneProps) {
         frameloop="demand"
         dpr={[1, 2]}
         flat
-        shadows={SHADOWS}
         gl={{ alpha: true, antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: !!props.debug }}
         camera={{ fov: FOV, near: 0.5, far: 200, position: [0, 24, 16] }}
         style={{ position: "absolute", inset: 0, touchAction: props.interactive ? "none" : "auto" }}

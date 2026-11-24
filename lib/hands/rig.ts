@@ -11,6 +11,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { chainRotations, chainTip, type ChainDef } from "./ik";
 import { mixSRGB, type HandsTheme } from "./theme";
+import { BODY_FRAGMENT, BODY_VERTEX, HULL_FRAGMENT, HULL_VERTEX } from "./handShaders";
 
 // Served with an immutable one-year Cache-Control (next.config.js): bump when the file changes.
 export const HAND_MODEL_URL = "/models/hand.glb?v=1";
@@ -89,9 +90,10 @@ const REST: [number, number, number][] = [
 export interface HandTemplate {
   armature: THREE.Object3D;
   chains: ChainDef[];
-  /** Per vertex: which digit's tip it belongs to (-1: none) and how strongly (0..1). */
-  tintDigit: Int8Array;
-  tintWeight: Float32Array;
+  /** Per vertex (x, y, z): the digit it belongs to (0 when none), how much it is that digit's tip (0..1), how much it is part of that finger at all (0..1). */
+  digit: Float32Array;
+  /** Per vertex: position along the hand's long axis, key units (0 at the wrist, positive towards the fingertips). */
+  axis: Float32Array;
   /** Per finger (pinky..index): axis in the hand bone's frame about which its metacarpal lifts. */
   archAxes: THREE.Vector3[];
   /** Per vertex: distance behind the wrist along the forearm, key units (0 on the hand itself). */
@@ -141,8 +143,8 @@ function buildTemplate(scene: THREE.Object3D): HandTemplate {
   const sw = skinned.geometry.getAttribute("skinWeight");
   const up = new THREE.Vector3(0, 1, 0);
   const v = new THREE.Vector3();
-  const tintDigit = new Int8Array(pos.count).fill(-1);
-  const tintWeight = new Float32Array(pos.count);
+  const digitInfo = new Float32Array(pos.count * 3);
+  const axis = new Float32Array(pos.count);
 
   const archAxes: THREE.Vector3[] = [];
   const chains: ChainDef[] = BONES.map((names, digit) => {
@@ -188,9 +190,16 @@ function buildTemplate(scene: THREE.Object3D): HandTemplate {
       if (w3 <= 0) continue;
       const t = v.fromBufferAttribute(pos, i).sub(p3).dot(dir3) / len;
       const w = w3 * THREE.MathUtils.smoothstep(t, 0.0, 0.5);
-      if (w > tintWeight[i]) {
-        tintWeight[i] = w;
-        tintDigit[i] = digit;
+      if (w > digitInfo[i * 3 + 1]) digitInfo[i * 3 + 1] = Math.min(1, w);
+    }
+    // Finger membership: how much of the vertex follows this digit's three bones.
+    const own = names.map((n) => bones.indexOf(byName(n)));
+    for (let i = 0; i < pos.count; i++) {
+      let w = 0;
+      for (let k = 0; k < 4; k++) if (own.includes(si.getComponent(i, k))) w += sw.getComponent(i, k);
+      if (w > digitInfo[i * 3 + 2]) {
+        digitInfo[i * 3 + 2] = Math.min(1, w);
+        digitInfo[i * 3] = digit;
       }
     }
 
@@ -248,7 +257,11 @@ function buildTemplate(scene: THREE.Object3D): HandTemplate {
   const wrist = new THREE.Vector3().setFromMatrixPosition(byName("handL").matrixWorld);
   const back = new THREE.Vector3().setFromMatrixColumn(byName("handL").matrixWorld, 1).normalize().negate();
   let maxBack = 0;
-  for (let i = 0; i < pos.count; i++) maxBack = Math.max(maxBack, v.fromBufferAttribute(pos, i).sub(wrist).dot(back));
+  for (let i = 0; i < pos.count; i++) {
+    const t = v.fromBufferAttribute(pos, i).sub(wrist).dot(back);
+    maxBack = Math.max(maxBack, t);
+    axis[i] = -t * HAND_SCALE;
+  }
   if (maxBack > 0) {
     const t0 = maxBack * 0.2; // leave the wrist itself alone
     const stretch = Math.max(1, (FOREARM_LENGTH / HAND_SCALE - t0) / (maxBack - t0));
@@ -261,20 +274,49 @@ function buildTemplate(scene: THREE.Object3D): HandTemplate {
         pos.setXYZ(i, v.x, v.y, v.z);
       }
       backDist[i] = (t + extra) * HAND_SCALE;
+      axis[i] = -backDist[i];
+    }
+    // Close the open cut: pull its rim together into one point. The end is fully dissolved anyway,
+    // but a closed tube means the outline pass can never be seen from inside through the hole.
+    const rim: number[] = [];
+    const centre = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      if (backDist[i] < (FOREARM_LENGTH - 0.25) * 0.999) continue;
+      rim.push(i);
+      centre.add(v.fromBufferAttribute(pos, i));
+    }
+    if (rim.length) {
+      centre.divideScalar(rim.length);
+      for (const i of rim) pos.setXYZ(i, centre.x, centre.y, centre.z);
     }
     pos.needsUpdate = true;
     skinned.geometry.computeBoundingSphere();
   }
 
-  return { armature, chains, archAxes, tintDigit, tintWeight, back: backDist };
+  return { armature, chains, archAxes, digit: digitInfo, axis, back: backDist };
 }
 
 const tmpQ1 = new THREE.Quaternion();
 const tmpQ2 = new THREE.Quaternion();
 const tmpQ3 = new THREE.Quaternion();
-const tmpC = new THREE.Color();
+const tmpV2 = new THREE.Vector2();
 
-/** One posable hand. `root` is positioned/yawed in world space by the controller. */
+/** Silhouette line weight (CSS px): heavier than the key outlines, like an object line over construction lines. */
+const OUTLINE_W = 2;
+/** Contour (section) lines across the hand: spacing along the hand in key units, weight in CSS px. */
+const CONTOUR_STEP = 0.5;
+const CONTOUR_W = 1;
+/** Time constant of the reaching-finger emphasis (s). */
+const EMPH_SMOOTH = 0.07;
+/** Emphasis of a finger that is holding a key (the reaching finger gets 1). */
+const HOLD_EMPH = 0.55;
+
+/**
+ * One posable hand, drawn as see-through line art in three passes over the same skinned geometry:
+ * a depth pre-pass (so the hand never shows through itself), a screen-space hull that leaves a
+ * constant-width silhouette outline, and an unlit translucent body with contour lines and
+ * finger-coloured tips. `root` is positioned/yawed in world space by the controller.
+ */
 export class HandRig {
   readonly side: "L" | "R";
   readonly root = new THREE.Group();
@@ -286,16 +328,26 @@ export class HandRig {
   private bones: THREE.Bone[][] = [];
   private mesh: THREE.SkinnedMesh;
   private depthMesh: THREE.SkinnedMesh;
+  private hullMesh: THREE.SkinnedMesh;
   private geometry: THREE.BufferGeometry;
-  private material: THREE.MeshStandardMaterial;
+  private material: THREE.ShaderMaterial;
+  private hullMaterial: THREE.ShaderMaterial;
   private depthMaterial: THREE.MeshBasicMaterial;
-  /** Per vertex: digit index (or -1) and tint weight. */
-  private rim = { value: new THREE.Color(1, 1, 1) };
-  /** x: rim tint strength, y: rim opacity, z: how unlit (pure colour) the fingertips are. */
-  private look = { value: new THREE.Vector3(0.45, 0.75, 0.3) };
-  private bodyAlpha = { value: 0.3 };
-  private tintDigit: Int8Array;
-  private tintWeight: Float32Array;
+  /** Shared by the body and hull passes. */
+  private uniforms = {
+    uFinger: { value: [0, 1, 2, 3, 4].map(() => new THREE.Color()) },
+    /** Per digit 0..1: how emphasised (reaching / holding) it is. */
+    uEmph: { value: [0, 0, 0, 0, 0] },
+    uBody: { value: new THREE.Color() },
+    uLine: { value: new THREE.Color() },
+    /** x: body alpha, y: extra alpha towards the silhouette, z: fingertip alpha, w: contour line alpha. */
+    uLook: { value: new THREE.Vector4(0.24, 0.1, 0.36, 0.3) },
+    /** x: outline px, y: contour px, z: device pixel ratio, w: contour spacing. */
+    uLines: { value: new THREE.Vector4(OUTLINE_W, CONTOUR_W, 1, CONTOUR_STEP) },
+    uFade: { value: new THREE.Vector2(FOREARM_FADE[0], FOREARM_FADE[1]) },
+    /** Canvas size in CSS px. */
+    uRes: { value: new THREE.Vector2(1, 1) },
+  };
 
   constructor(template: HandTemplate, side: "L" | "R") {
     this.side = side;
@@ -342,67 +394,68 @@ export class HandRig {
       this.fromRoot.push(toRoot.clone().invert());
     }
 
-    // Per-hand geometry copy so fingertips can carry this hand's finger colours.
+    // Per-hand geometry (the attribute arrays are shared with the template; colours are uniforms).
     this.geometry = this.mesh.geometry.clone();
-    const count = this.geometry.getAttribute("position").count;
-    this.geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(count * 4), 4));
-    this.tintDigit = template.tintDigit;
-    this.tintWeight = template.tintWeight;
+    this.geometry.setAttribute("aDigit", new THREE.BufferAttribute(template.digit, 3));
     this.geometry.setAttribute("aBack", new THREE.BufferAttribute(template.back, 1));
+    this.geometry.setAttribute("aAxis", new THREE.BufferAttribute(template.axis, 1));
 
-    // "Glass" look: see-through where the surface faces the camera (so legends
-    // stay readable under the hand), more solid towards the silhouette and at
-    // the coloured fingertips (vertex alpha).
-    this.material = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: 0.7,
-      metalness: 0,
+    // Body: an unlit veil that stays see-through everywhere (legends under the hand must remain
+    // readable), a little denser towards the silhouette, with contour lines and coloured fingertips.
+    this.material = new THREE.ShaderMaterial({
+      uniforms: this.uniforms,
+      vertexShader: BODY_VERTEX,
+      fragmentShader: BODY_FRAGMENT,
       transparent: true,
-      side: THREE.FrontSide,
+      depthWrite: false,
       depthFunc: THREE.LessEqualDepth,
+      toneMapped: false,
     });
-    this.material.onBeforeCompile = (shader) => {
-      shader.uniforms.uRim = this.rim;
-      shader.uniforms.uLook = this.look;
-      shader.uniforms.uBodyAlpha = this.bodyAlpha;
-      shader.vertexShader = shader.vertexShader
-        .replace("#include <common>", "#include <common>\nattribute float aBack;\nvarying float vBack;")
-        .replace("#include <begin_vertex>", "#include <begin_vertex>\nvBack = aBack;");
-      shader.fragmentShader = shader.fragmentShader
-        .replace("#include <common>", "#include <common>\nuniform vec3 uRim;\nuniform vec3 uLook;\nuniform float uBodyAlpha;\nvarying float vBack;")
-        .replace(
-          "#include <opaque_fragment>",
-          `#include <opaque_fragment>
-          float fres = pow( 1.0 - saturate( dot( normalize( vViewPosition ), normal ) ), 1.6 );
-          #ifdef USE_COLOR_ALPHA
-            // fingertips (high vertex alpha) keep their pure finger colour instead of being shaded to mud
-            float tip = smoothstep( uBodyAlpha + 0.08, 0.9, vColor.a );
-            gl_FragColor.rgb = mix( gl_FragColor.rgb, vColor.rgb, tip * uLook.z );
-          #else
-            float tip = 0.0;
-          #endif
-          gl_FragColor.rgb = mix( gl_FragColor.rgb, uRim, fres * uLook.x * ( 1.0 - 0.6 * tip ) );
-          gl_FragColor.a = clamp( gl_FragColor.a + fres * uLook.y, 0.0, 1.0 );
-          // the forearm dissolves towards its far end
-          gl_FragColor.a *= 1.0 - smoothstep( ${FOREARM_FADE[0].toFixed(2)}, ${FOREARM_FADE[1].toFixed(2)}, vBack );`,
-        );
-    };
+    // Outline: back faces pushed out along the screen-space normal by a fixed number of pixels;
+    // behind the depth pre-pass only the margin outside the silhouette survives.
+    this.hullMaterial = new THREE.ShaderMaterial({
+      uniforms: this.uniforms,
+      vertexShader: HULL_VERTEX,
+      fragmentShader: HULL_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.BackSide,
+      // ...and, nudged back in depth, it also loses against the hand's own inside (the pre-pass writes
+      // both faces) where the model's forearm has gaps that would otherwise show the hull from within
+      polygonOffset: true,
+      polygonOffsetFactor: 4,
+      polygonOffsetUnits: 4,
+      toneMapped: false,
+    });
     // Depth pre-pass: the translucent hand never shows its own back faces or
     // overlapping fingers through itself, only the keyboard underneath. It is
     // flagged transparent only so it sorts after the legends (renderOrder).
-    this.depthMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.FrontSide, transparent: true });
+    this.depthMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide, transparent: true });
 
+    const parent = this.mesh.parent as THREE.Object3D;
     this.mesh.geometry = this.geometry;
     this.mesh.material = this.material;
     this.mesh.frustumCulled = false;
-    this.mesh.renderOrder = 11;
-    this.mesh.castShadow = true;
+    this.mesh.renderOrder = 12;
+    this.mesh.castShadow = false;
 
     this.depthMesh = new THREE.SkinnedMesh(this.geometry, this.depthMaterial);
     this.depthMesh.bind(skeleton, this.mesh.bindMatrix);
     this.depthMesh.frustumCulled = false;
     this.depthMesh.renderOrder = 10;
-    (this.mesh.parent as THREE.Object3D).add(this.depthMesh);
+    // first pass of the hand each frame: refresh the screen metrics the line widths depend on
+    this.depthMesh.onBeforeRender = (renderer) => {
+      renderer.getSize(tmpV2);
+      this.uniforms.uRes.value.copy(tmpV2);
+      this.uniforms.uLines.value.z = renderer.getPixelRatio();
+    };
+    parent.add(this.depthMesh);
+
+    this.hullMesh = new THREE.SkinnedMesh(this.geometry, this.hullMaterial);
+    this.hullMesh.bind(skeleton, this.mesh.bindMatrix);
+    this.hullMesh.frustumCulled = false;
+    this.hullMesh.renderOrder = 11;
+    parent.add(this.hullMesh);
 
     for (let d = 0; d < 5; d++) this.setDigit(d, this.chains[d].rest[0], this.chains[d].rest[1], this.chains[d].rest[2]);
   }
@@ -421,42 +474,44 @@ export class HandRig {
     return chainTip(this.chains[digit], p0, p1, p2, out).applyMatrix4(this.toRoot[digit]);
   }
 
-  applyTheme(theme: HandsTheme): void {
-    // Tinted glass: a calm tone taken from the theme (never skin), see-through
-    // where it faces the camera, with a rim that gives the silhouette. Dark
-    // themes get a pale glass with a bright rim; light themes a faint cool
-    // tint with a crisp dark outline, so the hands neither wash out nor smear
-    // grey over the keys. Fingertips carry the finger colours.
-    const light = theme.bgLuma > 0.5;
-    const base = light ? mixSRGB(tmpC, theme.bgAlt, theme.sub, 0.3) : mixSRGB(tmpC, theme.text, theme.sub, 0.3);
-    const br = base.r;
-    const bg = base.g;
-    const bb = base.b;
-    if (light) mixSRGB(this.rim.value, theme.text, theme.sub, 0.45);
-    else mixSRGB(this.rim.value, theme.text, theme.main, 0.25);
-    const bodyAlpha = light ? 0.24 : 0.3;
-    this.bodyAlpha.value = bodyAlpha;
-    this.look.value.set(light ? 0.62 : 0.45, light ? 0.7 : 0.75, light ? 0.75 : 0.3);
-    const col = this.geometry.getAttribute("color") as THREE.BufferAttribute;
-    for (let i = 0; i < col.count; i++) {
-      const d = this.tintDigit[i];
-      if (d < 0) {
-        col.setXYZW(i, br, bg, bb, bodyAlpha);
-        continue;
+  /**
+   * Eases the emphasis of each digit towards its goal: 1 for `reaching` (-1: none), HOLD_EMPH for the
+   * digits in `holding` (bit per digit), 0 otherwise. `dt` <= 0 jumps. Returns true while still changing.
+   */
+  updateEmphasis(reaching: number, holding: number, dt: number): boolean {
+    const e = this.uniforms.uEmph.value;
+    const k = dt > 0 ? 1 - Math.exp(-Math.min(dt, 0.05) / EMPH_SMOOTH) : 1;
+    let moving = false;
+    for (let d = 0; d < 5; d++) {
+      const goal = d === reaching ? 1 : holding & (1 << d) ? HOLD_EMPH : 0;
+      const diff = goal - e[d];
+      if (diff === 0) continue;
+      if (Math.abs(diff) < 0.004) e[d] = goal;
+      else {
+        e[d] += diff * k;
+        moving = true;
       }
-      // FINGER_ORDER: L pinky..thumb = 0..4, R thumb..pinky = 5..9
-      const f = this.side === "L" ? d : 9 - d;
-      const c = theme.fingers[f];
-      const w = Math.min(1, this.tintWeight[i]);
-      const k = w * 0.9;
-      col.setXYZW(i, br + (c.r - br) * k, bg + (c.g - bg) * k, bb + (c.b - bb) * k, bodyAlpha + (0.92 - bodyAlpha) * w);
     }
-    col.needsUpdate = true;
+    return moving;
+  }
+
+  applyTheme(theme: HandsTheme): void {
+    // Everything is a uniform derived from the tokens: a veil in the sheet's own tone (so the hand
+    // reads as a region of the drawing, not an object lying on it), linework in the line colour,
+    // fingertips in the finger colours.
+    const u = this.uniforms;
+    mixSRGB(u.uBody.value, theme.bg, theme.text, 0.1);
+    u.uLine.value.copy(theme.text);
+    for (let d = 0; d < 5; d++) {
+      // FINGER_ORDER: L pinky..thumb = 0..4, R thumb..pinky = 5..9
+      u.uFinger.value[d].copy(theme.fingers[this.side === "L" ? d : 9 - d]);
+    }
   }
 
   dispose(): void {
     this.geometry.dispose();
     this.material.dispose();
+    this.hullMaterial.dispose();
     this.depthMaterial.dispose();
     this.mesh.skeleton.dispose();
   }
