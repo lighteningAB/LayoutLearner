@@ -213,7 +213,7 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
             placeholder="Type a command or search…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-full min-w-0 flex-1 bg-transparent text-[17px] text-text outline-none placeholder:text-sub"
+            className="h-full min-w-0 flex-1 bg-transparent text-lg text-text outline-none placeholder:text-sub"
           />
           <Kbd>esc</Kbd>
         </div>
@@ -225,7 +225,7 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
           className="max-h-[min(52vh,420px)] overflow-y-auto p-1.5"
         >
           {results.length === 0 && (
-            <div className="px-3 py-8 text-center text-[15px] text-sub" data-testid="command-empty">
+            <div className="px-3 py-8 text-center text-base text-sub" data-testid="command-empty">
               Nothing matches “{query.trim()}”
             </div>
           )}
@@ -252,7 +252,7 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
                   onPointerMove={() => !isActive && setActive(i)}
                   onClick={() => run(c)}
                   className={cx(
-                    "flex h-10 cursor-pointer items-center gap-3 border px-2.5 text-[15px]",
+                    "flex h-10 cursor-pointer items-center gap-3 border px-2.5 text-base",
                     isActive ? "border-line bg-fill-strong text-text" : "border-transparent text-sub",
                   )}
                 >
@@ -269,7 +269,7 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
             );
           })}
         </div>
-        <div className="flex items-center gap-4 border-t border-border px-4 py-2.5 text-[13px] text-sub">
+        <div className="flex items-center gap-4 border-t border-border px-4 py-2.5 text-sm text-sub">
           <span className="flex items-center gap-1.5">
             <Kbd size="sm">↑</Kbd>
             <Kbd size="sm">↓</Kbd>

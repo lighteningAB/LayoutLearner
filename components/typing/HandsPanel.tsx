@@ -654,7 +654,7 @@ export const HandsPanel = memo(function HandsPanel({
                 <Icon name="arrow-right" size={14} className="shrink-0 text-sub" />
                 <Kbd className={guide.keyLabel.length > 1 ? "px-2" : undefined}>{guide.keyLabel}</Kbd>
                 {guide.action && (
-                  <span className="text-[13px] text-sub">
+                  <span className="text-sm text-sub">
                     fix the typo{guide.actionCount && guide.actionCount > 1 ? ` (×${guide.actionCount})` : ""}
                   </span>
                 )}
@@ -670,7 +670,7 @@ export const HandsPanel = memo(function HandsPanel({
                 )}
               </>
             ) : guide ? (
-              <span className="text-[13px] text-text">
+              <span className="text-sm text-text">
                 <Kbd>{guide.keyLabel}</Kbd> is not on this layout
               </span>
             ) : null}

@@ -63,7 +63,7 @@ export function SettingsView() {
     <div data-testid="settings-view">
       <Section id="appearance" title="Appearance" description="Pick a theme. The typing text size only affects the test and lessons.">
         <ThemePicker value={settings.theme} onChange={(theme) => update({ theme })} />
-        <p className="mt-3 max-w-[75ch] text-[14px] leading-snug text-sub" data-testid="theme-follow-note">
+        <p className="mt-3 max-w-[75ch] text-md leading-snug text-sub" data-testid="theme-follow-note">
           A browser that has saved no settings yet opens on the sheet that matches your system: Blueprint in dark mode, Whiteprint in light mode. The first
           setting you change, here or anywhere else, saves the sheet marked Current with it, and it stays until you pick the other one.
         </p>
@@ -79,7 +79,7 @@ export function SettingsView() {
               valueText={`${settings.fontSize} pixels`}
               onChange={(fontSize) => update({ fontSize })}
             />
-            <span className="ll-readout w-12 text-right text-[15px] text-text" data-testid="setting-fontSize-value">
+            <span className="ll-readout w-12 text-right text-base text-text" data-testid="setting-fontSize-value">
               {settings.fontSize}px
             </span>
           </SettingRow>

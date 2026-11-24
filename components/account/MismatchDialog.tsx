@@ -51,7 +51,7 @@ export function MismatchDialog() {
         <p
           role="note"
           data-testid="mismatch-unsynced"
-          className="mb-4 border border-error px-3 py-2 text-[14px] leading-snug text-error"
+          className="mb-4 border border-error px-3 py-2 text-md leading-snug text-error"
         >
           Some of the data on this device is not stored in that account.
         </p>
@@ -100,7 +100,7 @@ export function MismatchDialog() {
         </Choice>
       </div>
       {sync.error && (
-        <p role="alert" data-testid="mismatch-error" className="mt-4 text-[14px] text-error">
+        <p role="alert" data-testid="mismatch-error" className="mt-4 text-md text-error">
           {sync.error.message}
         </p>
       )}
@@ -112,7 +112,7 @@ function Choice({ button, children }: { button: React.ReactNode; children: React
   return (
     <div>
       {button}
-      <p className="mt-1.5 text-[14px] leading-snug text-sub">{children}</p>
+      <p className="mt-1.5 text-md leading-snug text-sub">{children}</p>
     </div>
   );
 }

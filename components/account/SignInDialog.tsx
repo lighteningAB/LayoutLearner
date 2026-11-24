@@ -106,7 +106,7 @@ export function SignInDialog() {
           </Button>
         ))}
         {error && (
-          <p role="alert" data-testid="signin-error" className="text-[14px] text-error">
+          <p role="alert" data-testid="signin-error" className="text-md text-error">
             {error}
           </p>
         )}
@@ -122,7 +122,7 @@ export function SignInDialog() {
           <label htmlFor="signin-dev-username" className="ll-lettering block text-text">
             Development sign-in
           </label>
-          <p className="mt-1 text-[14px] text-sub">Local development only. Pick any username; no password.</p>
+          <p className="mt-1 text-md text-sub">Local development only. Pick any username; no password.</p>
           <div className="mt-2.5 flex gap-2">
             <Input
               id="signin-dev-username"
@@ -149,7 +149,7 @@ export function SignInDialog() {
             </Button>
           </div>
           {devError && (
-            <p id="signin-dev-error" role="alert" data-testid="signin-dev-error" className="mt-2 text-[14px] text-error">
+            <p id="signin-dev-error" role="alert" data-testid="signin-dev-error" className="mt-2 text-md text-error">
               {devError}
             </p>
           )}

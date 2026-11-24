@@ -24,7 +24,7 @@ export function PageHeader({ title, description, eyebrow, actions, className }: 
         <span aria-hidden className="mb-2 hidden h-px min-w-8 flex-1 bg-border sm:mb-3 sm:block" />
         {actions && <div className="flex items-center gap-2 max-sm:w-full">{actions}</div>}
       </div>
-      {description && <p className="mt-4 max-w-[62ch] text-[17px] leading-[1.45] text-sub">{description}</p>}
+      {description && <p className="mt-4 max-w-[62ch] text-lg leading-[1.45] text-sub">{description}</p>}
     </div>
   );
 }

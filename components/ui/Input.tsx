@@ -17,7 +17,7 @@ export function Input({ size = "md", mono, className, ref, ...rest }: InputProps
   return (
     <input
       ref={ref}
-      className={cx(FIELD, size === "sm" ? "h-8 px-2.5 text-[14px]" : "h-10 px-3 text-[15px]", mono && "font-mono", className)}
+      className={cx(FIELD, size === "sm" ? "h-8 px-2.5 text-md" : "h-10 px-3 text-base", mono && "font-mono", className)}
       {...rest}
     />
   );
@@ -32,7 +32,7 @@ export function Textarea({ mono, className, ref, ...rest }: TextareaProps) {
   return (
     <textarea
       ref={ref}
-      className={cx(FIELD, "min-h-24 resize-y px-3 py-2.5 text-[15px] leading-relaxed", mono && "font-mono text-[13px]", className)}
+      className={cx(FIELD, "min-h-24 resize-y px-3 py-2.5 text-base leading-relaxed", mono && "font-mono text-sm", className)}
       {...rest}
     />
   );

@@ -11,7 +11,7 @@ export function Avatar({ name, image, className }: { name: string; image: string
   return (
     <span
       className={cx(
-        "relative inline-flex size-8 shrink-0 items-center justify-center overflow-hidden border border-line font-display text-[13px] leading-none font-semibold text-text",
+        "relative inline-flex size-8 shrink-0 items-center justify-center overflow-hidden border border-line font-display text-sm leading-none font-semibold text-text",
         className,
       )}
     >

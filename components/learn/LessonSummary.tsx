@@ -70,13 +70,13 @@ function GoalStat({ label, value, unit, goal, met, testId, i }: { label: string;
   return (
     <div className="tt-rise min-w-0 px-3 py-4 first:pl-0 sm:px-5" style={{ "--i": i } as CSSProperties}>
       <div className="ll-lettering text-sub">{label}</div>
-      <div className={cx("ll-numeral mt-3 text-[60px] sm:text-[104px]", met ? "text-text" : "text-error")} data-testid={testId}>
+      <div className={cx("ll-numeral mt-3 text-5xl sm:text-7xl", met ? "text-text" : "text-error")} data-testid={testId}>
         {value}
         {unit && <span className="ml-1 text-[0.4em] text-sub">{unit}</span>}
       </div>
       <div className="ll-lettering-sm mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sub">
         <span>
-          goal <span className="ll-readout text-[13px] tracking-normal text-text normal-case">{goal}</span>
+          goal <span className="ll-readout text-sm tracking-normal text-text normal-case">{goal}</span>
         </span>
         <GoalMark met={met} />
       </div>
@@ -146,7 +146,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
         <h2 className="tt-rise ll-title mt-5 text-text" style={{ "--i": 1 } as CSSProperties} data-testid="lesson-verdict">
           {title}
         </h2>
-        <p className="tt-rise mt-3 max-w-[52ch] text-[17px] leading-[1.45] text-sub" style={{ "--i": 2 } as CSSProperties}>
+        <p className="tt-rise mt-3 max-w-[52ch] text-lg leading-[1.45] text-sub" style={{ "--i": 2 } as CSSProperties}>
           {message}
         </p>
 
@@ -156,7 +156,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
         </div>
 
         {(nextUp || improved || (grade.passed && !nextLesson)) && (
-          <p className="tt-rise mt-5 flex items-center gap-2 text-[15px] text-text" style={{ "--i": 6 } as CSSProperties} data-testid="summary-note">
+          <p className="tt-rise mt-5 flex items-center gap-2 text-base text-text" style={{ "--i": 6 } as CSSProperties} data-testid="summary-note">
             <Icon name={nextUp ? "arrow-right" : "trophy"} size={15} className="shrink-0 text-main" />
             {nextUp
               ? `Next up: lesson ${nextUp.number}, ${nextUp.lesson.title}`
@@ -193,7 +193,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
             Back to course
           </Button>
         </div>
-        <p className="tt-rise mt-4 hidden items-center gap-1.5 text-[13px] text-sub sm:flex" style={{ "--i": 8 } as CSSProperties}>
+        <p className="tt-rise mt-4 hidden items-center gap-1.5 text-sm text-sub sm:flex" style={{ "--i": 8 } as CSSProperties}>
           <Kbd size="sm">enter</Kbd>
           <span className="mr-3">{primaryLabel}</span>
           <Kbd size="sm">esc</Kbd>
@@ -206,7 +206,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
           <span className="ll-lettering text-text">Run log</span>
           <span className="ll-lettering-sm text-sub">
             goal{" "}
-            <span className="ll-readout text-[13px] tracking-normal text-text normal-case">
+            <span className="ll-readout text-sm tracking-normal text-text normal-case">
               {goalAcc}% · {goalWpm} wpm
             </span>
           </span>
@@ -228,7 +228,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
               </th>
             </tr>
           </thead>
-          <tbody className="ll-readout text-[15px]">
+          <tbody className="ll-readout text-base">
             {drills.map((d, i) => (
               <tr key={i} className="border-b border-hairline">
                 <th scope="row" className="px-4 py-2 font-medium text-sub">
@@ -242,7 +242,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
               </tr>
             ))}
           </tbody>
-          <tfoot className="ll-readout text-[15px] font-medium text-text">
+          <tfoot className="ll-readout text-base font-medium text-text">
             <tr className="border-t border-line">
               <th scope="row" className="ll-lettering-sm px-4 py-2.5 text-text">
                 All
@@ -259,7 +259,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
         <div className="border-t border-line p-4" data-testid="summary-weak-keys">
           <div className="ll-lettering-sm text-sub">Keys to work on</div>
           {weak.length === 0 ? (
-            <div className="mt-2 text-[15px] text-text">None this time: a clean, even run.</div>
+            <div className="mt-2 text-base text-text">None this time: a clean, even run.</div>
           ) : (
             <ul className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
               {weak.map((k) => {
@@ -273,7 +273,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
                     className="flex items-center gap-2"
                   >
                     <KeyChip char={k.char} layout={layout} fingerColors={fingerColors} size="md" />
-                    <span className="ll-readout text-[13px] text-text">
+                    <span className="ll-readout text-sm text-text">
                       {k.misses > 0 ? `${Math.round(k.accuracy)}%` : k.avgMs != null ? `${k.avgMs}ms` : ""}
                     </span>
                   </li>

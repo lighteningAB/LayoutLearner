@@ -96,8 +96,8 @@ function FormatHelp() {
 
   const row = (code: string, text: string) => (
     <li className="grid grid-cols-[minmax(0,116px)_minmax(0,1fr)] items-baseline gap-3 border-t border-hairline py-2 first:border-t-0">
-      <code className="truncate font-mono text-[13px] text-text">{code}</code>
-      <span className="text-[14px] leading-snug text-sub">{text}</span>
+      <code className="truncate font-mono text-sm text-text">{code}</code>
+      <span className="text-md leading-snug text-sub">{text}</span>
     </li>
   );
 
@@ -134,7 +134,7 @@ function FormatHelp() {
         >
           <p className="ll-lettering border-b border-line px-4 py-3 text-text">Keyboard Layout Editor raw data</p>
           <div className="px-4 pt-3 pb-4">
-            <p className="text-[14px] leading-snug text-sub">One bracketed list per keyboard row, top to bottom. Inside a row:</p>
+            <p className="text-md leading-snug text-sub">One bracketed list per keyboard row, top to bottom. Inside a row:</p>
             <ul className="mt-2">
               {row('"Q"', "A string is one key.")}
               {row('"!\\n1"', "Shifted character over the base one.")}
@@ -146,12 +146,12 @@ function FormatHelp() {
               href="http://www.keyboard-layout-editor.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 text-[14px] font-medium text-text underline decoration-main decoration-2 underline-offset-4 hover:text-main"
+              className="mt-3 inline-flex items-center gap-1.5 text-md font-medium text-text underline decoration-main decoration-2 underline-offset-4 hover:text-main"
             >
               Design visually on keyboard-layout-editor.com
               <Icon name="external" size={14} />
             </a>
-            <p className="mt-1.5 text-[14px] text-sub">Copy the text from its &quot;Raw data&quot; tab and paste it here.</p>
+            <p className="mt-1.5 text-md text-sub">Copy the text from its &quot;Raw data&quot; tab and paste it here.</p>
           </div>
         </div>
       )}
@@ -342,7 +342,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
         </Note>
       )}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-hairline pt-3">
-        <p className="text-[14px] text-sub" data-testid="override-count" data-count={customisedCount} aria-live="polite">
+        <p className="text-md text-sub" data-testid="override-count" data-count={customisedCount} aria-live="polite">
           {customisedCount === 0 ? "No keys customised" : `${customisedCount} ${customisedCount === 1 ? "key" : "keys"} customised`}
           {!hasFingers && preview ? " · no automatic fingers for this board" : ""}
         </p>
@@ -472,14 +472,14 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
                 placeholder="e.g. My Colemak mod"
                 aria-invalid={showNameError}
                 aria-describedby={showNameError ? `${nameId}-error` : undefined}
-                className="h-12 border-0 bg-transparent px-3 text-[17px] hover:bg-fill focus:bg-fill sm:px-4"
+                className="h-12 border-0 bg-transparent px-3 text-lg hover:bg-fill focus:bg-fill sm:px-4"
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && canSave) save();
                 }}
               />
               {showNameError && (
-                <p id={`${nameId}-error`} className="flex items-center gap-2 border-t border-error px-3 py-2 text-[14px] text-error sm:px-4" data-testid="editor-name-error">
+                <p id={`${nameId}-error`} className="flex items-center gap-2 border-t border-error px-3 py-2 text-md text-error sm:px-4" data-testid="editor-name-error">
                   <Icon name="alert" size={15} className="shrink-0" />
                   {nameError}
                 </p>
@@ -506,7 +506,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
             />
           </div>
         </div>
-        <p className="border-b border-border px-3 py-2 text-[14px] text-sub sm:px-4">{MODE_NOTE[mode]}</p>
+        <p className="border-b border-border px-3 py-2 text-md text-sub sm:px-4">{MODE_NOTE[mode]}</p>
 
         <div className="grid lg:grid-cols-2">
           {/* ── working pane: data, fingers or layers ── */}
@@ -577,7 +577,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
               ) : (
                 <div className="flex max-w-xs flex-col items-center gap-3 border border-dashed border-border px-6 py-6 text-center">
                   <Icon name="keyboard" size={28} className="text-sub" />
-                  <p className="text-[14px] leading-snug text-sub">
+                  <p className="text-md leading-snug text-sub">
                     {check.error ? "Nothing to show until the data parses." : "Your keyboard appears here as you type."}
                   </p>
                 </div>
@@ -616,7 +616,7 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
                     ))}
                   </ul>
                 ) : check.layout ? (
-                  <p className="flex items-center gap-2 text-[14px] text-text" data-testid="editor-ok">
+                  <p className="flex items-center gap-2 text-md text-text" data-testid="editor-ok">
                     <Icon name="check" size={16} className="text-success" />
                     Looks good. Fingers and home row were recognised.
                   </p>

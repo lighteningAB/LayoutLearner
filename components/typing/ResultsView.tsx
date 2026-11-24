@@ -114,7 +114,7 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
 
   if (!model) {
     return (
-      <div ref={boxRef} className={cx("flex items-center justify-center text-sm text-sub", className)} style={{ height }}>
+      <div ref={boxRef} className={cx("flex items-center justify-center text-md text-sub", className)} style={{ height }}>
         Not enough data for a chart.
       </div>
     );
@@ -151,7 +151,7 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
     <div className={cx("tt-chart", className)} data-testid="result-chart">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-x-5 gap-y-1">
         <h3 className="ll-lettering text-text">Speed per second</h3>
-        <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-sub" aria-label="Legend">
+        <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-sub" aria-label="Legend">
           <li className="inline-flex items-center gap-2">
             <span aria-hidden className="h-0.5 w-5 bg-text" />
             wpm
@@ -238,7 +238,7 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
           <div
             role="status"
             data-testid="chart-tooltip"
-            className="pointer-events-none absolute top-0 z-10 w-[144px] -translate-x-1/2 border border-line bg-bg px-2.5 py-2 font-mono text-[12px] leading-[1.5] text-sub"
+            className="pointer-events-none absolute top-0 z-10 w-[144px] -translate-x-1/2 border border-line bg-bg px-2.5 py-2 font-mono text-xs leading-[1.5] text-sub"
             style={{ left: tipLeft, top: Math.max(0, Math.min(wpmPts[hover as number].y, rawPts[hover as number].y) - 96) }}
           >
             <div className="mb-0.5 border-b border-hairline pb-0.5 text-text">{Number.isInteger(hp.t) ? hp.t : hp.t.toFixed(1)}s</div>
@@ -307,8 +307,8 @@ function Row({ label, value, sub, title, i, testId }: { label: string; value: Re
     <div className="tt-rise grid grid-cols-[128px_minmax(0,1fr)] border-b border-border last:border-b-0" style={{ "--i": i } as CSSProperties} title={title} data-testid={testId}>
       <dt className="ll-lettering-sm border-r border-border px-3 py-2.5 text-sub">{label}</dt>
       <dd className="min-w-0 px-3 py-2">
-        <span className="ll-readout block truncate text-[17px] leading-tight font-medium text-text">{value}</span>
-        {sub && <span className="mt-0.5 block truncate text-[13px] leading-tight text-sub">{sub}</span>}
+        <span className="ll-readout block truncate text-lg leading-tight font-medium text-text">{value}</span>
+        {sub && <span className="mt-0.5 block truncate text-sm leading-tight text-sub">{sub}</span>}
       </dd>
     </div>
   );
@@ -370,7 +370,7 @@ export function ResultsView({
 
   const { chars } = result;
   const label = testLabel ?? `${result.mode} ${result.modeValue}`;
-  const headline = "ll-numeral text-[72px] text-text sm:text-[104px]";
+  const headline = "ll-numeral text-6xl text-text sm:text-7xl";
 
   return (
     <section ref={rootRef} className={cx("w-full", className)} data-testid="results" data-wpm={result.wpm} data-accuracy={result.accuracy} aria-label="Test result">
@@ -430,7 +430,7 @@ export function ResultsView({
           <div className="tt-rise mt-6" style={{ "--i": 9 } as CSSProperties} data-testid="result-weak-keys">
             <h3 className="ll-lettering text-text">Keys to work on</h3>
             {weak.length === 0 ? (
-              <p className="mt-2 text-[15px] text-sub">None this time: a clean, even run.</p>
+              <p className="mt-2 text-base text-sub">None this time: a clean, even run.</p>
             ) : (
               <ul className="tt-weak mt-3 grid gap-1.5" data-roomy={roomy ? "true" : "false"}>
                 {weak.map((k) => {
@@ -454,16 +454,16 @@ export function ResultsView({
                       className="flex min-w-0 items-center gap-2 border border-border pr-2"
                     >
                       <span
-                        className="inline-flex size-8 shrink-0 items-center justify-center border-r border-border font-mono text-[15px] font-semibold"
+                        className="inline-flex size-8 shrink-0 items-center justify-center border-r border-border font-mono text-base font-semibold"
                         style={colors && hasFinger ? { backgroundColor: `var(--finger-${g.fingerIndex})`, color: "var(--finger-fg)" } : undefined}
                       >
                         {k.char}
                       </span>
-                      <span className="tt-weak-name min-w-0 truncate text-[13px] text-text">{g?.fingerName || "any finger"}</span>
-                      <span className="tt-weak-detail min-w-0 flex-1 truncate text-[13px] text-sub" data-testid="weak-key-detail">
+                      <span className="tt-weak-name min-w-0 truncate text-sm text-text">{g?.fingerName || "any finger"}</span>
+                      <span className="tt-weak-detail min-w-0 flex-1 truncate text-sm text-sub" data-testid="weak-key-detail">
                         {detail}
                       </span>
-                      <span className={cx("ll-readout text-[13px]", k.misses > 0 ? "text-error" : "text-text")}>{why}</span>
+                      <span className={cx("ll-readout text-sm", k.misses > 0 ? "text-error" : "text-text")}>{why}</span>
                     </li>
                   );
                 })}
@@ -503,7 +503,7 @@ export function ResultsView({
         )}
         {actions}
         {hotkeys && (
-          <p className="ml-auto hidden items-center gap-2 text-[13px] text-sub sm:flex">
+          <p className="ml-auto hidden items-center gap-2 text-sm text-sub sm:flex">
             <Kbd size="sm">enter</Kbd>
             <span>{nextLabel.toLowerCase()}</span>
           </p>

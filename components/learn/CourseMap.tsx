@@ -69,7 +69,7 @@ function LessonTile({
 
       <span className="flex min-w-0 flex-col">
         <span className="flex min-h-9 items-center justify-between gap-2">
-          <span className="truncate text-[18px] leading-tight font-semibold text-text">{item.shortTitle}</span>
+          <span className="truncate text-lg leading-tight font-semibold text-text">{item.shortTitle}</span>
           <StateTag item={item} />
         </span>
 
@@ -78,7 +78,7 @@ function LessonTile({
           {lesson.newChars.length > 0 ? (
             <KeyChips chars={lesson.newChars} layout={layout} fingerColors={fingerColors} max={7} />
           ) : (
-            <span className="inline-flex items-center gap-1.5 text-[14px] text-sub">
+            <span className="inline-flex items-center gap-1.5 text-md text-sub">
               <Icon name="restart" size={13} />
               {lesson.chars.length} keys so far
             </span>
@@ -88,7 +88,7 @@ function LessonTile({
         <span className="mt-auto flex items-end justify-between gap-2 pt-3">
           <Stars value={item.stars} size={15} />
           {entry && entry.attempts > 0 && (
-            <span className="ll-readout truncate text-[12px] text-sub" title="Best speed and accuracy">
+            <span className="ll-readout truncate text-xs text-sub" title="Best speed and accuracy">
               {Math.round(entry.bestWpm)} wpm · {Math.floor(entry.bestAccuracy)}%
             </span>
           )}
@@ -134,7 +134,7 @@ function LessonPreview({
     >
       <div className="flex h-10 items-center justify-between gap-3 border-b border-line px-4">
         <span className="ll-lettering min-w-0 truncate text-text">
-          Lesson <span className="ll-readout ml-1 text-[13px] tracking-normal">{pad2(item.number)}</span>
+          Lesson <span className="ll-readout ml-1 text-sm tracking-normal">{pad2(item.number)}</span>
         </span>
         <span className="ll-lettering-sm truncate text-sub">{lesson.kind === "new" ? "new keys" : "review"}</span>
       </div>
@@ -145,7 +145,7 @@ function LessonPreview({
 
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="font-display text-[22px] leading-[1.15] font-semibold tracking-[0.1em] text-balance text-text uppercase">{lesson.title}</h2>
+          <h2 className="font-display text-xl leading-[1.15] font-semibold tracking-[0.1em] text-balance text-text uppercase">{lesson.title}</h2>
           <span className="flex h-[26px] shrink-0 items-center">
             {item.state === "completed" ? (
               <Stars value={item.stars} size={16} />
@@ -156,7 +156,7 @@ function LessonPreview({
             ) : null}
           </span>
         </div>
-        <p className="mt-2.5 text-[15px] leading-normal text-sub">{lesson.description}</p>
+        <p className="mt-2.5 text-base leading-normal text-sub">{lesson.description}</p>
 
         {newKeys.length > 0 && (
           <div className="mt-5">
@@ -166,7 +166,7 @@ function LessonPreview({
                 {newKeys.map((k) => (
                   <li key={k.char} className="flex min-w-0 items-center gap-2.5">
                     <KeyChip char={k.char} layout={layout} fingerColors={fingerColors} size="md" />
-                    <span className="min-w-0 truncate text-[14px] leading-tight text-text" title={k.finger || undefined}>
+                    <span className="min-w-0 truncate text-md leading-tight text-text" title={k.finger || undefined}>
                       {k.finger || "any finger"}
                       {k.layer ? `, ${k.layer}` : k.shift ? ", shift" : ""}
                     </span>
@@ -241,10 +241,10 @@ function ProgressScale({ completed, total, stars, maxStars }: { completed: numbe
     <div>
       <div className="flex items-baseline justify-between gap-4 whitespace-nowrap">
         <span className="ll-lettering-sm text-sub">
-          lessons <span className="ll-readout text-[15px] tracking-normal text-text">{completed}/{total}</span>
+          lessons <span className="ll-readout text-base tracking-normal text-text">{completed}/{total}</span>
         </span>
         <span className="ll-lettering-sm text-sub">
-          stars <span className="ll-readout text-[15px] tracking-normal text-text">{stars}/{maxStars}</span>
+          stars <span className="ll-readout text-base tracking-normal text-text">{stars}/{maxStars}</span>
         </span>
       </div>
       <div
@@ -394,7 +394,7 @@ export function CourseMap() {
             <h1 className="ll-title text-text">Learn</h1>
             <div className="ll-lettering min-h-[15px] min-w-0 pb-1.5 text-sub sm:pb-2.5">{hydrated ? active.name : " "}</div>
           </div>
-          <p className="mt-4 max-w-[52ch] text-[17px] leading-[1.45] text-sub">
+          <p className="mt-4 max-w-[52ch] text-lg leading-[1.45] text-sub">
             A few keys at a time, from the home row out. Start anywhere; the highlighted lesson is the suggested next step.
           </p>
           <div className="mt-6 flex min-h-12 items-center">
@@ -404,7 +404,7 @@ export function CourseMap() {
                   <span className="ll-trim">
                     {course.completed === 0 ? "Start" : "Continue"} lesson {next.number}
                   </span>
-                  <span className="ll-readout min-w-0 truncate bg-main-fg px-2 py-1 text-[13px] leading-none font-medium tracking-normal text-main normal-case group-hover/btn:bg-bg group-hover/btn:text-text">
+                  <span className="ll-readout min-w-0 truncate bg-main-fg px-2 py-1 text-sm leading-none font-medium tracking-normal text-main normal-case group-hover/btn:bg-bg group-hover/btn:text-text">
                     {next.shortTitle}
                   </span>
                   <Icon name="arrow-right" size={20} className="shrink-0" />
@@ -427,7 +427,7 @@ export function CourseMap() {
             data-max-stars={course.maxStars}
           >
             <ProgressScale completed={course.completed} total={course.total} stars={course.stars} maxStars={course.maxStars} />
-            <p className="mt-3 truncate text-[14px] text-sub">
+            <p className="mt-3 truncate text-md text-sub">
               {next ? (
                 <>
                   <span className="ll-lettering-sm mr-2">Next</span>
@@ -450,7 +450,7 @@ export function CourseMap() {
       ) : course.total === 0 ? (
         <Card className="flex flex-col items-start gap-3" data-testid="course-empty">
           <h2 className="ll-lettering-lg text-text">No lessons for {active.name}</h2>
-          <p className="max-w-lg text-[15px] text-sub">
+          <p className="max-w-lg text-base text-sub">
             This layout has no letter keys a course could be built from. Pick another layout, or edit this one so its keys carry letters.
           </p>
           <Button href="/layouts" icon="layers">
@@ -473,7 +473,7 @@ export function CourseMap() {
                     <span aria-hidden className="h-px min-w-6 flex-1 bg-border" />
                     <span className="ll-lettering-sm inline-flex shrink-0 items-center gap-1.5 text-sub">
                       {complete && <Icon name="check" size={13} className="text-text" />}
-                      <span className="ll-readout text-[12px] tracking-normal text-text">
+                      <span className="ll-readout text-xs tracking-normal text-text">
                         {stage.completed}/{stage.items.length}
                       </span>
                       {complete ? "complete" : "passed"}

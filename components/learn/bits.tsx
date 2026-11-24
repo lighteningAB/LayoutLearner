@@ -74,10 +74,10 @@ export interface KeyChipProps {
 }
 
 const CHIP = {
-  sm: "h-[22px] min-w-[22px] px-1 text-[12px]",
-  md: "h-7 min-w-7 px-1.5 text-sm",
+  sm: "h-[22px] min-w-[22px] px-1 text-xs",
+  md: "h-7 min-w-7 px-1.5 text-md",
   lg: "h-10 min-w-10 px-2 text-lg",
-  xl: "h-[120px] min-w-[120px] px-4 text-[60px]",
+  xl: "h-[120px] min-w-[120px] px-4 text-5xl",
 };
 
 /** Solid fill of finger `index` with its legend colour, or nothing when the finger is unknown / colours are off. */
@@ -113,7 +113,7 @@ export function KeyChips({ chars, layout, fingerColors, max = 6, size = "sm", mu
       {shown.map((c) => (
         <KeyChip key={c} char={c} layout={layout} fingerColors={fingerColors} size={size} muted={muted} />
       ))}
-      {rest > 0 && <span className="ll-readout pl-0.5 text-[12px] text-sub">+{rest}</span>}
+      {rest > 0 && <span className="ll-readout pl-0.5 text-xs text-sub">+{rest}</span>}
     </span>
   );
 }
@@ -136,7 +136,7 @@ export function DetailNumber({ n, tone = "line", dashed, size = "md", className 
       aria-hidden
       className={cx(
         "ll-readout inline-flex shrink-0 items-center justify-center rounded-full border leading-none font-medium",
-        size === "lg" ? "size-11 text-[15px]" : "size-9 text-[13px]",
+        size === "lg" ? "size-11 text-base" : "size-9 text-sm",
         tone === "main" ? "border-main text-main" : tone === "quiet" ? "border-border text-sub" : "border-line text-text",
         dashed && "border-dashed",
         className,
@@ -152,7 +152,7 @@ export function ReadoutCell({ label, children, className, ...rest }: { label: Re
   return (
     <div className={cx("min-w-0 px-2.5 py-2.5", className)}>
       <dt className="ll-lettering-sm text-sub">{label}</dt>
-      <dd className="ll-readout mt-1.5 text-[14px] leading-tight whitespace-nowrap text-text" {...rest}>
+      <dd className="ll-readout mt-1.5 text-md leading-tight whitespace-nowrap text-text" {...rest}>
         {children}
       </dd>
     </div>

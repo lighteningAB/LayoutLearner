@@ -105,6 +105,21 @@
   --font-display: var(--font-josefin), "Josefin Sans", "Century Gothic", "Avenir Next", sans-serif;
   --font-sans: var(--font-barlow), "Barlow Semi Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Type ramp. Every font size in the app is one of these steps.
+     Text: 11 12 13 14 16 18 20. Display: 24 32 40 56 72 96. */
+  --fs-2xs: 0.6875rem;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-md: 0.875rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.25rem;
+  --fs-2xl: 1.5rem;
+  --fs-3xl: 2rem;
+  --fs-4xl: 2.5rem;
+  --fs-5xl: 3.5rem;
+  --fs-6xl: 4.5rem;
+  --fs-7xl: 6rem;
   /* 2px focus ring, token-coloured */
   --focus: var(--main);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -114,6 +129,23 @@
   --font-display: var(--font-josefin), "Josefin Sans", "Century Gothic", "Avenir Next", sans-serif;
   --font-sans: var(--font-barlow), "Barlow Semi Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* The ramp replaces Tailwind's default text scale: text-2xs … text-7xl.
+     Note text-sm is 13px and text-md is 14px here. Sizes set no line-height. */
+  --text-*: initial;
+  --text-2xs: var(--fs-2xs);
+  --text-xs: var(--fs-xs);
+  --text-sm: var(--fs-sm);
+  --text-md: var(--fs-md);
+  --text-base: var(--fs-base);
+  --text-lg: var(--fs-lg);
+  --text-xl: var(--fs-xl);
+  --text-2xl: var(--fs-2xl);
+  --text-3xl: var(--fs-3xl);
+  --text-4xl: var(--fs-4xl);
+  --text-5xl: var(--fs-5xl);
+  --text-6xl: var(--fs-6xl);
+  --text-7xl: var(--fs-7xl);
 
   --color-bg: var(--bg);
   --color-bg-alt: var(--bg-alt);
@@ -227,7 +259,7 @@
 @utility ll-heading {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 1.25rem;
+  font-size: var(--fs-xl);
   line-height: 1.15;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -237,7 +269,7 @@
 @utility ll-lettering-lg {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: var(--fs-md);
   line-height: 1.25;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -245,7 +277,7 @@
 @utility ll-lettering {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   line-height: 1.25;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -253,7 +285,7 @@
 @utility ll-lettering-sm {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 0.6875rem;
+  font-size: var(--fs-2xs);
   line-height: 1.25;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -275,7 +307,7 @@
 /* Marginal annotation: small mono note (scale, units, ids). */
 @utility ll-note {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-2xs);
   line-height: 1.4;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
@@ -345,7 +377,7 @@
       50px 50px;
     background-position: 2px 2px;
     color: var(--text);
-    font-size: 16px;
+    font-size: var(--fs-base);
     line-height: 1.5;
     letter-spacing: 0.005em;
   }

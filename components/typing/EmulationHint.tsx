@@ -115,7 +115,7 @@ export function EmulationHint({ hint, layoutName, inline = false }: { hint: Emul
       role="status"
       data-testid="emulation-hint"
       className={cx(
-        "animate-rise-in flex items-center gap-2.5 text-[14px] leading-snug text-text",
+        "animate-rise-in flex items-center gap-2.5 text-md leading-snug text-text",
         inline
           ? "min-h-9 flex-wrap"
           : "fixed inset-x-4 bottom-20 z-40 mx-auto w-fit max-w-[min(100%,46rem)] border border-line bg-bg py-1.5 pr-1.5 pl-3",

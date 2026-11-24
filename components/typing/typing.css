@@ -301,7 +301,7 @@ html[data-typing="true"] .tt-live {
   justify-content: center;
   gap: 0.6rem;
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -454,7 +454,7 @@ html[data-typing="true"] .tt-live {
 /* ── results chart: a drafted graph ─────────────────────────────────────────────────────── */
 .tt-chart text {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-variant-numeric: tabular-nums;
   fill: var(--sub);
 }

@@ -25,7 +25,7 @@ export function Logo({ size = 30, className }: { size?: number; className?: stri
 
 export function Wordmark({ className }: { className?: string }) {
   return (
-    <span className={cx("ll-trim font-display text-[17px] leading-none tracking-[0.2em] whitespace-nowrap uppercase sm:text-[19px]", className)}>
+    <span className={cx("ll-trim font-display text-lg leading-none tracking-[0.2em] whitespace-nowrap uppercase", className)}>
       <span className="font-bold text-text">Layout</span>
       <span className="ml-[0.45em] font-light text-sub">Learner</span>
     </span>

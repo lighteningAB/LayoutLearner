@@ -56,7 +56,7 @@ export function Note({ tone = "info", icon, title, className, children, ...rest 
       <Icon name={icon ?? t.icon} size={17} className={cx("mt-0.5 shrink-0", t.ink)} />
       <div className="min-w-0 flex-1">
         {title && <p className={cx("ll-lettering-sm mb-1", t.ink)}>{title}</p>}
-        <div className="text-[14px] leading-snug break-words text-text">{children}</div>
+        <div className="text-md leading-snug break-words text-text">{children}</div>
       </div>
     </div>
   );
@@ -67,7 +67,7 @@ export function KeyChip({ className, ...rest }: HTMLAttributes<HTMLSpanElement>)
   return (
     <span
       className={cx(
-        "inline-flex h-6 min-w-6 items-center justify-center border border-key-border bg-key-bg px-1.5 align-middle font-mono text-[12px] leading-none font-medium text-key-text",
+        "inline-flex h-6 min-w-6 items-center justify-center border border-key-border bg-key-bg px-1.5 align-middle font-mono text-xs leading-none font-medium text-key-text",
         className,
       )}
       {...rest}

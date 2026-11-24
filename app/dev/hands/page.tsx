@@ -371,11 +371,11 @@ export default function HandsDevPage() {
           {target ? `${target.label.replace(/\n/g, " ") || "Space"} (${target.finger ? `${target.finger.hand} ${target.finger.finger}` : "no finger"})` : "none"}
         </span>
       </p>
-      <pre data-testid="debug" className="overflow-x-auto rounded-md border p-2 text-[11px] leading-snug" style={{ ...btnStyle, color: "var(--sub)" }}>
+      <pre data-testid="debug" className="overflow-x-auto rounded-md border p-2 text-2xs leading-snug" style={{ ...btnStyle, color: "var(--sub)" }}>
         {debug}
       </pre>
       {sweep && (
-        <pre data-testid="sweep" className="overflow-x-auto whitespace-pre-wrap rounded-md border p-2 text-[11px] leading-snug" style={{ ...btnStyle, color: "var(--sub)" }}>
+        <pre data-testid="sweep" className="overflow-x-auto whitespace-pre-wrap rounded-md border p-2 text-2xs leading-snug" style={{ ...btnStyle, color: "var(--sub)" }}>
           {sweep}
         </pre>
       )}

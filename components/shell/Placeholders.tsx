@@ -4,7 +4,7 @@ import { Badge, Card, ProgressBar, Skeleton, cx } from "@/components/ui";
 /** Quiet "this part is on its way" note used under placeholder skeletons. */
 export function ComingSoon({ children }: { children: ReactNode }) {
   return (
-    <p className="mt-8 flex items-center justify-center gap-3 text-center text-[15px] text-sub" data-testid="coming-soon">
+    <p className="mt-8 flex items-center justify-center gap-3 text-center text-base text-sub" data-testid="coming-soon">
       <Badge tone="main">soon</Badge>
       {children}
     </p>
@@ -57,7 +57,7 @@ const WORDS = [
 export function TestSkeleton() {
   return (
     <div className="mx-auto flex max-w-[880px] flex-col items-center pt-2 sm:pt-8" data-testid="test-skeleton">
-      <div className="flex items-center gap-4 border-y border-border px-4 py-2 text-[15px] text-sub">
+      <div className="flex items-center gap-4 border-y border-border px-4 py-2 text-base text-sub">
         <span className="text-main underline decoration-2 underline-offset-[6px]">time</span>
         <span>words</span>
         <span className="h-3 w-px bg-border" />
@@ -102,7 +102,7 @@ export function LearnSkeleton() {
         {LESSONS.map(([n, name, pct]) => (
           <Card key={n} variant={pct === 0 ? "outline" : "solid"} className={cx(pct === 0 && "border-dashed")}>
             <div className="flex h-[22px] items-center justify-between">
-              <span className="ll-readout text-[13px] text-sub">{n}</span>
+              <span className="ll-readout text-sm text-sub">{n}</span>
               {pct === 100 && <Badge tone="success" icon="check">done</Badge>}
             </div>
             <div className="mt-6 text-lg font-semibold text-text">{name}</div>
@@ -129,7 +129,7 @@ export function LayoutsSkeleton() {
             <KeyboardSilhouette compact className="mt-5" />
           </Card>
         ))}
-        <Card variant="outline" className="flex min-h-36 items-center justify-center border-dashed text-[15px] text-sub">
+        <Card variant="outline" className="flex min-h-36 items-center justify-center border-dashed text-base text-sub">
           + custom layout (KLE JSON)
         </Card>
       </div>

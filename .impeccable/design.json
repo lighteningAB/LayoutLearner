@@ -225,7 +225,7 @@
       "refersTo": "input",
       "description": "Ruled field with faint fill; border darkens to line weight on focus.",
       "html": "<input class=\"ds-input\" placeholder=\"Search layouts\">",
-      "css": ".ds-input{height:40px;width:100%;padding:0 12px;border:1px solid var(--border,#93b5ea);background:var(--fill,rgb(242 246 255/.06));color:var(--text,#f2f6ff);font-size:15px;border-radius:0}.ds-input::placeholder{color:var(--sub,#bdd2f4)}.ds-input:hover{border-color:var(--line,#f2f6ff)}.ds-input:focus{border-color:var(--line,#f2f6ff);background:transparent}.ds-input:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:2px}"
+      "css": ".ds-input{height:40px;width:100%;padding:0 12px;border:1px solid var(--border,#93b5ea);background:var(--fill,rgb(242 246 255/.06));color:var(--text,#f2f6ff);font-size:16px;border-radius:0}.ds-input::placeholder{color:var(--sub,#bdd2f4)}.ds-input:hover{border-color:var(--line,#f2f6ff)}.ds-input:focus{border-color:var(--line,#f2f6ff);background:transparent}.ds-input:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:2px}"
     },
     {
       "name": "Nav Tab",
@@ -249,7 +249,7 @@
       "refersTo": "card-solid",
       "description": "Ruled plate: line-weight outline over the alt sheet fill, no shadow.",
       "html": "<section class=\"ds-card\"><h3 class=\"ds-card-title\">HOME ROW</h3><p class=\"ds-card-body\">Eight keys, no reaching.</p></section>",
-      "css": ".ds-card{padding:20px;border:1px solid var(--line,#f2f6ff);background:var(--bg-alt,#1b54a8);color:var(--text,#f2f6ff);border-radius:0}.ds-card-title{margin:0;font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:14px;letter-spacing:.16em;text-transform:uppercase}.ds-card-body{margin:6px 0 0;font-size:15px;line-height:1.35;color:var(--sub,#bdd2f4)}"
+      "css": ".ds-card{padding:20px;border:1px solid var(--line,#f2f6ff);background:var(--bg-alt,#1b54a8);color:var(--text,#f2f6ff);border-radius:0}.ds-card-title{margin:0;font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:14px;letter-spacing:.16em;text-transform:uppercase}.ds-card-body{margin:6px 0 0;font-size:14px;line-height:1.35;color:var(--sub,#bdd2f4)}"
     },
     {
       "name": "Key Hint",

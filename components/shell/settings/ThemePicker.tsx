@@ -62,14 +62,14 @@ export function ThemePicker({ value, onChange, className }: ThemePickerProps) {
             <span aria-hidden className="ll-grid relative block px-4 pt-4 pb-5 sm:px-5">
               <span className="pointer-events-none absolute inset-1.5 border border-hairline" />
               <span className="relative flex items-center justify-between gap-3">
-                <span className="flex items-baseline gap-1.5 font-display text-[11px] leading-none tracking-[0.18em] uppercase">
+                <span className="flex items-baseline gap-1.5 font-display text-2xs leading-none tracking-[0.18em] uppercase">
                   <span className="font-semibold">Layout</span>
                   <span className="font-light text-sub">Learner</span>
                 </span>
                 <span className="h-px flex-1 bg-border" />
-                <span className="ll-numeral text-[20px]">0:30</span>
+                <span className="ll-numeral text-xl">0:30</span>
               </span>
-              <span className="relative mt-3.5 block font-mono text-[14px] leading-none whitespace-nowrap">
+              <span className="relative mt-3.5 block font-mono text-md leading-none whitespace-nowrap">
                 <span>home r</span>
                 <span className="mx-px inline-block h-[1.15em] w-[2px] bg-caret align-[-0.2em]" />
                 <span className="text-sub">ow </span>
@@ -81,7 +81,7 @@ export function ThemePicker({ value, onChange, className }: ThemePickerProps) {
                   <span
                     key={i}
                     className={cx(
-                      "flex h-6 min-w-0 flex-1 items-center justify-center border border-key-border font-mono text-[11px] leading-none text-finger-fg",
+                      "flex h-6 min-w-0 flex-1 items-center justify-center border border-key-border font-mono text-2xs leading-none text-finger-fg",
                       i === MINI_NEXT && "outline-2 outline-offset-1 outline-main",
                     )}
                     style={{

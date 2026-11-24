@@ -35,5 +35,5 @@ export function CardTitle({ className, ...rest }: HTMLAttributes<HTMLHeadingElem
 }
 
 export function CardDescription({ className, ...rest }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cx("mt-1.5 text-[15px] leading-snug text-sub", className)} {...rest} />;
+  return <p className={cx("mt-1.5 text-base leading-snug text-sub", className)} {...rest} />;
 }

@@ -16,7 +16,7 @@ export interface StatProps {
   "data-testid"?: string;
 }
 
-const VALUE = { sm: "text-2xl", md: "text-4xl", lg: "text-6xl" };
+const VALUE = { sm: "text-2xl", md: "text-4xl", lg: "text-5xl" };
 const TONE = { main: "text-main", text: "text-text", sub: "text-sub", error: "text-error", success: "text-success" };
 const ALIGN = { start: "items-start text-left", center: "items-center text-center", end: "items-end text-right" };
 
@@ -27,7 +27,7 @@ export function Stat({ label, value, unit, hint, size = "md", tone = "main", ali
       <div className={cx("text-sub", size === "sm" ? "ll-lettering-sm" : "ll-lettering")}>{label}</div>
       <div className={cx("ll-readout flex items-baseline leading-none font-medium", size === "lg" ? "mt-3" : "mt-2", VALUE[size], TONE[tone])}>
         {value}
-        {unit && <span className={cx("ml-1 font-normal text-sub", size === "lg" ? "text-xl" : size === "md" ? "text-base" : "text-[13px]")}>{unit}</span>}
+        {unit && <span className={cx("ml-1 font-normal text-sub", size === "lg" ? "text-xl" : size === "md" ? "text-base" : "text-sm")}>{unit}</span>}
       </div>
       {hint && <div className="ll-note mt-2 text-sub">{hint}</div>}
     </div>

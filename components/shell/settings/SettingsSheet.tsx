@@ -26,7 +26,7 @@ export function SheetSection({ anchor, headingId, title, description, children, 
         <h2 id={headingId} className="ll-heading text-text">
           {title}
         </h2>
-        <p className="mt-2.5 max-w-[46ch] text-[15px] leading-snug text-sub">{description}</p>
+        <p className="mt-2.5 max-w-[46ch] text-base leading-snug text-sub">{description}</p>
       </div>
       <div className="min-w-0">{children}</div>
     </section>

@@ -57,7 +57,7 @@ function FilterTabs({ value, onChange, options }: { value: Filter; onChange: (f:
             )}
           >
             <span className="ll-trim">{o.label}</span>
-            <span className={cx("ll-readout text-[12px] font-normal tracking-normal", selected ? "text-text" : "text-sub")}>{o.count}</span>
+            <span className={cx("ll-readout text-xs font-normal tracking-normal", selected ? "text-text" : "text-sub")}>{o.count}</span>
           </button>
         );
       })}
@@ -275,7 +275,7 @@ export function LayoutsView() {
             ...FAMILY_ORDER.map((f) => ({ value: f as Filter, label: FAMILY_LABEL[f], count: counts.get(f) ?? 0 })),
           ]}
         />
-        <p className="hidden pb-2.5 text-[14px] text-sub lg:block">Click a layout to start learning it.</p>
+        <p className="hidden pb-2.5 text-md text-sub lg:block">Click a layout to start learning it.</p>
       </div>
 
       {/* The sheet index: every plate is a ruled cell on one shared hairline grid. */}
@@ -306,7 +306,7 @@ export function LayoutsView() {
                 <span className="ll-lettering-lg block text-text">
                   {customCount === 0 ? "Bring your own layout" : "New custom layout"}
                 </span>
-                <span className="mx-auto mt-2 block max-w-[280px] text-[14px] leading-snug text-sub">
+                <span className="mx-auto mt-2 block max-w-[280px] text-md leading-snug text-sub">
                   {customCount === 0
                     ? "Tweak a preset, paste raw data from keyboard-layout-editor.com, or import a .json file."
                     : "Start from a preset, paste raw data or import a file."}

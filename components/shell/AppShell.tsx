@@ -35,7 +35,7 @@ function SheetFrame() {
         <span key={z} className="hidden md:contents">
           <span className="absolute top-3 h-[5px] w-px bg-line" style={{ left: `${(i + 1) * 25}%` }} />
           <span className="absolute bottom-3 h-[5px] w-px bg-line" style={{ left: `${(i + 1) * 25}%` }} />
-          <span className="ll-lettering-sm absolute top-[19px] -translate-x-1/2 text-[10px] text-sub" style={{ left: `${(i + 1) * 25}%` }}>
+          <span className="ll-lettering-sm absolute top-[19px] -translate-x-1/2 text-2xs text-sub" style={{ left: `${(i + 1) * 25}%` }}>
             {z}
           </span>
         </span>

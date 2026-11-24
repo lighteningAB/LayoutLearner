@@ -51,7 +51,7 @@ function HandRow({ label, fingers, current, onPick }: { label: string; fingers: 
               onClick={() => onPick(f)}
               style={on ? { background: `var(--finger-${i})` } : undefined}
               className={cx(
-                "relative flex h-16 min-w-0 flex-col items-center justify-center gap-2 border-l border-hairline px-0.5 text-[13px] leading-none font-medium transition-colors duration-150 first:border-l-0 focus-visible:z-[1] focus-visible:outline-offset-[-3px]",
+                "relative flex h-16 min-w-0 flex-col items-center justify-center gap-2 border-l border-hairline px-0.5 text-sm leading-none font-medium transition-colors duration-150 first:border-l-0 focus-visible:z-[1] focus-visible:outline-offset-[-3px]",
                 on ? "text-finger-fg outline-2 -outline-offset-2 outline-line" : "text-text hover:bg-fill-strong",
               )}
             >
@@ -121,7 +121,7 @@ export function FingerPicker({ keyName, finger, isHome, autoFinger, autoHome, cu
             Key
             <KeyChip data-testid="finger-picker-key">{keyName}</KeyChip>
           </p>
-          <p className="mt-1.5 text-[14px] leading-snug text-sub" data-testid="finger-picker-state">
+          <p className="mt-1.5 text-md leading-snug text-sub" data-testid="finger-picker-state">
             {finger ? `Pressed by the ${fingerName(finger)}${isHome ? ", resting here" : ""}.` : "Pressed by no finger."}
             {customised ? ` Automatic: ${auto}.` : " Automatic."}
           </p>
@@ -164,7 +164,7 @@ export function FingerPicker({ keyName, finger, isHome, autoFinger, autoHome, cu
           Reset to automatic
         </Button>
       </div>
-      <p className="border-t border-hairline px-3 py-2 text-[14px] text-sub">A finger rests on one home key. Choosing a new one moves it.</p>
+      <p className="border-t border-hairline px-3 py-2 text-md text-sub">A finger rests on one home key. Choosing a new one moves it.</p>
     </div>
   );
 }

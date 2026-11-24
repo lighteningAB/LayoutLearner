@@ -37,7 +37,7 @@ export function CodeEditor({ value, onChange, errorLine, className, onKeyDown, .
   return (
     <div
       className={cx(
-        "relative flex overflow-hidden border border-border font-mono text-[13px] outline-2 -outline-offset-2 outline-transparent transition-[outline-color] duration-150",
+        "relative flex overflow-hidden border border-border font-mono text-sm outline-2 -outline-offset-2 outline-transparent transition-[outline-color] duration-150",
         marked != null ? "focus-within:outline-error" : "focus-within:outline-main",
         className,
       )}
