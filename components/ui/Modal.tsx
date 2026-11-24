@@ -104,7 +104,7 @@ export function Modal({
         aria-describedby={description ? `${uid}-desc` : undefined}
         tabIndex={-1}
         className={cx(
-          "relative w-full animate-pop-in border border-line bg-bg outline-none",
+          "relative w-full animate-pop-in rounded-ui border border-line bg-bg outline-none",
           WIDTH[size],
           className,
         )}

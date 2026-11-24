@@ -7,72 +7,72 @@
       "sheet": {
         "role": "neutral",
         "displayName": "Sheet Blue (Blueprint)",
-        "canonical": "#164b9b",
+        "canonical": "#243c60",
         "tonalRamp": [
           "#091e44",
           "#0e3170",
-          "#164b9b",
-          "#2765bd",
-          "#5c8ad0",
-          "#93b5ea",
-          "#bdd2f4",
-          "#f2f6ff"
+          "#243c60",
+          "#33507c",
+          "#4f6692",
+          "#8299c4",
+          "#adbedc",
+          "#e6ecf7"
         ]
       },
       "sheet-alt": {
         "role": "neutral",
         "displayName": "Sheet Blue Alt",
-        "canonical": "#1b54a8",
+        "canonical": "#2a4369",
         "tonalRamp": [
           "#091e44",
           "#0e3170",
-          "#1b54a8",
-          "#2765bd",
-          "#5c8ad0",
-          "#93b5ea",
-          "#bdd2f4",
-          "#f2f6ff"
+          "#2a4369",
+          "#33507c",
+          "#4f6692",
+          "#8299c4",
+          "#adbedc",
+          "#e6ecf7"
         ]
       },
       "key-fill": {
         "role": "neutral",
         "displayName": "Key Fill Blue",
-        "canonical": "#2765bd",
+        "canonical": "#33507c",
         "tonalRamp": [
           "#0e3170",
-          "#164b9b",
-          "#2765bd",
+          "#243c60",
+          "#33507c",
           "#4a80cc",
-          "#5c8ad0",
-          "#93b5ea",
-          "#bdd2f4",
-          "#f2f6ff"
+          "#4f6692",
+          "#8299c4",
+          "#adbedc",
+          "#e6ecf7"
         ]
       },
       "chalk": {
         "role": "neutral",
         "displayName": "Chalk",
-        "canonical": "#f2f6ff",
+        "canonical": "#e6ecf7",
         "tonalRamp": [
-          "#5c8ad0",
-          "#93b5ea",
-          "#bdd2f4",
+          "#4f6692",
+          "#8299c4",
+          "#adbedc",
           "#d3e1f8",
           "#e3ecfb",
           "#eef3fe",
-          "#f2f6ff",
+          "#e6ecf7",
           "#ffffff"
         ]
       },
       "safety-yellow": {
         "role": "primary",
         "displayName": "Safety Yellow",
-        "canonical": "#ffc61a",
+        "canonical": "#f0c252",
         "tonalRamp": [
           "#5c4300",
           "#8f6a00",
           "#c79700",
-          "#ffc61a",
+          "#f0c252",
           "#ffd14d",
           "#ffdc80",
           "#ffe9b3",
@@ -82,12 +82,12 @@
       "whiteprint-red-pencil": {
         "role": "primary",
         "displayName": "Red Pencil (Whiteprint)",
-        "canonical": "#c92620",
+        "canonical": "#b5433a",
         "tonalRamp": [
           "#4a0f0c",
           "#7a1813",
           "#a31f19",
-          "#c92620",
+          "#b5433a",
           "#dd5650",
           "#e98a85",
           "#f4bfbc",
@@ -97,14 +97,14 @@
       "whiteprint-paper": {
         "role": "neutral",
         "displayName": "Drafting Paper",
-        "canonical": "#f3f6fb",
+        "canonical": "#f4f6fa",
         "tonalRamp": [
-          "#123f8c",
-          "#3f5f99",
-          "#5f7fb8",
-          "#b9c9e4",
-          "#e6edf8",
-          "#f3f6fb",
+          "#1f3f77",
+          "#4a6394",
+          "#6a84b3",
+          "#c7d3e6",
+          "#e9eef6",
+          "#f4f6fa",
           "#f9fbfd",
           "#ffffff"
         ]
@@ -112,16 +112,16 @@
       "whiteprint-ink": {
         "role": "neutral",
         "displayName": "Blue Ink",
-        "canonical": "#123f8c",
+        "canonical": "#1f3f77",
         "tonalRamp": [
           "#071c40",
           "#0c2c64",
-          "#123f8c",
-          "#3f5f99",
-          "#5f7fb8",
+          "#1f3f77",
+          "#4a6394",
+          "#6a84b3",
           "#8fa6cf",
-          "#b9c9e4",
-          "#e6edf8"
+          "#c7d3e6",
+          "#e9eef6"
         ]
       }
     },
@@ -209,7 +209,7 @@
       "refersTo": "button-primary",
       "description": "Action-coloured, square, lettered caps; inverts to chalk on hover.",
       "html": "<button class=\"ds-btn-primary\">START LESSON</button>",
-      "css": ".ds-btn-primary{height:40px;padding:0 16px;border:1px solid var(--line,#f2f6ff);background:var(--main,#ffc61a);color:var(--main-fg,#0b2350);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;border-radius:0;transition:background-color .15s,color .15s}.ds-btn-primary:hover{background:var(--text,#f2f6ff);color:var(--bg,#164b9b)}.ds-btn-primary:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:2px}.ds-btn-primary:active{transform:translateY(1px)}"
+      "css": ".ds-btn-primary{height:40px;padding:0 16px;border:1px solid var(--line,#e6ecf7);background:var(--main,#f0c252);color:var(--main-fg,#16263f);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;border-radius:0;transition:background-color .15s,color .15s}.ds-btn-primary:hover{background:var(--text,#e6ecf7);color:var(--bg,#243c60)}.ds-btn-primary:focus-visible{outline:2px solid var(--main,#f0c252);outline-offset:2px}.ds-btn-primary:active{transform:translateY(1px)}"
     },
     {
       "name": "Subtle Button",
@@ -217,7 +217,7 @@
       "refersTo": "button-subtle",
       "description": "Outline-only default button.",
       "html": "<button class=\"ds-btn-subtle\">RESTART</button>",
-      "css": ".ds-btn-subtle{height:40px;padding:0 16px;border:1px solid var(--line,#f2f6ff);background:transparent;color:var(--text,#f2f6ff);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;border-radius:0;transition:background-color .15s,color .15s}.ds-btn-subtle:hover{background:var(--text,#f2f6ff);color:var(--bg,#164b9b)}.ds-btn-subtle:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:2px}"
+      "css": ".ds-btn-subtle{height:40px;padding:0 16px;border:1px solid var(--line,#e6ecf7);background:transparent;color:var(--text,#e6ecf7);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;border-radius:0;transition:background-color .15s,color .15s}.ds-btn-subtle:hover{background:var(--text,#e6ecf7);color:var(--bg,#243c60)}.ds-btn-subtle:focus-visible{outline:2px solid var(--main,#f0c252);outline-offset:2px}"
     },
     {
       "name": "Input",
@@ -225,7 +225,7 @@
       "refersTo": "input",
       "description": "Ruled field with faint fill; border darkens to line weight on focus.",
       "html": "<input class=\"ds-input\" placeholder=\"Search layouts\">",
-      "css": ".ds-input{height:40px;width:100%;padding:0 12px;border:1px solid var(--border,#93b5ea);background:var(--fill,rgb(242 246 255/.06));color:var(--text,#f2f6ff);font-size:16px;border-radius:0}.ds-input::placeholder{color:var(--sub,#bdd2f4)}.ds-input:hover{border-color:var(--line,#f2f6ff)}.ds-input:focus{border-color:var(--line,#f2f6ff);background:transparent}.ds-input:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:2px}"
+      "css": ".ds-input{height:40px;width:100%;padding:0 12px;border:1px solid var(--border,#8299c4);background:var(--fill,rgb(242 246 255/.06));color:var(--text,#e6ecf7);font-size:16px;border-radius:0}.ds-input::placeholder{color:var(--sub,#adbedc)}.ds-input:hover{border-color:var(--line,#e6ecf7)}.ds-input:focus{border-color:var(--line,#e6ecf7);background:transparent}.ds-input:focus-visible{outline:2px solid var(--main,#f0c252);outline-offset:2px}"
     },
     {
       "name": "Nav Tab",
@@ -233,7 +233,7 @@
       "refersTo": "navigation",
       "description": "Lettered tab on a ruled strip; active tab gets a 2px action underline.",
       "html": "<nav class=\"ds-nav\"><a class=\"ds-tab ds-tab-active\" href=\"#\">01 TEST</a><a class=\"ds-tab\" href=\"#\">02 LEARN</a></nav>",
-      "css": ".ds-nav{display:flex;gap:6px;border-bottom:1px solid var(--border,#93b5ea)}.ds-tab{display:inline-flex;align-items:center;height:44px;padding:0 14px;margin-bottom:-1px;border-bottom:2px solid transparent;color:var(--sub,#bdd2f4);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:14px;letter-spacing:.16em;text-transform:uppercase;text-decoration:none;transition:color .15s,border-color .15s}.ds-tab:hover{color:var(--text,#f2f6ff);border-color:var(--border,#93b5ea)}.ds-tab-active{color:var(--text,#f2f6ff);border-color:var(--main,#ffc61a)}.ds-tab:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:-2px}"
+      "css": ".ds-nav{display:flex;gap:6px;border-bottom:1px solid var(--border,#8299c4)}.ds-tab{display:inline-flex;align-items:center;height:44px;padding:0 14px;margin-bottom:-1px;border-bottom:2px solid transparent;color:var(--sub,#adbedc);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:14px;letter-spacing:.16em;text-transform:uppercase;text-decoration:none;transition:color .15s,border-color .15s}.ds-tab:hover{color:var(--text,#e6ecf7);border-color:var(--border,#8299c4)}.ds-tab-active{color:var(--text,#e6ecf7);border-color:var(--main,#f0c252)}.ds-tab:focus-visible{outline:2px solid var(--main,#f0c252);outline-offset:-2px}"
     },
     {
       "name": "Badge",
@@ -241,7 +241,7 @@
       "refersTo": "badge-main",
       "description": "22px outlined lettering tag; main tone is filled with the action colour.",
       "html": "<span class=\"ds-badge\">NEW</span> <span class=\"ds-badge ds-badge-main\">ACTIVE</span>",
-      "css": ".ds-badge{display:inline-flex;align-items:center;height:22px;padding:0 6px;border:1px solid var(--border,#93b5ea);color:var(--sub,#bdd2f4);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase}.ds-badge-main{border-color:var(--main,#ffc61a);background:var(--main,#ffc61a);color:var(--main-fg,#0b2350)}"
+      "css": ".ds-badge{display:inline-flex;align-items:center;height:22px;padding:0 6px;border:1px solid var(--border,#8299c4);color:var(--sub,#adbedc);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase}.ds-badge-main{border-color:var(--main,#f0c252);background:var(--main,#f0c252);color:var(--main-fg,#16263f)}"
     },
     {
       "name": "Card",
@@ -249,7 +249,7 @@
       "refersTo": "card-solid",
       "description": "Ruled plate: line-weight outline over the alt sheet fill, no shadow.",
       "html": "<section class=\"ds-card\"><h3 class=\"ds-card-title\">HOME ROW</h3><p class=\"ds-card-body\">Eight keys, no reaching.</p></section>",
-      "css": ".ds-card{padding:20px;border:1px solid var(--line,#f2f6ff);background:var(--bg-alt,#1b54a8);color:var(--text,#f2f6ff);border-radius:0}.ds-card-title{margin:0;font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:14px;letter-spacing:.16em;text-transform:uppercase}.ds-card-body{margin:6px 0 0;font-size:14px;line-height:1.35;color:var(--sub,#bdd2f4)}"
+      "css": ".ds-card{padding:20px;border:1px solid var(--line,#e6ecf7);background:var(--bg-alt,#2a4369);color:var(--text,#e6ecf7);border-radius:0}.ds-card-title{margin:0;font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:14px;letter-spacing:.16em;text-transform:uppercase}.ds-card-body{margin:6px 0 0;font-size:14px;line-height:1.35;color:var(--sub,#adbedc)}"
     },
     {
       "name": "Key Hint",
@@ -257,7 +257,7 @@
       "refersTo": "kbd",
       "description": "Outlined key cell for shortcut hints.",
       "html": "<kbd class=\"ds-kbd\">tab</kbd> + <kbd class=\"ds-kbd\">enter</kbd>",
-      "css": ".ds-kbd{display:inline-flex;align-items:center;justify-content:center;height:24px;min-width:24px;padding:0 6px;border:1px solid var(--key-border,#f2f6ff);background:var(--key-bg,#2765bd);color:var(--key-text,#f2f6ff);font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:12px;font-weight:500;line-height:1;border-radius:0}"
+      "css": ".ds-kbd{display:inline-flex;align-items:center;justify-content:center;height:24px;min-width:24px;padding:0 6px;border:1px solid var(--key-border,#e6ecf7);background:var(--key-bg,#33507c);color:var(--key-text,#e6ecf7);font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:12px;font-weight:500;line-height:1;border-radius:0}"
     },
     {
       "name": "Finger Key",
@@ -265,7 +265,7 @@
       "refersTo": "kbd",
       "description": "A key tinted with its finger colour; the target key is filled solid with finger text colour.",
       "html": "<span class=\"ds-fkey\">F</span><span class=\"ds-fkey ds-fkey-target\">T</span>",
-      "css": ".ds-fkey{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;margin-right:4px;border:1px solid var(--key-border,#f2f6ff);background:color-mix(in srgb,var(--finger-3,#3fe0d0) var(--finger-tint,24%),var(--key-tint-base,#164b9b));color:var(--key-text,#f2f6ff);font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:14px}.ds-fkey-target{background:var(--finger-3,#3fe0d0);color:var(--finger-fg,#0b2350)}"
+      "css": ".ds-fkey{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;margin-right:4px;border:1px solid var(--key-border,#e6ecf7);background:color-mix(in srgb,var(--finger-3,#5ec1b7) var(--finger-tint,24%),var(--key-tint-base,#243c60));color:var(--key-text,#e6ecf7);font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:14px}.ds-fkey-target{background:var(--finger-3,#5ec1b7);color:var(--finger-fg,#16263f)}"
     },
     {
       "name": "Plate Leader Label",
@@ -273,7 +273,7 @@
       "refersTo": "kbd",
       "description": "Annotation label on the strip above the 3D plate: finger swatch, lettered finger name, arrow, key; joined to the key by an elbowed leader.",
       "html": "<div class=\"ds-leader\"><svg width=\"220\" height=\"90\" overflow=\"visible\"><path d=\"M168 14.5H92L40 80\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\"/><circle cx=\"40\" cy=\"80\" r=\"2.5\" fill=\"currentColor\"/></svg><span class=\"ds-leader-label\"><i class=\"ds-sw\"></i>LEFT INDEX <b>&rarr;</b> T</span></div>",
-      "css": ".ds-leader{position:relative;width:220px;height:90px;color:var(--line,#f2f6ff)}.ds-leader svg{position:absolute;inset:0}.ds-leader-label{position:absolute;left:100px;top:0;display:inline-flex;align-items:center;gap:6px;height:28px;padding-left:6px;font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}.ds-sw{width:10px;height:10px;border:1px solid var(--line,#f2f6ff);background:var(--finger-3,#3fe0d0)}.ds-leader-label b{color:var(--sub,#bdd2f4);font-weight:600}"
+      "css": ".ds-leader{position:relative;width:220px;height:90px;color:var(--line,#e6ecf7)}.ds-leader svg{position:absolute;inset:0}.ds-leader-label{position:absolute;left:100px;top:0;display:inline-flex;align-items:center;gap:6px;height:28px;padding-left:6px;font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}.ds-sw{width:10px;height:10px;border:1px solid var(--line,#e6ecf7);background:var(--finger-3,#5ec1b7)}.ds-leader-label b{color:var(--sub,#adbedc);font-weight:600}"
     },
     {
       "name": "2D Keyboard Cell States",
@@ -281,7 +281,7 @@
       "refersTo": "kbd",
       "description": "Idle, finger-tinted home, next-key highlight, pressed and dim caps.",
       "html": "<span class=\"ds-cap\">a</span><span class=\"ds-cap ds-home\">f</span><span class=\"ds-cap ds-next\">t</span><span class=\"ds-cap ds-press\">e</span><span class=\"ds-cap ds-dim\">z</span>",
-      "css": ".ds-cap{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:40px;height:40px;margin:0 6px 0 0;border:1px solid var(--key-border,#f2f6ff);background:var(--key-bg,#2765bd);color:var(--key-text,#f2f6ff);font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:14px}.ds-home{background:var(--finger-3,#3fe0d0);color:var(--finger-fg,#0b2350)}.ds-next{background:var(--finger-3,#3fe0d0);color:var(--finger-fg,#0b2350);border-color:var(--finger-fg,#0b2350);outline:2px solid var(--main,#ffc61a);outline-offset:2px}.ds-press{background:var(--key-text,#f2f6ff);color:var(--bg,#164b9b)}.ds-dim{background:transparent;border-style:dashed;color:var(--sub,#bdd2f4);opacity:.55}"
+      "css": ".ds-cap{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:40px;height:40px;margin:0 6px 0 0;border:1px solid var(--key-border,#e6ecf7);background:var(--key-bg,#33507c);color:var(--key-text,#e6ecf7);font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:14px}.ds-home{background:var(--finger-3,#5ec1b7);color:var(--finger-fg,#16263f)}.ds-next{background:var(--finger-3,#5ec1b7);color:var(--finger-fg,#16263f);border-color:var(--finger-fg,#16263f);outline:2px solid var(--main,#f0c252);outline-offset:2px}.ds-press{background:var(--key-text,#e6ecf7);color:var(--bg,#243c60)}.ds-dim{background:transparent;border-style:dashed;color:var(--sub,#adbedc);opacity:.55}"
     }
   ],
   "narrative": {

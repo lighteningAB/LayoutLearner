@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, Ref, TextareaHTMLAttributes } from "react";
 import { cx } from "./cx";
 
 const FIELD =
-  "w-full border border-border bg-fill text-text placeholder:text-sub transition-colors duration-150 " +
+  "w-full rounded-ui border border-border bg-fill text-text placeholder:text-sub transition-colors duration-150 " +
   "hover:border-line focus:border-line focus:bg-transparent " +
   "disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-sub disabled:hover:border-border " +
   "aria-[invalid=true]:border-error aria-[invalid=true]:outline-2 aria-[invalid=true]:outline-offset-0 aria-[invalid=true]:outline-error";

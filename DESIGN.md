@@ -2,36 +2,36 @@
 name: LayoutLearner
 description: A living engineering drawing of hands on a keyboard, drafted on a cyanotype sheet (Blueprint) or drafting paper (Whiteprint).
 colors:
-  sheet: "#164b9b"
-  sheet-alt: "#1b54a8"
-  key-fill: "#2765bd"
-  chalk: "#f2f6ff"
-  chalk-sub: "#bdd2f4"
-  rule: "#93b5ea"
-  hairline: "#5c8ad0"
-  safety-yellow: "#ffc61a"
-  on-yellow: "#0b2350"
-  error-pink: "#ffbcc4"
-  error-alt: "#ff808f"
-  success-mint: "#8ff0b6"
-  finger-0: "#f09ae6"
-  finger-1: "#ffa857"
-  finger-2: "#c8ea60"
-  finger-3: "#3fe0d0"
-  finger-4: "#e9e2ff"
-  finger-5: "#c3acff"
-  finger-6: "#86b6ff"
-  finger-7: "#5fd4ff"
-  finger-8: "#f5ea8c"
-  finger-9: "#74dc86"
-  whiteprint-paper: "#f3f6fb"
-  whiteprint-paper-alt: "#e6edf8"
+  sheet: "#243c60"
+  sheet-alt: "#2a4369"
+  key-fill: "#33507c"
+  chalk: "#e6ecf7"
+  chalk-sub: "#adbedc"
+  rule: "#8299c4"
+  hairline: "#4f6692"
+  safety-yellow: "#f0c252"
+  on-yellow: "#16263f"
+  error-pink: "#f4b6bd"
+  error-alt: "#ee8b97"
+  success-mint: "#a3dfbb"
+  finger-0: "#e0aad9"
+  finger-1: "#dfa977"
+  finger-2: "#bbd07a"
+  finger-3: "#5ec1b7"
+  finger-4: "#ece8f9"
+  finger-5: "#cabcef"
+  finger-6: "#9dbbe8"
+  finger-7: "#7dc6e1"
+  finger-8: "#e1daa0"
+  finger-9: "#88c893"
+  whiteprint-paper: "#f4f6fa"
+  whiteprint-paper-alt: "#e9eef6"
   whiteprint-key-fill: "#ffffff"
-  whiteprint-ink: "#123f8c"
-  whiteprint-ink-sub: "#3f5f99"
-  whiteprint-rule: "#5f7fb8"
-  whiteprint-hairline: "#b9c9e4"
-  whiteprint-red-pencil: "#c92620"
+  whiteprint-ink: "#1f3f77"
+  whiteprint-ink-sub: "#4a6394"
+  whiteprint-rule: "#6a84b3"
+  whiteprint-hairline: "#c7d3e6"
+  whiteprint-red-pencil: "#b5433a"
   whiteprint-on-red: "#ffffff"
   whiteprint-error: "#a3127a"
   whiteprint-error-alt: "#c458a6"
@@ -58,25 +58,25 @@ typography:
     fontSize: "1.25rem"
     fontWeight: 600
     lineHeight: 1.15
-    letterSpacing: "0.18em"
+    letterSpacing: "0.1em"
   lettering-lg:
     fontFamily: "Josefin Sans, Century Gothic, Avenir Next, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 600
     lineHeight: 1.25
-    letterSpacing: "0.16em"
+    letterSpacing: "0.09em"
   lettering:
     fontFamily: "Josefin Sans, Century Gothic, Avenir Next, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.25
-    letterSpacing: "0.16em"
+    letterSpacing: "0.09em"
   lettering-sm:
     fontFamily: "Josefin Sans, Century Gothic, Avenir Next, sans-serif"
     fontSize: "0.6875rem"
     fontWeight: 600
     lineHeight: 1.25
-    letterSpacing: "0.14em"
+    letterSpacing: "0.08em"
   body:
     fontFamily: "Barlow Semi Condensed, Arial Narrow, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1rem"
@@ -162,14 +162,15 @@ components:
 
 **Creative North Star: "The Living Drawing"**
 
-The app is an engineering drawing of hands on a keyboard. The drawing sheet is the page and the hands are the plate at its centre. It is drafted twice: **Blueprint** (dark, a Prussian-blue cyanotype sheet with chalk linework and a safety-yellow action) and **Whiteprint** (light, white drafting paper with blue ink and a red-pencil action). Both themes are one system. The same tokens are re-valued under `[data-theme]`, and nothing else changes.
+The app is an engineering drawing of hands on a keyboard. The drawing sheet is the page and the hands are the plate at its centre. It is drafted twice: **Blueprint** (dark, a deep, muted blueprint-blue sheet with soft chalk linework and a warm yellow action) and **Whiteprint** (light, pale drafting paper with blue ink and a brick-red action). Both themes are one system. The same tokens are re-valued under `[data-theme]`, and nothing else changes.
 
-Everything is square, ruled and lettered. Boxes are 1px outlines. Labels are tracked capitals. Readouts are monospace and sit beside the work like annotations. The page carries a faint drafting grid, registration marks, a title block, sheet and detail numbering, leader lines and dimension-style labels. Ten finger colours appear only as fills on keys, fingertips, chips and legends, which keeps them readable as a learning aid.
+Everything is ruled and lettered, calm enough to practise in for an hour: corners are eased, the grid is barely there, and colour is saved for the key that matters. Boxes are 1px outlines. Labels are tracked capitals. Readouts are monospace and sit beside the work like annotations. The page carries a faint drafting grid, registration marks, a title block, sheet and detail numbering, leader lines and dimension-style labels. Ten finger colours appear only as fills on keys, fingertips, chips and legends, which keeps them readable as a learning aid.
 
-Where the build and the original direction contract differ on exact values, the build is recorded here (for example the Blueprint error is a pale pink, `#ffbcc4`, not salmon, and Whiteprint's red pencil is `#c92620`).
+Where the build and the original direction contract differ on exact values, the build is recorded here (for example the Blueprint error is a pale pink, `#f4b6bd`, not salmon, and Whiteprint's red pencil is `#b5433a`).
 
 **Key Characteristics:**
-- Square corners everywhere (radius 0); depth comes from line weight and fill, never shadow.
+- Corners eased by 3px on controls, cards and keys; depth comes from line weight and fill, never shadow.
+- Quiet by default: a deep low-chroma sheet, soft chalk lines, muted finger colours, a barely-there grid. Only the next key and the action colour may raise their voice.
 - One action colour per theme, used for the primary action, the active tab rule, the caret, the focus ring and the selection.
 - Josefin Sans tracked capitals for all lettering, Barlow Semi Condensed for UI text, IBM Plex Mono for typed text, key legends and numbers.
 - A 10px drafting grid with a heavier line every 50px, on the body of every page.
@@ -180,24 +181,24 @@ Where the build and the original direction contract differ on exact values, the 
 A drenched monochrome blue sheet with a single saturated action colour. Whiteprint inverts to blue ink on near-white paper with red pencil as the action. Theme tokens are exposed as CSS custom properties (`--bg`, `--text`, `--main` and so on) and mapped into Tailwind (`bg-bg`, `text-main`, `border-line`).
 
 ### Primary
-- **Safety Yellow** (`--main`, #ffc61a on Blueprint): the primary button face, the active nav rule, the slider fill, the caret, the focus ring, the selection and the `main` badge. Text on it is Deep Chart Navy (#0b2350).
-- **Red Pencil** (`--main`, #c92620 on Whiteprint): the same roles, with white text on it.
+- **Safety Yellow** (`--main`, #f0c252 on Blueprint): the primary button face, the active nav rule, the slider fill, the caret, the focus ring, the selection and the `main` badge. Text on it is Deep Chart Navy (#16263f).
+- **Red Pencil** (`--main`, #b5433a on Whiteprint): the same roles, with white text on it.
 
 ### Secondary
-- **Sheet Blue** (#164b9b), **Sheet Blue Alt** (#1b54a8) and **Key Fill Blue** (#2765bd): page, raised card and key surfaces on Blueprint. Whiteprint uses Drafting Paper (#f3f6fb), Paper Alt (#e6edf8) and White (#ffffff).
+- **Sheet Blue** (#243c60), **Sheet Blue Alt** (#2a4369) and **Key Fill Blue** (#33507c): page, raised card and key surfaces on Blueprint. Whiteprint uses Drafting Paper (#f4f6fa), Paper Alt (#e9eef6) and White (#ffffff).
 
 ### Neutral
-- **Chalk** (`--text` and `--line`, #f2f6ff): body text and all 1px linework on Blueprint. Blue Ink (#123f8c) does both on Whiteprint.
-- **Pale Chalk Blue** (`--sub`, #bdd2f4): secondary text. Whiteprint: #3f5f99. It is not legible on the key fill in Blueprint, so use `--text` there.
-- **Rule Blue** (`--border`, #93b5ea): quiet borders and scrollbar thumbs. Whiteprint: #5f7fb8.
-- **Hairline Blue** (`--hairline`, #5c8ad0): the faintest dividers. Whiteprint: #b9c9e4.
+- **Chalk** (`--text` and `--line`, #e6ecf7): body text and all 1px linework on Blueprint. Blue Ink (#1f3f77) does both on Whiteprint.
+- **Pale Chalk Blue** (`--sub`, #adbedc): secondary text. Whiteprint: #4a6394. It is not legible on the key fill in Blueprint, so use `--text` there.
+- **Rule Blue** (`--border`, #8299c4): quiet borders and scrollbar thumbs. Whiteprint: #6a84b3.
+- **Hairline Blue** (`--hairline`, #4f6692): the faintest dividers. Whiteprint: #c7d3e6.
 - **Grid** (chalk at 4% and 8.5%; ink at 4.5% and 9.5% on Whiteprint): the drafting grid. **Fill** (6% and 12%): input and hatching fills. **Scrim** (#091e44 at 74%; ink at 42% on Whiteprint): modal backdrop.
 
 ### Status
-- **Error** (#ffbcc4, alt #ff808f; Whiteprint #a3127a, alt #c458a6) and **Success** (#8ff0b6; Whiteprint #17734a). Errors deliberately sit outside the finger-colour family.
+- **Error** (#f4b6bd, alt #ee8b97; Whiteprint #a3127a, alt #c458a6) and **Success** (#a3dfbb; Whiteprint #17734a). Errors deliberately sit outside the finger-colour family.
 
 ### Finger colours
-Ten fills, `--finger-0` to `--finger-9`, left pinky to right pinky. Blueprint values are light and bright (#f09ae6, #ffa857, #c8ea60, #3fe0d0, #e9e2ff, #c3acff, #86b6ff, #5fd4ff, #f5ea8c, #74dc86). Whiteprint values are deeper inks (see frontmatter). `--finger-fg` (#0b2350 on Blueprint, white on Whiteprint) is the text colour on any finger fill. Key tints mix the finger colour into the key base at 24% (Blueprint) or 16% (Whiteprint).
+Ten fills, `--finger-0` to `--finger-9`, left pinky to right pinky. Blueprint values are light and bright (#e0aad9, #dfa977, #bbd07a, #5ec1b7, #ece8f9, #cabcef, #9dbbe8, #7dc6e1, #e1daa0, #88c893). Whiteprint values are deeper inks (see frontmatter). `--finger-fg` (#16263f on Blueprint, white on Whiteprint) is the text colour on any finger fill. Key tints mix the finger colour into the key base at 24% (Blueprint) or 16% (Whiteprint).
 
 ### Named Rules
 **The One Action Rule.** One saturated colour per theme carries the action. The finger colours are not actions and never decorate chrome.
@@ -216,8 +217,8 @@ Ten fills, `--finger-0` to `--finger-9`, left pinky to right pinky. Blueprint va
 
 ### Hierarchy
 - **Title** (300, clamp(2.125rem, 1.4rem + 2.6vw, 3.75rem), 0.95, 0.06em, uppercase): one per page. Class `ll-title`.
-- **Heading** (600, 1.25rem, 1.15, 0.18em, uppercase): section headings on the sheet. Class `ll-heading`.
-- **Lettering lg / md / sm** (600, 0.875 / 0.75 / 0.6875rem, 1.25, 0.16 / 0.16 / 0.14em, uppercase): tabs, nav, buttons, labels, table heads, badges. Classes `ll-lettering-lg`, `ll-lettering`, `ll-lettering-sm`.
+- **Heading** (600, 1.25rem, 1.15, 0.1em, uppercase): section headings on the sheet. Class `ll-heading`.
+- **Lettering lg / md / sm** (600, 0.875 / 0.75 / 0.6875rem, 1.25, 0.09 / 0.09 / 0.08em, uppercase): tabs, nav, buttons, labels, table heads, badges. Classes `ll-lettering-lg`, `ll-lettering`, `ll-lettering-sm`.
 - **Body** (Barlow 400, 16px, 1.5, 0.005em): UI and prose. Secondary lines are 14px in `--sub`.
 - **Readout** (Plex Mono, tabular nums, slashed zero): WPM, accuracy, error counts and the typing text. Class `ll-readout`.
 - **Numeral** (Josefin 300, lining and tabular, 1, -0.02em): the timer and big counts. Class `ll-numeral`.
@@ -266,12 +267,12 @@ Flat. There are no shadows, glows or gradients (`--shadow-pop` resolves to nothi
 
 ## Shapes
 
-Strictly square. All radius tokens (`ui-sm`, `ui`, `ui-lg`) resolve to `--radius: 0px`. Borders are 1px, solid for live elements and dashed for disabled ones. A dashed outline with no fill is the disabled state (a hidden line). The slider is a dimension line with end ticks, a 3px measured part and a 10x18 square marker. Focus is a 2px outline in the action colour with a 2px offset.
+Nearly square. All radius tokens (`ui-sm`, `ui`, `ui-lg`) resolve to `--radius: 3px`, used on buttons, inputs, cards, menus, badges, toggles and 2D keys (`rounded-ui`). Page rules, plates and tables stay square. Borders are 1px, solid for live elements and dashed for disabled ones. A dashed outline with no fill is the disabled state (a hidden line). The slider is a dimension line with end ticks, a 3px measured part and a 10x18 square marker. Focus is a 2px outline in the action colour with a 2px offset.
 
 ## Components
 
 ### Buttons
-- **Shape:** square, 1px outline, lettered caps (Josefin 600, tracking 0.12em). Heights are 32, 40 and 48px (`sm`, `md`, `lg`); `md` has 16px horizontal padding.
+- **Shape:** square, 1px outline, lettered caps (Josefin 600, tracking 0.08em). Heights are 32, 40 and 48px (`sm`, `md`, `lg`); `md` has 16px horizontal padding.
 - **Primary:** action fill (`--main`), `--main-fg` text, chalk outline. Hover inverts to chalk fill with sheet-coloured text.
 - **Subtle (default):** outline only. Hover fills with chalk.
 - **Ghost:** no border, `--sub` text, underlined on hover. **Danger:** error-coloured outline, filled on hover.
@@ -281,7 +282,7 @@ Strictly square. All radius tokens (`ui-sm`, `ui`, `ui-lg`) resolve to `--radius
 - **Solid:** 1px `--line` outline over `--bg-alt`. **Outline:** 1px `--border`, no fill. Square, no shadow. Padding is 12, 20 or 24 to 32px. Titles use `ll-lettering-lg`.
 
 ### Inputs / Fields
-- **Style:** 1px `--border`, `--fill` background, square, 40px high (32px small), Barlow 15px, optional mono.
+- **Style:** 1px `--border`, `--fill` background, square, 40px high (32px small), Barlow 16px, optional mono.
 - **Focus:** the border goes to `--line` and the fill clears. Invalid is an error border plus a 2px error outline. Disabled is dashed and transparent.
 
 ### Navigation

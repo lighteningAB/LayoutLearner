@@ -79,7 +79,7 @@ export function Toaster() {
           role={t.variant === "error" ? "alert" : "status"}
           data-variant={t.variant}
           data-testid="toast"
-          className="pointer-events-auto flex w-full max-w-sm animate-rise-in items-stretch border border-line bg-bg"
+          className="pointer-events-auto flex w-full max-w-sm animate-rise-in items-stretch overflow-hidden rounded-ui border border-line bg-bg"
         >
           <span className={cx("flex w-11 shrink-0 items-center justify-center border-r border-line", TONE[t.variant])}>
             <Icon name={ICON[t.variant]} size={18} />

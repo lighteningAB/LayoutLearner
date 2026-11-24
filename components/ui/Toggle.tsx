@@ -31,7 +31,7 @@ export function Toggle({ checked, onChange, label, disabled, size = "md", id, cl
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cx(
-        "group/tg relative inline-flex shrink-0 items-center border transition-colors duration-150",
+        "group/tg relative inline-flex shrink-0 items-center rounded-ui border transition-colors duration-150",
         "disabled:cursor-not-allowed disabled:border-dashed disabled:border-border disabled:bg-transparent",
         sm ? "h-5 w-9" : "h-6 w-11",
         checked ? "border-line bg-main" : "border-line bg-transparent hover:bg-fill-strong",

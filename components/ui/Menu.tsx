@@ -121,7 +121,7 @@ export function Menu({ trigger, items, align = "start", side = "bottom", classNa
           aria-label={rest["aria-label"]}
           onKeyDown={onMenuKeyDown}
           className={cx(
-            "absolute z-40 min-w-44 animate-pop-in border border-line bg-bg p-1",
+            "absolute z-40 min-w-44 animate-pop-in rounded-ui border border-line bg-bg p-1",
             side === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5",
             align === "end" ? "right-0" : "left-0",
           )}

@@ -9,7 +9,7 @@ export type ButtonSize = "sm" | "md" | "lg";
 // Lettered, square, 1px outline. Pressed: the label drops 1px. Disabled: a dashed outline with no
 // fill (a hidden line). Busy (aria-busy / `loading`): section hatching runs across the face.
 const BASE =
-  "group/btn relative inline-flex shrink-0 items-center justify-center gap-2 border font-display font-semibold tracking-[0.12em] whitespace-nowrap uppercase select-none " +
+  "group/btn relative inline-flex shrink-0 items-center justify-center gap-2 rounded-ui border font-display font-semibold tracking-[0.08em] whitespace-nowrap uppercase select-none " +
   "transition-[background-color,color,border-color] duration-150 active:translate-y-px " +
   "disabled:pointer-events-none disabled:border-dashed disabled:border-border disabled:bg-transparent disabled:text-sub " +
   "aria-disabled:pointer-events-none aria-disabled:border-dashed aria-disabled:border-border aria-disabled:bg-transparent aria-disabled:text-sub " +

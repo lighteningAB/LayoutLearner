@@ -21,7 +21,7 @@ export function Badge({ tone = "neutral", icon, className, children, ...rest }: 
     <span
       data-tone={tone}
       className={cx(
-        "ll-lettering-sm inline-flex h-[22px] items-center gap-1 border px-1.5 whitespace-nowrap",
+        "ll-lettering-sm inline-flex h-[22px] items-center gap-1 rounded-ui border px-1.5 whitespace-nowrap",
         TONES[tone],
         className,
       )}

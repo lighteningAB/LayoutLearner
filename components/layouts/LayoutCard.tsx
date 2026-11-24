@@ -97,13 +97,13 @@ export const LayoutCard = memo(function LayoutCard({ entry, selected, inspected,
       <div
         className={cx(
           "flex h-11 items-center gap-2 border-b pr-1.5 pl-3 sm:pl-4",
-          selected ? "border-main bg-main text-main-fg" : "border-hairline text-text",
+          selected ? "border-main text-text" : "border-hairline text-text",
         )}
       >
         <h3 className="ll-lettering-lg ll-trim min-w-0 truncate">{entry.name}</h3>
         {selected && (
           <span
-            className="ll-lettering-sm inline-flex h-[22px] shrink-0 items-center gap-1 border border-main-fg px-1.5"
+            className="ll-lettering-sm inline-flex h-[22px] shrink-0 items-center gap-1 rounded-ui border border-main bg-main px-1.5 text-main-fg"
             data-testid="layout-card-active"
           >
             <Icon name="check" size={12} strokeWidth={2.25} />
@@ -127,7 +127,7 @@ export const LayoutCard = memo(function LayoutCard({ entry, selected, inspected,
               label={`${entry.name} actions`}
               size="sm"
               data-testid="layout-card-menu"
-              className={selected ? "!text-main-fg hover:!border-main-fg" : "!text-text"}
+              className="!text-text"
               {...props}
             />
           )}
