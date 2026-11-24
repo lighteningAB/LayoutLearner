@@ -24,7 +24,7 @@ export function Nav() {
       <div className="flex flex-wrap items-center gap-x-6 border-b border-border pt-3 md:h-16 md:flex-nowrap md:gap-x-8 md:pt-0 lg:gap-x-11">
         <Link href="/" aria-label="LayoutLearner home" className="flex h-10 items-center gap-2.5" data-testid="nav-home">
           <Logo />
-          <Wordmark className="max-[380px]:hidden" />
+          <Wordmark className="max-[380px]:hidden md:max-lg:hidden" />
         </Link>
         <nav
           aria-label="Main"
@@ -56,7 +56,7 @@ export function Nav() {
             title="Current layout: change it"
             data-testid="layout-chip"
             data-layout={settings.layoutId}
-            className="ll-lettering mr-1 inline-flex h-8 max-w-44 items-center gap-2 border border-line px-3 text-text transition-colors duration-150 hover:bg-text hover:text-bg"
+            className="ll-lettering mr-1 inline-flex h-8 max-w-44 items-center gap-2 rounded-ui border border-line px-3 text-text transition-colors duration-150 hover:bg-text hover:text-bg"
           >
             <Icon name="keyboard" size={15} className="max-sm:hidden" />
             <span className="ll-trim truncate">{layoutLabel(settings.layoutId, settings.customLayouts)}</span>

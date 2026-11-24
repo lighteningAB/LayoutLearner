@@ -164,12 +164,13 @@ components:
 
 The app is an engineering drawing of hands on a keyboard. The drawing sheet is the page and the hands are the plate at its centre. It is drafted twice: **Blueprint** (dark, a deep, muted blueprint-blue sheet with soft chalk linework and a warm yellow action) and **Whiteprint** (light, pale drafting paper with blue ink and a brick-red action). Both themes are one system. The same tokens are re-valued under `[data-theme]`, and nothing else changes.
 
-Everything is ruled and lettered, calm enough to practise in for an hour: corners are eased, the grid is barely there, and colour is saved for the key that matters. Boxes are 1px outlines. Labels are tracked capitals. Readouts are monospace and sit beside the work like annotations. The page carries a faint drafting grid, registration marks, a title block, sheet and detail numbering, leader lines and dimension-style labels. Ten finger colours appear only as fills on keys, fingertips, chips and legends, which keeps them readable as a learning aid.
+Everything is ruled and lettered, calm enough to practise in for an hour: corners are eased, the grid is barely there, and colour is saved for the key that matters. Boxes are 1px outlines. Labels are tracked capitals. Practice screens are minimal: the text, the hands and one small counter, with nothing beside the work. The page carries a faint drafting grid, leader lines and dimension-style labels; there is no sheet frame. Ten finger colours appear only as fills on keys, fingertips, chips and legends, which keeps them readable as a learning aid.
 
 Where the build and the original direction contract differ on exact values, the build is recorded here (for example the Blueprint error is a pale pink, `#f4b6bd`, not salmon, and Whiteprint's red pencil is `#b5433a`).
 
 **Key Characteristics:**
 - Corners eased by 3px on controls, cards and keys; depth comes from line weight and fill, never shadow.
+- Minimal practice screens: text, hands, counter. If it does not help the next keystroke, it is not on the page.
 - Quiet by default: a deep low-chroma sheet, soft chalk lines, muted finger colours, a barely-there grid. Only the next key and the action colour may raise their voice.
 - One action colour per theme, used for the primary action, the active tab rule, the caret, the focus ring and the selection.
 - Josefin Sans tracked capitals for all lettering, Barlow Semi Condensed for UI text, IBM Plex Mono for typed text, key legends and numbers.
@@ -254,7 +255,7 @@ Exceptions: the fluid page title clamps, the user-set typing text size, `em`-rel
 
 ## Layout
 
-A single sheet column: `max-width: 1440px` with 16px, 32px and 40px side margins at base, `sm` and `lg`. Nav, main and footer share the column so their edges align. Pages that need a narrower measure constrain themselves inside it. The header strip is 64px tall at `md` and up, with the wordmark left, lettered nav tabs, then the layout chip, command palette and account on the right. The body is the drafting grid (10px fine, 50px heavy, offset 2px). The test page is a plate at the centre with annotation rails left and right and a title block at the bottom right. Spacing follows Tailwind's 4px steps; cards use 12, 20 or 24px padding. Phones get a notice plus browsing, and a mobile composition is not designed yet.
+A single sheet column: `max-width: 1440px` with 16px, 32px and 40px side margins at base, `sm` and `lg`. Nav, main and footer share the column so their edges align. Pages that need a narrower measure constrain themselves inside it. The header strip is 64px tall at `md` and up, with the wordmark left, lettered nav tabs, then the layout chip, command palette and account on the right. The body is the drafting grid (10px fine, 50px heavy, offset 2px). The test page and the lesson drill are one centred column (`max-width: 1040px`): settings line (fades while typing), a small counter in the action colour, the text, the hands plate, a restart control. Live speed and accuracy are not shown while typing; they appear on the results sheet and stay in the page for assistive tech only. Spacing follows Tailwind's 4px steps; cards use 12, 20 or 24px padding. Phones get a notice plus browsing, and a mobile composition is not designed yet.
 
 ## Elevation & Depth
 
