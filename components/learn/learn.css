@@ -1,74 +1,105 @@
-/* Styles for components/learn (plain global CSS, classes prefixed learn-). Tokens only. */
+/* Styles for components/learn (plain global CSS, classes prefixed learn-). Tokens only.
+   Motion: short, exponential ease-out (--ease-out), no overshoot; all of it off under reduced motion. */
 
-@keyframes learn-star-pop {
-  0% {
+/* ── earned stars: drawn in one after another, settling without overshoot ── */
+@keyframes learn-star-in {
+  from {
     opacity: 0;
-    transform: scale(0.2) rotate(-35deg);
-  }
-  60% {
-    opacity: 1;
-    transform: scale(1.25) rotate(6deg);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) rotate(0);
+    transform: translateY(6px) scale(0.82);
   }
 }
-.learn-star-pop {
-  animation: learn-star-pop 520ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
-  animation-delay: calc(260ms + var(--i, 0) * 240ms);
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--main) 45%, transparent));
+.learn-star-in {
+  animation: learn-star-in 520ms var(--ease-out) both;
+  animation-delay: calc(180ms + var(--i, 0) * 160ms);
 }
 
+/* ── the prompt key arriving ── */
 @keyframes learn-key-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.94);
+    transform: translateY(6px);
   }
 }
 .learn-key-in {
-  animation: learn-key-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: learn-key-in 240ms var(--ease-out) both;
 }
 
-@keyframes learn-dot-pop {
-  50% {
-    transform: scale(1.5);
-  }
+/* ── course map: one lesson as a ruled cell of the sheet ── */
+.learn-cell {
+  transition: background-color 140ms var(--ease-out);
 }
-.learn-dot[data-on="true"] {
-  animation: learn-dot-pop 220ms ease-out;
+.learn-cell:hover {
+  background-color: var(--fill);
+}
+.learn-cell[data-selected="true"] {
+  background-color: var(--fill);
+  outline: 2px solid var(--line);
+  outline-offset: -2px;
+}
+.learn-cell:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+  z-index: 1;
+}
+/* the suggested next lesson: a dashed action-colour box drawn inside the cell */
+.learn-cell[data-state="current"]::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 2px dashed var(--main);
+  pointer-events: none;
 }
 
-/* the lesson tile that "continue" points at */
-@keyframes learn-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--main) 0%, transparent);
+/* ── lesson player ── */
+/* The hands are the teacher: inside a lesson the plate takes the room the sheet has. The box
+   sizes come from components/typing (inline styles), so they are lifted here. */
+@media (min-width: 1024px) {
+  .learn-plate .tt-guide {
+    max-width: min(100%, 1040px) !important;
   }
-  50% {
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--main) 14%, transparent);
+  .learn-plate [data-testid="hands-panel"] {
+    aspect-ratio: auto !important;
+    height: clamp(220px, 36dvh, 430px);
+    max-height: none !important;
   }
-}
-.learn-tile[data-state="current"] {
-  animation: learn-pulse 2.6s ease-in-out infinite;
+  .learn-plate [data-testid="hands-panel"][data-compact="true"] {
+    height: clamp(170px, 27dvh, 300px);
+  }
+  .learn-plate--side [data-testid="hands-panel"] {
+    height: clamp(240px, 50dvh, 520px);
+  }
+  .learn-plate--side [data-testid="hands-panel"][data-compact="true"] {
+    height: clamp(170px, 30dvh, 320px);
+  }
 }
 
-/* connector between tiles of one stage: a quiet path behind the grid */
-.learn-tile {
+/* one press of the "press it n times" counter being ticked off */
+.learn-press {
   transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    transform 150ms ease;
+    background-color 140ms var(--ease-out),
+    color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out);
 }
-.learn-tile:hover {
-  transform: translateY(-1px);
+
+/* wrong key in the intro: the prompt is redrawn dashed for a moment, with a text note beside it */
+@keyframes learn-miss {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+.learn-miss {
+  animation: learn-miss 180ms var(--ease-out) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .learn-star-pop,
+  .learn-star-in,
   .learn-key-in,
-  .learn-dot[data-on="true"],
-  .learn-tile[data-state="current"] {
+  .learn-miss {
     animation: none !important;
+  }
+  .learn-cell,
+  .learn-press {
+    transition: none !important;
   }
 }
