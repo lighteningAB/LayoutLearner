@@ -5,38 +5,10 @@ import { Footer } from "./Footer";
 import { Nav } from "./Nav";
 import { SHEET_COLUMN } from "./sheet";
 
-/** One registration mark (crosshair in a circle), centred on a corner of the sheet frame. */
-function RegMark({ className }: { className: string }) {
-  return (
-    <svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1" className={className}>
-      <circle cx="11" cy="11" r="5" />
-      <path d="M11 0v22M0 11h22" />
-    </svg>
-  );
-}
-
-
-/**
- * The drawing sheet's furniture: one quiet frame line and four registration marks. Pure decoration: hidden from assistive tech, never takes pointer events, and sits in
- * the page margin so it cannot collide with content. Below `md` only the frame line remains.
- */
-function SheetFrame() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden text-border" data-testid="sheet-frame">
-      <div className="absolute inset-1.5 border border-hairline md:inset-3" />
-      <RegMark className="absolute top-px left-px hidden md:block" />
-      <RegMark className="absolute top-px right-px hidden md:block" />
-      <RegMark className="absolute bottom-px left-px hidden md:block" />
-      <RegMark className="absolute right-px bottom-px hidden md:block" />
-    </div>
-  );
-}
-
-/** Sheet frame + nav + content column + footer strip + global overlays. Used once, by app/layout.tsx. */
+/** Nav + content column + footer strip + global overlays. Used once, by app/layout.tsx. */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex min-h-dvh flex-col pt-1.5 pb-1.5 md:pt-[30px] md:pb-[22px]">
-      <SheetFrame />
+    <div className="relative flex min-h-dvh flex-col pt-1.5 pb-1.5 md:pt-3 md:pb-3">
       <a
         href="#main"
         className="ll-lettering sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] focus:border focus:border-line focus:bg-main focus:px-3 focus:py-2 focus:text-main-fg"

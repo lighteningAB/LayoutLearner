@@ -19,8 +19,8 @@ import type { TestConfig, TestInput, TestResult } from "@/lib/typing/engine";
 import { playErrorSound } from "@/lib/typing/sound";
 import { useKeyboardInput, type KeyboardAction, type KeyboardActionEvent } from "@/lib/typing/useKeyboardInput";
 import { useTypingTest } from "@/lib/typing/useTypingTest";
-import { DetailNumber, KeyChip, charLabel } from "./bits";
-import { STAGE_NAME, aggregateResults, dimKeyIdsFor, lessonHref, useCourse, type Course, type CourseLesson } from "./course";
+import { KeyChip, charLabel } from "./bits";
+import { aggregateResults, dimKeyIdsFor, lessonHref, useCourse, type Course, type CourseLesson } from "./course";
 import { LearnCommands } from "./LearnCommands";
 import { LessonSummary, type LessonOutcome } from "./LessonSummary";
 import { useHydrated } from "./useHydrated";
@@ -134,17 +134,6 @@ function FingerText({ name, index, colors }: { name: string; index: number; colo
 }
 
 /** One cell of the drill readout strip. */
-function Readout({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
-  return (
-    <div className={cx("flex flex-col justify-center px-4 py-2 first:pl-0", className)}>
-      <div className="ll-lettering-sm whitespace-nowrap text-sub">{label}</div>
-      <div className="ll-readout mt-1 text-xl leading-none whitespace-nowrap text-text">{children}</div>
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────── intro step
-
 function IntroStep({
   guide,
   index,
@@ -578,14 +567,10 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
             data-testid="lesson-leave"
             className="-ml-1 tt-fade"
           />
-          <DetailNumber n={item.number} size="lg" className="max-sm:hidden" />
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
             <h1 className="ll-heading min-w-0 truncate text-text max-sm:text-base" data-testid="lesson-title">
               {lesson.title}
             </h1>
-            <span className="ll-lettering-sm whitespace-nowrap text-sub max-md:hidden">
-              lesson {item.number} · {STAGE_NAME[lesson.stage].toLowerCase()}
-            </span>
           </div>
         </div>
         <StepProgress step={Math.min(step, steps)} steps={steps} kind={kind} hasIntro={hasIntro} fraction={fraction} />
@@ -620,29 +605,24 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
           <div className="learn-plate learn-plate--side min-w-0">{guide}</div>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col justify-center pt-5 pb-2">
-          <div className="mb-3 flex min-h-[52px] flex-wrap items-stretch justify-between gap-x-4 gap-y-2">
-            <div className="flex items-stretch divide-x divide-border">
-              <Readout label="words">
-                <span data-testid="counter" aria-label="Words done">
-                  {wordsDone}/{totalWords}
-                </span>
-              </Readout>
-              <Readout label="accuracy">
-                <span className={cx("inline-flex items-center gap-1.5", lowAcc && "text-error")} title={lowAcc ? `Under the ${lesson.goal.accuracy}% goal` : undefined}>
+        <div className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col justify-center pt-4">
+          <div className="mb-3 flex min-h-10 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="flex items-center">
+              <span className="ll-numeral text-3xl text-main" data-testid="counter" aria-label="Words done">
+                {wordsDone}/{totalWords}
+              </span>
+              {/* Accuracy and speed are graded when the drill ends; live values stay for assistive tech and scripts. */}
+              <dl className="sr-only" aria-label="Live results">
+                <dt>accuracy</dt>
+                <dd>
                   <span data-testid="live-acc">{Math.floor(test.live.accuracy)}%</span>
-                  {lowAcc && (
-                    <>
-                      <Icon name="arrow-down" size={14} strokeWidth={2.2} />
-                      <span className="sr-only">under the goal</span>
-                    </>
-                  )}
-                </span>
-              </Readout>
-              <Readout label="speed" className="tt-live">
-                <span data-testid="live-wpm">{Math.round(test.live.wpm)}</span>
-                <span className="text-sm text-sub"> wpm</span>
-              </Readout>
+                  {lowAcc && " under the goal"}
+                </dd>
+                <dt>speed</dt>
+                <dd>
+                  <span data-testid="live-wpm">{Math.round(test.live.wpm)}</span> wpm
+                </dd>
+              </dl>
             </div>
             <div className="flex items-center gap-3">
               {drillDone && lastResult ? (
