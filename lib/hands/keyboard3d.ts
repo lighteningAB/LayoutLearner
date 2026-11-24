@@ -124,8 +124,18 @@ const SHORT_LEGEND: Record<string, string> = {
   command: "Cmd",
   option: "Opt",
 };
+/** Width of the cap-coloured halo round every legend glyph (key units). */
+const HALO = 0.06;
 /** Sizes (key units) of a single character and of a word. */
 const CHAR_SIZE = 0.44;
+/** ...and of a single character when the caps carry nothing else ("letters" detail, small canvases). */
+const CHAR_SIZE_ALONE = 0.58;
+/**
+ * Render order of the legends and contact rings: after all three passes of the hands (depth pre-pass
+ * 10, veil 11, silhouette outline 12), so neither the veil nor a line ever crosses a glyph. Keep in
+ * step with HandRig.
+ */
+export const LEGEND_ORDER = 14;
 const WORD_SIZE = 0.28;
 
 /** "full": every legend. "letters": single characters only, drawn large (for framings where words would be illegible). */
@@ -203,6 +213,8 @@ export class Keyboard3D implements KeySink {
   /** 0: target key (solid), 1..MAX_HOLD_FRAMES: held keys (dashed). */
   private frames: Frame[] = [];
   private legendMesh: THREE.InstancedMesh | null = null;
+  /** Per legend: the colour of the cap under it (linear RGB), for the halo round the glyph. */
+  private legendHalo: THREE.InstancedBufferAttribute | null = null;
   private legendMaterial: THREE.MeshBasicMaterial;
   private legendTexture: THREE.CanvasTexture | null = null;
   private legendCanvas: HTMLCanvasElement | null = null;
@@ -303,15 +315,25 @@ export class Keyboard3D implements KeySink {
     }
 
     // --- legends
+    // Legends are composited AFTER the hands (see LEGEND_ORDER) and ignore depth, so a hand over a key
+    // never dims, crosses or hides what the key says: the hand's lines break around the glyph.
     this.legendMaterial = new THREE.MeshBasicMaterial({
       transparent: true,
       depthWrite: false,
+      depthTest: false,
       toneMapped: false,
     });
+    // The atlas is two coverage masks: red = the glyph, green = the glyph grown by a narrow halo. The
+    // halo is painted in the cap's own colour (aHalo), so a hand line that runs behind a legend is
+    // broken around it instead of merging with strokes of the same colour.
     this.legendMaterial.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader
-        .replace("#include <common>", "#include <common>\nattribute vec4 aUvRect;")
-        .replace("#include <uv_vertex>", "#include <uv_vertex>\nvMapUv = aUvRect.xy + uv * aUvRect.zw;");
+        .replace("#include <common>", "#include <common>\nattribute vec4 aUvRect;\nattribute vec3 aHalo;\nvarying vec3 vHalo;")
+        .replace("#include <uv_vertex>", "#include <uv_vertex>\nvMapUv = aUvRect.xy + uv * aUvRect.zw;\nvHalo = aHalo;");
+      shader.fragmentShader = shader.fragmentShader
+        .replace("#include <common>", "#include <common>\nvarying vec3 vHalo;")
+        .replace("#include <map_fragment>", "vec4 legendMask = texture2D( map, vMapUv );\ndiffuseColor.a *= legendMask.g;")
+        .replace("#include <color_fragment>", "diffuseColor.rgb = mix( vHalo, vColor.rgb, clamp( legendMask.r / max( legendMask.g, 1e-4 ), 0.0, 1.0 ) );");
     };
     this.disposables.push(this.legendMaterial);
     this.buildLegends();
@@ -330,7 +352,7 @@ export class Keyboard3D implements KeySink {
     this.dots = new THREE.InstancedMesh(dotGeo, dotMat, 10);
     this.dots.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.dots.frustumCulled = false;
-    this.dots.renderOrder = 4;
+    this.dots.renderOrder = LEGEND_ORDER;
     m4.makeScale(0, 0, 0);
     for (let i = 0; i < 10; i++) {
       this.dots.setMatrixAt(i, m4);
@@ -446,7 +468,7 @@ export class Keyboard3D implements KeySink {
         canvas.width = this.legendCanvas.width;
         canvas.height = this.legendCanvas.height;
         const texture = new THREE.CanvasTexture(canvas);
-        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.colorSpace = THREE.NoColorSpace;
         texture.anisotropy = 8;
         texture.generateMipmaps = true;
         texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -526,6 +548,10 @@ export class Keyboard3D implements KeySink {
     rec.mesh.setColorAt(rec.index, col);
     if (rec.mesh.instanceColor) rec.mesh.instanceColor.needsUpdate = true;
 
+    if (this.legendHalo) {
+      this.legendHalo.setXYZ(rec.legend, col.r, col.g, col.b);
+      this.legendHalo.needsUpdate = true;
+    }
     if (this.legendMesh) {
       // legend: key text normally; on accent-coloured keys pick whichever of bg/text contrasts more
       col2.copy(t.keyText);
@@ -607,7 +633,7 @@ export class Keyboard3D implements KeySink {
     this.legendCells = cells;
 
     const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.colorSpace = THREE.NoColorSpace;
     tex.anisotropy = 8;
     tex.generateMipmaps = true;
     tex.minFilter = THREE.LinearMipmapLinearFilter;
@@ -626,10 +652,13 @@ export class Keyboard3D implements KeySink {
       rects[rec.legend * 4 + 3] = (c.h * px) / canvas.height;
     }
     geo.setAttribute("aUvRect", new THREE.InstancedBufferAttribute(rects, 4));
+    this.legendHalo = new THREE.InstancedBufferAttribute(new Float32Array(cells.length * 3), 3);
+    this.legendHalo.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute("aHalo", this.legendHalo);
     const mesh = new THREE.InstancedMesh(geo, this.legendMaterial, cells.length);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.frustumCulled = false;
-    mesh.renderOrder = 3;
+    mesh.renderOrder = LEGEND_ORDER;
     for (let i = 0; i < cells.length; i++) mesh.setColorAt(i, col.setRGB(1, 1, 1));
     this.legendMesh = mesh;
     this.group.add(mesh);
@@ -646,50 +675,57 @@ export class Keyboard3D implements KeySink {
     if (!ctx) return;
     const px = this.pxPerUnit;
     const font = this.theme?.legendFont ?? "ui-monospace, monospace";
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#fff";
+    // opaque black, then per cell the halo in green and the glyph in red + green (see the legend material)
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    for (const c of this.legendCells) {
-      const texts = layer ? layerLegendTexts(c.pl, layer) : legendTexts(c.pl);
-      const x0 = c.x * px;
-      const y0 = c.y * px;
-      const w = c.w * px;
-      const h = c.h * px;
-      const cx = x0 + w / 2;
-      const draw = (text: string, size: number, y: number, weight = 600) => {
-        let s = size * px;
-        ctx.font = `${weight} ${s}px ${font}`;
-        const tw = ctx.measureText(text).width;
-        const maxW = w - 0.06 * px;
-        if (tw > maxW) {
-          s *= maxW / tw;
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 2 * HALO * px;
+    const letters = this.detail === "letters";
+    for (let pass = 0; pass < 2; pass++) {
+      const halo = pass === 0;
+      ctx.fillStyle = ctx.strokeStyle = halo ? "#0f0" : "#ff0";
+      for (const c of this.legendCells) {
+        const texts = layer ? layerLegendTexts(c.pl, layer) : legendTexts(c.pl);
+        const x0 = c.x * px;
+        const y0 = c.y * px;
+        const w = c.w * px;
+        const h = c.h * px;
+        const cx = x0 + w / 2;
+        const draw = (text: string, size: number, y: number, weight = 600) => {
+          let s = size * px;
           ctx.font = `${weight} ${s}px ${font}`;
+          const tw = ctx.measureText(text).width;
+          const maxW = w - 0.06 * px;
+          if (tw > maxW) {
+            s *= maxW / tw;
+            ctx.font = `${weight} ${s}px ${font}`;
+          }
+          if (halo) ctx.strokeText(text, cx, y);
+          ctx.fillText(text, cx, y);
+        };
+        if (texts.length === 1) {
+          const t = texts[0];
+          if (t.length <= 2) draw(t, letters ? CHAR_SIZE_ALONE : CHAR_SIZE, y0 + h * 0.5);
+          else if (!letters) draw(SHORT_LEGEND[t.toLowerCase()] ?? t, WORD_SIZE, y0 + h * 0.5, 500);
+        } else if (texts.length >= 2) {
+          if (!letters) {
+            draw(texts[0], 0.27, y0 + h * 0.29);
+            draw(texts[1], 0.3, y0 + h * 0.72);
+          } else if (texts[1].length <= 2) {
+            // the unshifted character alone, at full size
+            draw(texts[1], CHAR_SIZE_ALONE, y0 + h * 0.5);
+          }
         }
-        ctx.fillText(text, cx, y);
-      };
-      const letters = this.detail === "letters";
-      if (texts.length === 1) {
-        const t = texts[0];
-        if (t.length <= 2) draw(t, CHAR_SIZE, y0 + h * 0.5);
-        else if (!letters) draw(SHORT_LEGEND[t.toLowerCase()] ?? t, WORD_SIZE, y0 + h * 0.5, 500);
-      } else if (texts.length >= 2) {
-        if (!letters) {
-          draw(texts[0], 0.27, y0 + h * 0.29);
-          draw(texts[1], 0.3, y0 + h * 0.72);
-        } else if (texts[1].length <= 2) {
-          // the unshifted character alone, at full size
-          draw(texts[1], CHAR_SIZE, y0 + h * 0.5);
+        // tactile bump on index-finger home keys
+        const f = c.pl.key.finger;
+        if (!halo && c.pl.key.isHome && f && f.finger === "index") {
+          ctx.globalAlpha = 0.8;
+          ctx.fillRect(cx - 0.11 * px, y0 + h - 0.085 * px, 0.22 * px, 0.035 * px);
+          ctx.globalAlpha = 1;
         }
-      }
-      // tactile bump on index-finger home keys
-      const f = c.pl.key.finger;
-      if (c.pl.key.isHome && f && f.finger === "index") {
-        ctx.globalAlpha = 0.8;
-        ctx.beginPath();
-        ctx.rect(cx - 0.11 * px, y0 + h - 0.085 * px, 0.22 * px, 0.035 * px);
-        ctx.fill();
-        ctx.globalAlpha = 1;
       }
     }
     texture.needsUpdate = true;

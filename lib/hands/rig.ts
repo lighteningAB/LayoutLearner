@@ -429,14 +429,15 @@ export class HandRig {
     });
     // Depth pre-pass: the translucent hand never shows its own back faces or
     // overlapping fingers through itself, only the keyboard underneath. It is
-    // flagged transparent only so it sorts after the legends (renderOrder).
+    // flagged transparent only so it sorts by renderOrder with the other passes: pre-pass 10, veil 11,
+    // outline 12; the key legends come after all of them (14), so they stay whole and at full contrast.
     this.depthMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide, transparent: true });
 
     const parent = this.mesh.parent as THREE.Object3D;
     this.mesh.geometry = this.geometry;
     this.mesh.material = this.material;
     this.mesh.frustumCulled = false;
-    this.mesh.renderOrder = 12;
+    this.mesh.renderOrder = 11;
     this.mesh.castShadow = false;
 
     this.depthMesh = new THREE.SkinnedMesh(this.geometry, this.depthMaterial);
@@ -454,7 +455,7 @@ export class HandRig {
     this.hullMesh = new THREE.SkinnedMesh(this.geometry, this.hullMaterial);
     this.hullMesh.bind(skeleton, this.mesh.bindMatrix);
     this.hullMesh.frustumCulled = false;
-    this.hullMesh.renderOrder = 11;
+    this.hullMesh.renderOrder = 12;
     parent.add(this.hullMesh);
 
     for (let d = 0; d < 5; d++) this.setDigit(d, this.chains[d].rest[0], this.chains[d].rest[1], this.chains[d].rest[2]);

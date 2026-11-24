@@ -158,6 +158,11 @@ function focusPoints(placed: PlacedLayout, controller: HandsController | null, e
     x0 = Math.min(...controller.hands.map((h) => h.rest.x)) - beside;
     x1 = Math.max(...controller.hands.map((h) => h.rest.x)) + beside;
   }
+  if (lettersOnly) {
+    // the letter block alone sets the width: the outer edges of the hands may run off the canvas
+    x0 = Math.max(x0, box.min.x);
+    x1 = Math.min(x1, box.max.x);
+  }
   // `reach` 0..1: from just past the board's front edge back to behind the wrists
   const near = Math.min(box.max.z + FRAME_MIN, wristZ + FRAME_MAX);
   const backZ = near + (wristZ + FRAME_MAX - near) * reach;
