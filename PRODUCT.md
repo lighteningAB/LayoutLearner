@@ -45,7 +45,8 @@ LayoutLearner teaches a keyboard layout on the physical board the learner owns. 
 ## Brand Commitments
 
 - Name: LayoutLearner (wordmark "layoutlearner" / "Layout Learner").
-- Free and open source. No ads, no paywall, no tracking. Accounts are optional. Design must never imply otherwise.
+- Free and open source. No ads, no paywall. Accounts are optional.
+- Data is never sold or used for profit. The product may record usage and typing stats to run and improve itself; that is not "tracking" in the commitment's sense. Design and copy must not claim "no data collected", and must never imply data is sold.
 
 ## Evidence on Hand
 
