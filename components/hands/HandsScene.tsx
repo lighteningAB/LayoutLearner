@@ -13,10 +13,30 @@ import type { ParsedLayout } from "../../lib/types";
 import { Keyboard3D } from "../../lib/hands/keyboard3d";
 import { HandsController } from "../../lib/hands/pose";
 import { HandRig, loadHandTemplate, type HandTemplate } from "../../lib/hands/rig";
-import { placeLayout, type PlacedLayout } from "../../lib/hands/space";
+import { KEY_GAP, KEY_TOP, placeLayout, type KeyPlacement, type PlacedLayout } from "../../lib/hands/space";
 import { readTheme, watchTheme, type HandsTheme } from "../../lib/hands/theme";
 
 export type HandsCamera = "top" | "angled" | "front";
+
+/** Where one key is on the canvas: the midpoint of the cap edge that is highest on screen, in CSS px from the canvas's top-left. */
+export interface HandsAnchor {
+  /** The key this anchor is for (null: none). */
+  keyId: string | null;
+  x: number;
+  y: number;
+  /** false when the key is not on the board or lies outside the canvas. */
+  visible: boolean;
+}
+
+/** Screen positions for annotations drawn over the canvas (leader lines). One object per scene, mutated in place. */
+export interface HandsAnchors {
+  /** Canvas size in CSS px. */
+  width: number;
+  height: number;
+  target: HandsAnchor;
+  /** The first two held keys, in `holdKeyIds` order. */
+  holds: [HandsAnchor, HandsAnchor];
+}
 
 export interface HandsSceneProps {
   layout: ParsedLayout;
@@ -42,6 +62,12 @@ export interface HandsSceneProps {
   fingerZones?: boolean;
   /** Show the hands (default true). With false only the 3D keyboard is drawn. */
   showHands?: boolean;
+  /**
+   * Called from the frame loop whenever the target key, a held key, the camera or the canvas size moved
+   * what an annotation over the canvas must point at. The argument is one object reused for every call
+   * (read it, do not keep copies of its parts); nothing is allocated per frame and React is not involved.
+   */
+  onAnchors?: (anchors: Readonly<HandsAnchors>) => void;
   /** Reports "loading" until the first frame with the rest-posed hands and the fitted camera has been drawn, then "ready" (or "error"). */
   onStatus?: (status: "loading" | "ready" | "error" | "nowebgl") => void;
   /** Dev only: exposes `window.__hands` and keeps the drawing buffer for screenshots. */
@@ -66,8 +92,32 @@ function webglAvailable(): boolean {
   }
 }
 
-/** World-space points the camera must keep in view: the main key block plus both hands. */
-function focusPoints(placed: PlacedLayout, controller: HandsController | null, extraIds: string[] = []): THREE.Vector3[] {
+/**
+ * The framing must show the board and the fingers on it (FRAME_MIN key units past the board's front
+ * edge): that decides the scale, so the board is always as large as the canvas allows. Height the
+ * canvas has to spare at that scale then goes, in this order, to headroom past the far row (HEADROOM
+ * key units, for fingers reaching over it) and to the hands, up to FRAME_MAX key units behind the
+ * wrist joints. The forearms always run out of the frame.
+ */
+const FRAME_MIN = 0.5;
+const FRAME_MAX = 3;
+const HEADROOM = 0.6;
+/** Height above the plate (key units) that the hands stay under. */
+const HAND_TOP = 1.3;
+const BOARD_TOP = 0.4;
+/** Canvases narrower than this (CSS px) frame the letter block instead of the whole board, so its legends stay readable. */
+const NARROW_CANVAS = 560;
+/** Size of a word legend ("Shift") in key units, and the smallest it may be drawn on screen (CSS px) before word legends are left out. */
+const WORD_LEGEND = 0.28;
+const MIN_LEGEND_PX = 10.5;
+
+const isLetterKey = (p: KeyPlacement) => p.key.isHome || /^\p{L}$/u.test(p.key.base.trim());
+
+/**
+ * World-space points the camera must keep in view: the main key block plus both hands. With
+ * `lettersOnly` the block is only as wide as its letter keys (the outer keys run off the canvas).
+ */
+function focusPoints(placed: PlacedLayout, controller: HandsController | null, extraIds: string[] = [], lettersOnly = false, reach = 1, headroom = 1): THREE.Vector3[] {
   const homes = placed.list.filter((p) => p.key.isHome);
   let cx = 0;
   let hz = (placed.minZ + placed.maxZ) / 2;
@@ -81,23 +131,38 @@ function focusPoints(placed: PlacedLayout, controller: HandsController | null, e
     if (Math.abs(p.cx - cx) > mainBlock(placed) && !extraIds.includes(p.key.id)) continue;
     // a far key the hand is sent to: leave room for the hand around it, not just the key
     const far = Math.abs(p.cx - cx) > mainBlock(placed) ? 2.4 : 0;
+    if (lettersOnly && !far && !isLetterKey(p)) {
+      // outer keys still set the depth of the frame (the thumbs need their row), not its width
+      box.expandByPoint(new THREE.Vector3(cx, 0, p.cz - p.h / 2));
+      box.expandByPoint(new THREE.Vector3(cx, 0, p.cz + p.h / 2));
+      continue;
+    }
     box.expandByPoint(new THREE.Vector3(p.cx - p.w / 2 - far, 0, p.cz - p.h / 2));
     box.expandByPoint(new THREE.Vector3(p.cx + p.w / 2 + far, 0, p.cz + p.h / 2));
   }
   if (box.isEmpty()) box.set(new THREE.Vector3(-7, 0, -2.5), new THREE.Vector3(7, 0, 2.5));
   box.expandByVector(new THREE.Vector3(0.45, 0, 0.45));
   const pts: THREE.Vector3[] = [];
-  for (let i = 0; i < 8; i++) pts.push(new THREE.Vector3(i & 1 ? box.max.x : box.min.x, i & 2 ? 0.4 : -0.3, i & 4 ? box.max.z : box.min.z));
+  for (let i = 0; i < 8; i++) pts.push(new THREE.Vector3(i & 1 ? box.max.x : box.min.x, i & 2 ? BOARD_TOP : -0.3, i & 4 ? box.max.z : box.min.z));
+  // fingers reaching for the far row arch above and past it: `headroom` 0..1 keeps them inside the frame
+  const headY = BOARD_TOP + (HAND_TOP - BOARD_TOP) * headroom;
+  pts.push(new THREE.Vector3(box.min.x + 2, headY, box.min.z - HEADROOM * headroom), new THREE.Vector3(box.max.x - 2, headY, box.min.z - HEADROOM * headroom));
   // hands: from just beyond the home row back to the wrists
-  let wristZ = hz + 5.6;
-  let x0 = cx - 6;
-  let x1 = cx + 6;
+  let wristZ = hz + 5;
+  // (room beside the wrists for the spread fingers; a letters-only frame keeps just the fingers at rest)
+  const beside = lettersOnly ? 1.6 : 2.6;
+  let x0 = cx - 3.4 - beside;
+  let x1 = cx + 3.4 + beside;
   if (controller) {
-    wristZ = Math.max(...controller.hands.map((h) => h.rest.z)) + 0.6;
-    x0 = Math.min(...controller.hands.map((h) => h.rest.x)) - 2.6;
-    x1 = Math.max(...controller.hands.map((h) => h.rest.x)) + 2.6;
+    wristZ = Math.max(...controller.hands.map((h) => h.rest.z));
+    x0 = Math.min(...controller.hands.map((h) => h.rest.x)) - beside;
+    x1 = Math.max(...controller.hands.map((h) => h.rest.x)) + beside;
   }
-  for (let i = 0; i < 8; i++) pts.push(new THREE.Vector3(i & 1 ? x1 : x0, i & 2 ? 2 : 0, i & 4 ? wristZ : hz - 1));
+  // `reach` 0..1: from just past the board's front edge back to behind the wrists
+  const near = Math.min(box.max.z + FRAME_MIN, wristZ + FRAME_MAX);
+  const backZ = near + (wristZ + FRAME_MAX - near) * reach;
+  // (the hands are as wide as their spread fingers over the keys and narrow to the wrists towards the typist)
+  for (let i = 0; i < 8; i++) pts.push(new THREE.Vector3(i & 4 ? (i & 1 ? x1 - 0.8 : x0 + 0.8) : i & 1 ? x1 : x0, i & 2 ? (i & 4 ? 1 : BOARD_TOP + 0.6) : 0, i & 4 ? backZ : hz - 1));
   return pts;
 }
 
@@ -137,8 +202,8 @@ function outsideMainBlock(placed: PlacedLayout, ids: (string | null | undefined)
 
 const rel = new THREE.Vector3();
 
-/** Computes a camera position (`pos`, looking at `target`) from which all `pts` are in view at the given elevation. */
-function fitCamera(pts: THREE.Vector3[], elevationDeg: number, aspect: number, pos: THREE.Vector3, target: THREE.Vector3): void {
+/** Computes a camera position (`pos`, looking at `target`) from which all `pts` are in view at the given elevation. Returns its distance. */
+function fitCamera(pts: THREE.Vector3[], elevationDeg: number, aspect: number, pos: THREE.Vector3, target: THREE.Vector3): number {
   const el = (elevationDeg * Math.PI) / 180;
   const dir = new THREE.Vector3(0, Math.sin(el), Math.cos(el));
   const fwd = dir.clone().negate();
@@ -177,6 +242,7 @@ function fitCamera(pts: THREE.Vector3[], elevationDeg: number, aspect: number, p
   }
   pos.copy(focus).addScaledVector(dir, dist);
   target.copy(focus);
+  return dist;
 }
 
 function aimCamera(cam: THREE.PerspectiveCamera, pos: THREE.Vector3, target: THREE.Vector3, aspect: number): void {
@@ -201,6 +267,48 @@ function approach(v: THREE.Vector3, to: THREE.Vector3, k: number): boolean {
   return true;
 }
 
+const anchorV = new THREE.Vector3();
+
+/**
+ * Writes where key `id` is on a `width` x `height` canvas into `out`: of the four edge midpoints of its
+ * cap, the one highest on screen (a leader coming from above meets the key there, clear of its legend).
+ * Returns true when `out` changed.
+ */
+function projectAnchor(out: HandsAnchor, id: string | null, placed: PlacedLayout, cam: THREE.Camera, width: number, height: number): boolean {
+  const pl = id ? placed.byId.get(id) : undefined;
+  let x = 0;
+  let y = 0;
+  let visible = false;
+  if (pl) {
+    const c = Math.cos(pl.rotY);
+    const s = Math.sin(pl.rotY);
+    const hw = (pl.w - KEY_GAP) / 2;
+    const hh = (pl.h - KEY_GAP) / 2;
+    y = Infinity;
+    for (let e = 0; e < 4; e++) {
+      const lx = e === 0 ? -hw : e === 1 ? hw : 0;
+      const lz = e === 2 ? -hh : e === 3 ? hh : 0;
+      anchorV.set(pl.cx + lx * c + lz * s, KEY_TOP, pl.cz - lx * s + lz * c).project(cam);
+      const sy = (1 - anchorV.y) * 0.5 * height;
+      if (sy < y && anchorV.z > -1 && anchorV.z < 1) {
+        y = sy;
+        x = (anchorV.x + 1) * 0.5 * width;
+      }
+    }
+    visible = y !== Infinity && x >= 0 && x <= width && y >= 0 && y <= height;
+    if (!visible) x = y = 0;
+    // half-pixel steps: no sub-pixel churn while the camera settles
+    x = Math.round(x * 2) / 2;
+    y = Math.round(y * 2) / 2;
+  }
+  if (out.keyId === id && out.visible === visible && out.x === x && out.y === y) return false;
+  out.keyId = id;
+  out.visible = visible;
+  out.x = x;
+  out.y = y;
+  return true;
+}
+
 type ContentsProps = HandsSceneProps;
 
 function Contents({
@@ -216,6 +324,7 @@ function Contents({
   showHands = true,
   debug = false,
   onStatus,
+  onAnchors,
 }: Omit<ContentsProps, "onStatus"> & { onStatus: (s: Status) => void }) {
   const gl = useThree((s) => s.gl);
   const cam = useThree((s) => s.camera) as THREE.PerspectiveCamera;
@@ -337,12 +446,38 @@ function Contents({
   const camCur = useRef({ pos: new THREE.Vector3(), target: new THREE.Vector3(), aspect: 0, moving: false });
   const fittedFor = useRef<HandsController | null | undefined>(undefined);
   const extra = outsideMainBlock(placed, [targetKeyId, ...holdIds]);
+  const narrow = size.width < NARROW_CANVAS;
   useLayoutEffect(() => {
     if (size.width < 2 || size.height < 2) return;
     const aspect = size.width / size.height;
     const goal = camGoal.current;
     const cur = camCur.current;
-    fitCamera(focusPoints(placed, controller, extra ? extra.split(",") : []), ELEVATION[cameraMode], aspect, goal.pos, goal.target);
+    // The board decides the scale; whatever height that leaves goes to the hands (as much of them as fits).
+    const extraIds = extra ? extra.split(",") : [];
+    const fit = (reach: number, headroom: number) =>
+      fitCamera(focusPoints(placed, controller, extraIds, narrow, reach, headroom), ELEVATION[cameraMode], aspect, goal.pos, goal.target);
+    const limit = fit(0, 0) * 1.004;
+    /** The largest 0..1 value of one of the two extras that keeps the board at its scale. */
+    const most = (f: (t: number) => number): number => {
+      if (f(1) <= limit) return 1;
+      let lo = 0;
+      let hi = 1;
+      for (let i = 0; i < 5; i++) {
+        const mid = (lo + hi) / 2;
+        if (f(mid) <= limit) lo = mid;
+        else hi = mid;
+      }
+      return lo;
+    };
+    const headroom = most((t) => fit(0, t));
+    fit(
+      most((t) => fit(t, headroom)),
+      headroom,
+    );
+    // Legends are functional text: when a word legend ("Shift") would come out too small to read at
+    // this framing, the caps carry single characters only (drawn large) instead of illegible words.
+    const pxPerUnit = size.height / (2 * Math.tan((FOV * Math.PI) / 360) * goal.pos.distanceTo(goal.target));
+    keyboard.setLegendDetail(pxPerUnit * WORD_LEGEND >= MIN_LEGEND_PX ? "full" : "letters");
     const controls = controlsRef.current;
     const firstWithController = !!controller && fittedFor.current === null;
     fittedFor.current = controller;
@@ -362,7 +497,7 @@ function Contents({
     }
     cur.aspect = aspect;
     invalidate();
-  }, [cam, placed, controller, cameraMode, extra, size.width, size.height, invalidate]);
+  }, [cam, placed, controller, keyboard, cameraMode, extra, narrow, size.width, size.height, invalidate]);
 
   useEffect(() => {
     if (!interactive) return;
@@ -407,6 +542,29 @@ function Contents({
       document.removeEventListener("visibilitychange", sync);
     };
   }, [gl, invalidate]);
+
+  // ---- anchors for annotations over the canvas (see `onAnchors`)
+  const anchors = useRef<HandsAnchors | null>(null);
+  if (!anchors.current) {
+    anchors.current = {
+      width: 0,
+      height: 0,
+      target: { keyId: null, x: 0, y: 0, visible: false },
+      holds: [
+        { keyId: null, x: 0, y: 0, visible: false },
+        { keyId: null, x: 0, y: 0, visible: false },
+      ],
+    };
+  }
+  type AnchorsFn = HandsSceneProps["onAnchors"];
+  const anchorIds = useRef<{ target: string | null; holds: string[]; cb: AnchorsFn; sent: AnchorsFn }>({ target: null, holds: [], cb: undefined, sent: undefined });
+  anchorIds.current.target = targetKeyId;
+  anchorIds.current.holds = holdIds;
+  anchorIds.current.cb = onAnchors;
+  useEffect(() => {
+    // a new listener (or a new board) gets the current positions with the next frame
+    if (onAnchors) invalidate();
+  }, [onAnchors, placed, invalidate]);
 
   // Tell the panel when the first complete frame is on the canvas: hands at rest (or no hands needed)
   // and the camera fitted. Effects have run by the time this frame is requested, so reporting from
@@ -453,6 +611,23 @@ function Contents({
       cc.moving = a || b;
       aimCamera(cam, cc.pos, cc.target, cc.aspect);
       moving = true;
+    }
+    const ids = anchorIds.current;
+    if (ids.cb && cc.aspect !== 0) {
+      const a = anchors.current as HandsAnchors;
+      const w = state.size.width;
+      const h = state.size.height;
+      cam.updateMatrixWorld();
+      let changed = ids.sent !== ids.cb || a.width !== w || a.height !== h;
+      a.width = w;
+      a.height = h;
+      if (projectAnchor(a.target, ids.target, placed, cam, w, h)) changed = true;
+      if (projectAnchor(a.holds[0], ids.holds[0] ?? null, placed, cam, w, h)) changed = true;
+      if (projectAnchor(a.holds[1], ids.holds[1] ?? null, placed, cam, w, h)) changed = true;
+      if (changed) {
+        ids.sent = ids.cb;
+        ids.cb(a);
+      }
     }
     idle.current = !moving;
     if (moving && visible.current) state.invalidate();

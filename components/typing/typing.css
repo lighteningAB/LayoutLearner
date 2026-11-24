@@ -86,6 +86,10 @@ html[data-typing="true"] .tt-live {
   gap: 16px;
   min-width: 0;
 }
+/* the finger legend needs the tall left margin: it is drawn from 1100px wide and 821px tall */
+.tt-legend {
+  display: none;
+}
 @media (min-width: 768px) {
   .tt-sheet {
     grid-template-columns: minmax(0, 1fr) 208px;
@@ -97,7 +101,7 @@ html[data-typing="true"] .tt-live {
     align-items: stretch;
   }
   .tt-plate-cell {
-    height: clamp(280px, 46dvh, 460px);
+    height: clamp(300px, 52dvh, 560px);
   }
   .tt-rail {
     grid-area: rail;
@@ -139,12 +143,38 @@ html[data-typing="true"] .tt-live {
     height: auto;
     min-height: 0;
   }
+  .tt-notes {
+    gap: 20px;
+  }
   .tt-notes-end {
     margin-top: auto;
   }
+  /* The readouts take the height the rail has left, as evenly ruled lines: no empty band above the title block. */
+  .tt-stats {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    max-height: 208px;
+  }
+  .tt-stats > div {
+    flex: 1 1 0;
+    align-items: flex-end;
+    min-height: 30px;
+  }
+}
+@media (min-width: 1100px) and (min-height: 821px) {
+  .tt-legend {
+    display: block;
+  }
 }
 /* Short windows: the title block is the first thing to go, then the notes. */
-@media (min-width: 1100px) and (max-height: 800px) {
+@media (min-width: 1100px) and (max-height: 899px) {
+  /* the fourth readout only where the rail has the height for it */
+  .tt-stats > [data-optional="true"] {
+    display: none;
+  }
+}
+@media (min-width: 1100px) and (max-height: 875px) {
   .tt-title {
     display: none;
   }
@@ -152,14 +182,21 @@ html[data-typing="true"] .tt-live {
     gap: 12px;
   }
 }
+@media (min-width: 1100px) and (max-height: 740px) {
+  /* hand / finger / hold repeat the lettering above them: the first rows to go when the rail runs out */
+  .tt-detail dl {
+    display: none;
+  }
+}
 @media (min-width: 1100px) and (max-height: 700px) {
-  .tt-notes-end > ul {
+  .tt-notes-list {
     display: none;
   }
 }
 
-/* The sheet's left margin already carries the key hints on this page: the bottom strip does not repeat them. */
-@media (min-width: 1100px) {
+/* The sheet's left margin already carries the key hints on this page: the bottom strip does not repeat them
+   (only while the margin shows them: on short windows the strip keeps its copy). */
+@media (min-width: 1100px) and (min-height: 701px) {
   body:has(.tt-stage:not([data-finished="true"])) [data-testid="footer"] > div > div:first-child {
     visibility: hidden;
   }
@@ -286,14 +323,72 @@ html[data-typing="true"] .tt-live {
   --kb-main-fg: var(--finger-fg);
 }
 
+/* ── the self-sized hands box (HandsPanel without `fill`, and the room KeyboardGuide reserves for it).
+   Aspect ratio and height cap are inline (handsBoxStyle) and read --hands-aspect / --hands-max-height;
+   a definite height comes from --hands-height. Callers resize the plate by setting those properties. */
+.tt-hands-box {
+  height: var(--hands-height, auto);
+}
+
+/* ── leader: the hands plate names the finger itself, on a strip above the canvas, joined to the key ──
+   (HandsPanel writes the positions). The guide's own hint line then leaves the page visually but
+   stays in the accessibility tree; a hint row with nothing else in it gives up its height. */
+.tt-leader-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  white-space: nowrap;
+}
+.tt-leader-label[data-on="false"] {
+  visibility: hidden;
+}
+.tt-leader-inline {
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+.tt-leader-label[data-hold-inline="true"] .tt-leader-inline {
+  display: inline-flex;
+}
+.tt-leader-label[data-tight="true"] .tt-leader-extra {
+  display: none;
+}
+.tt-leader-line {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.tt-leader-line--hold {
+  stroke-dasharray: 4 3;
+}
+.tt-leader-dot {
+  fill: var(--line);
+}
+.tt-guide:has([data-testid="hands-panel"][data-leader="true"]) [data-testid="key-hint"],
+.tt-guide:has([data-testid="hands-panel"][data-leader="true"]) .tt-hint-row[data-end="false"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ── the plate: guide that fills the height its parent gives it (typing test, md and up) ──── */
 .tt-guide[data-fill="true"] {
   max-width: none;
 }
+/* phones: tall enough that the letter block, framed on its own, is drawn at a readable size */
 .tt-guide[data-fill="true"] [data-slot="hands"] {
   display: grid;
-  aspect-ratio: 3 / 2;
-  max-height: 60dvh;
+  aspect-ratio: 5 / 4;
+  max-height: 64dvh;
 }
 .tt-guide[data-fill="true"] .tt-keys {
   width: 100%;
@@ -330,6 +425,29 @@ html[data-typing="true"] .tt-live {
     flex: none;
     align-self: center;
     width: min(100%, calc(40cqh * var(--tt-board-ratio, 3)));
+  }
+}
+
+/* ── results: keys to work on. Two compact columns; on a tall window with the sheet to itself, one
+   column of full rows that also say what went wrong. */
+.tt-weak {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.tt-weak-name {
+  flex: 1 1 0;
+}
+.tt-weak-detail {
+  display: none;
+}
+@media (min-height: 860px) {
+  .tt-weak[data-roomy="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tt-weak[data-roomy="true"] .tt-weak-name {
+    flex: none;
+  }
+  .tt-weak[data-roomy="true"] .tt-weak-detail {
+    display: block;
   }
 }
 

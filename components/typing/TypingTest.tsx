@@ -13,6 +13,7 @@ import { useTypingTest } from "@/lib/typing/useTypingTest";
 import { useKeyboardInput, type KeyboardAction, type KeyboardActionEvent } from "@/lib/typing/useKeyboardInput";
 import { playErrorSound } from "@/lib/typing/sound";
 import { createWordStream, generateText, type GenerateConfig, type WordListName, type WordStream } from "@/lib/typing/words";
+import { useLearnPrefs } from "@/components/learn/prefs";
 import { GuideViewSwitch, HandsPanel, useGuidePress, useGuideView } from "./HandsPanel";
 import { EmulationHint, useEmulationHint } from "./EmulationHint";
 import { MobileNotice, WelcomeHint } from "./Hints";
@@ -83,6 +84,33 @@ function ConfigToggle({
 const Divider = () => <span aria-hidden className="mx-2 hidden h-4 w-px shrink-0 bg-border sm:block" />;
 
 /** 15 -> "15", 14.25 -> "14.25": board sizes in key units without trailing zeros. */
+const LEGEND_ROWS = ["pinky", "ring", "middle", "index", "thumb"] as const;
+
+/** Which colour is which finger: every swatch is named, the colour only repeats it. */
+function FingerLegend() {
+  return (
+    <section className="tt-legend" aria-labelledby="tt-legend-heading" data-testid="finger-legend">
+      <h2 id="tt-legend-heading" className="ll-lettering-sm text-text">
+        Finger colours
+      </h2>
+      <div className="mt-2 grid grid-cols-2 gap-x-3 text-[13px] leading-none text-sub">
+        {(["Left", "Right"] as const).map((hand, h) => (
+          <dl key={hand}>
+            <dt className="ll-lettering-sm mb-1.5 border-b border-hairline pb-1.5 text-sub">{hand}</dt>
+            {LEGEND_ROWS.map((name, i) => (
+              <dd key={name} className="flex items-center gap-2 py-[3px]">
+                {/* --finger-0…4 run left pinky to thumb, 5…9 right thumb to pinky */}
+                <span aria-hidden className="size-2.5 shrink-0 border border-line" style={{ backgroundColor: `var(--finger-${h === 0 ? i : 9 - i})` }} />
+                {name}
+              </dd>
+            ))}
+          </dl>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 const trimUnits = (n: number) => String(Math.round(n * 100) / 100);
 
 export function TypingTest() {
@@ -204,6 +232,7 @@ export function TypingTest() {
 
   // 3D guide hands: every character keystroke taps its key (same render as the engine update).
   const guideView = useGuideView();
+  const [{ camera }] = useLearnPrefs();
   const [press, notePress] = useGuidePress();
   const expectedRef = useRef(test.nextChar);
   expectedRef.current = test.nextChar;
@@ -477,13 +506,16 @@ export function TypingTest() {
 
   const nextChar = plan ? test.nextChar : null;
   const boardSize = `${layout.keys.length} keys, ${trimUnits(layout.width)} × ${trimUnits(layout.height)} u`;
+  const viewNote = guideView.showHands ? `${guideView.showKeyboard ? "hands and keys" : "hands"}, ${camera}` : guideView.showKeyboard ? "keys, flat" : "text only";
   const titleRows: [string, string][] = [
     ["Layout", active.name],
     ["Board", boardSize],
+    ["View", viewNote],
     ["Mode", practice ? `weak keys, ${practice.chars.length} ${practice.chars.length === 1 ? "key" : "keys"}` : `${mode} ${amount}, ${LIST_LABEL[wordList]}`],
   ];
   const readouts: [string, string, string][] = [
     ["WPM", String(Math.round(test.live.wpm)), "live-wpm"],
+    ["RAW", String(Math.round(test.live.raw)), "live-raw"],
     ["ACC", `${Math.floor(test.live.accuracy)}%`, "live-acc"],
     ["ERR", String(test.state.keystrokes.incorrect), "live-err"],
   ];
@@ -564,7 +596,7 @@ export function TypingTest() {
 
               <dl className="tt-stats" aria-label="Live results">
                 {readouts.map(([label, value, id]) => (
-                  <div key={label} className="flex items-baseline justify-between gap-3 border-b border-dashed border-border py-1.5">
+                  <div key={label} className="flex items-baseline justify-between gap-3 border-b border-dashed border-border py-1.5" data-optional={id === "live-raw" ? "true" : undefined}>
                     <dt className="ll-lettering-sm text-sub">{label}</dt>
                     <dd className="ll-readout text-[17px] leading-none font-medium text-text" data-testid={id}>
                       {value}
@@ -586,13 +618,22 @@ export function TypingTest() {
             </div>
 
             <div className="tt-notes">
-              <WelcomeHint suppressed={status !== "idle" || emulationHint.visible} />
-              <div className="tt-notes-end">
-                <ul className="tt-fade space-y-2 text-[13px] leading-snug text-sub" aria-label="Notes">
+              {/* fades with the other notes while typing (it keeps its place, so nothing below it moves) */}
+              <div className="tt-fade empty:hidden">
+                <WelcomeHint suppressed={emulationHint.visible} />
+              </div>
+              <section className="tt-notes-list tt-fade" aria-labelledby="tt-notes-heading">
+                <h2 id="tt-notes-heading" className="ll-lettering-sm text-text">
+                  Notes
+                </h2>
+                <ol className="mt-2 space-y-2 text-[13px] leading-snug text-sub">
                   <li>{settings.fingerColors ? "The filled key is next. Its colour and the label name the finger that owns it." : "The filled key is next. The label names the finger that owns it."}</li>
                   <li>{settings.emulateLayout ? `Keys are read by position, as ${active.name}.` : "Characters come from your system layout."}</li>
-                </ul>
-                <div className="mt-4 border-t border-hairline pt-3">
+                </ol>
+              </section>
+              {settings.fingerColors && <FingerLegend />}
+              <div className="tt-notes-end">
+                <div className="border-t border-hairline pt-3">
                   <button
                     ref={restartRef}
                     type="button"

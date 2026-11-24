@@ -151,7 +151,10 @@ export interface KeyboardGuideProps {
    * Pass `fill` to the `<HandsPanel>` in the slot as well.
    */
   fill?: boolean;
-  /** Largest key unit in px (default 46). */
+  /**
+   * Largest key unit in px (default 46). The guide is at most as wide as the board at this unit; a
+   * stylesheet can lift that with the custom property `--tt-guide-max-width` (no !important needed).
+   */
   maxUnit?: number;
   className?: string;
 }
@@ -228,7 +231,8 @@ export function NextKeyDetail({ layout, nextChar, nextAction = null, actionCount
                 {legend}
               </span>
               <span className="min-w-0">
-                <span className="ll-lettering-lg block text-text">{guide.fingerName || "any finger"}</span>
+                {/* two lines reserved: "right middle" wraps, and the box must not change height from key to key */}
+                <span className="ll-lettering-lg flex min-h-[2.5em] items-center text-text">{guide.fingerName || "any finger"}</span>
                 <span className="mt-1 block truncate text-[13px] leading-tight text-sub">{sub}</span>
               </span>
             </div>
@@ -298,7 +302,7 @@ export function KeyboardGuide({
       data-fill={fill ? "true" : "false"}
       style={
         {
-          maxWidth: fill ? undefined : Math.max(640, Math.ceil(layout.width * maxUnit)),
+          maxWidth: fill ? undefined : `var(--tt-guide-max-width, ${Math.max(640, Math.ceil(layout.width * maxUnit))}px)`,
           "--tt-board-ratio": (layout.width / Math.max(1, layout.height)).toFixed(3),
         } as CSSProperties
       }
@@ -312,7 +316,7 @@ export function KeyboardGuide({
       data-layer-key={guide?.layerKey?.id ?? ""}
     >
       {(showHint || hintEnd) && (
-        <div className="mb-2 flex min-h-7 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[13px] text-sub">
+        <div className="tt-hint-row mb-2 flex min-h-7 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[13px] text-sub" data-end={hintEnd ? "true" : "false"}>
           <div className="flex min-h-7 min-w-0 items-center gap-2" data-testid="key-hint" aria-live="off">
             {showHint && guide && guide.key && (
               <>
@@ -349,7 +353,7 @@ export function KeyboardGuide({
               </span>
             )}
           </div>
-          {hintEnd && <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">{hintEnd}</div>}
+          {hintEnd && <div className="ml-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">{hintEnd}</div>}
         </div>
       )}
 
@@ -367,7 +371,7 @@ export function KeyboardGuide({
             data-alone={hasSlot ? "false" : "true"}
             data-testid={reserve ? "keys-reserve" : undefined}
           >
-            {reserve && <div aria-hidden className="pointer-events-none invisible" style={{ ...reserve, gridArea: "1 / 1" }} />}
+            {reserve && <div aria-hidden className="tt-hands-box pointer-events-none invisible" style={{ ...reserve, gridArea: "1 / 1" }} />}
             <div style={reserve ? { gridArea: "1 / 1" } : undefined}>
               <Keyboard2D
                 layout={layout}

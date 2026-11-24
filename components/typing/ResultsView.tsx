@@ -284,6 +284,23 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
 
 // ────────────────────────────────────────────────────────────────────────── view
 
+/**
+ * Height for the graph so that the results fill the sheet on a tall window instead of leaving its
+ * lower part blank: what the viewport has left under the numerals and above the actions, within
+ * 240..480 px. 240 until mounted (and on short windows, where the page scrolls as before).
+ */
+function useChartHeight(enabled: boolean): number {
+  const [h, setH] = useState(240);
+  useEffect(() => {
+    if (!enabled) return;
+    const sync = () => setH(Math.round(Math.min(480, Math.max(240, window.innerHeight - 566))));
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
+  }, [enabled]);
+  return enabled ? h : 240;
+}
+
 /** One ruled row of the results table. */
 function Row({ label, value, sub, title, i, testId }: { label: string; value: ReactNode; sub?: ReactNode; title?: string; i: number; testId?: string }) {
   return (
@@ -321,6 +338,9 @@ export function ResultsView({
   const onNextRef = useRef(onNext);
   onNextRef.current = onNext;
 
+  // With extra content between the stats and the actions (lessons) the sheet is already full.
+  const roomy = children == null || children === false;
+  const chartHeight = useChartHeight(roomy);
   const weak = useMemo(() => weakCharsOfResult(result, 6), [result]);
   const weakChars = useMemo(() => weak.map((k) => k.char), [weak]);
 
@@ -376,7 +396,7 @@ export function ResultsView({
             </div>
           </div>
           <div className="tt-rise mt-6 min-w-0" style={{ "--i": 2 } as CSSProperties}>
-            <ResultChart history={result.history} height={240} />
+            <ResultChart history={result.history} height={chartHeight} />
           </div>
         </div>
 
@@ -412,11 +432,14 @@ export function ResultsView({
             {weak.length === 0 ? (
               <p className="mt-2 text-[15px] text-sub">None this time: a clean, even run.</p>
             ) : (
-              <ul className="mt-3 grid grid-cols-2 gap-2">
+              <ul className="tt-weak mt-3 grid gap-1.5" data-roomy={roomy ? "true" : "false"}>
                 {weak.map((k) => {
                   const g = guideForChar(layout, k.char);
                   const hasFinger = !!g && g.fingerIndex >= 0;
                   const why = k.misses > 0 ? `${Math.round(k.accuracy)}%` : k.avgMs != null ? `${k.avgMs}ms` : "";
+                  // what went wrong, in words: the readout beside it only gives the number
+                  const typedAs = k.mostMistypedAs ? (k.mostMistypedAs === " " ? "space" : k.mostMistypedAs) : "";
+                  const detail = k.misses > 0 ? `${k.misses} of ${k.hits + k.misses} missed${typedAs ? `, typed ${typedAs}` : ""}` : k.avgMs != null ? "slow, no misses" : "";
                   return (
                     <li
                       key={k.char}
@@ -436,7 +459,10 @@ export function ResultsView({
                       >
                         {k.char}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-[13px] text-sub">{g?.fingerName || "any finger"}</span>
+                      <span className="tt-weak-name min-w-0 truncate text-[13px] text-text">{g?.fingerName || "any finger"}</span>
+                      <span className="tt-weak-detail min-w-0 flex-1 truncate text-[13px] text-sub" data-testid="weak-key-detail">
+                        {detail}
+                      </span>
                       <span className={cx("ll-readout text-[13px]", k.misses > 0 ? "text-error" : "text-text")}>{why}</span>
                     </li>
                   );

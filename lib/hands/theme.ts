@@ -12,6 +12,8 @@ export interface HandsTheme {
   main: THREE.Color;
   mainFg: THREE.Color;
   error: THREE.Color;
+  /** --error-alt (the error colour for fills), else --error. */
+  errorAlt: THREE.Color;
   success: THREE.Color;
   keyBg: THREE.Color;
   keyBorder: THREE.Color;
@@ -106,6 +108,7 @@ export function readTheme(): HandsTheme {
     main: get("--main"),
     mainFg: get("--main-fg"),
     error: get("--error"),
+    errorAlt: get("--error-alt", "--error"),
     success: get("--success"),
     keyBg: get("--key-bg", "--bg-alt"),
     keyBorder: get("--key-border", "--border"),
