@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { PageHeader, useRegisterCommands, type Command } from "@/components/shell";
 import { Button, ConfirmDialog, Icon, cx, toast, type MenuItem } from "@/components/ui";
@@ -10,7 +11,15 @@ import { useSettings } from "@/lib/settings";
 import { FAMILY_LABEL, useLayoutCatalog, type Family, type LayoutEntry } from "./catalog";
 import { LayoutCard } from "./LayoutCard";
 import { LayoutDetail } from "./LayoutDetail";
-import { LayoutEditor, copyText, downloadLayout, type EditorDraft } from "./LayoutEditor";
+import type { EditorDraft, LayoutEditorProps } from "./LayoutEditor";
+import { copyText, downloadLayout } from "./layoutIo";
+
+// The editor (code editor, finger picker, layers, keymap import) loads when a draft is first opened.
+const loadEditor = () => import("./LayoutEditor").then((m) => m.LayoutEditor);
+const LayoutEditor = dynamic<LayoutEditorProps>(loadEditor, {
+  ssr: false,
+  loading: () => <div className="ll-hatch min-h-[60vh] border border-hairline" role="status" aria-label="Loading editor" />,
+});
 
 type Filter = "all" | Family;
 const FAMILY_ORDER: Family[] = ["ansi-60", "ansi-100", "ortho", "split", "custom"];
