@@ -164,44 +164,45 @@ export function GuideViewSwitch({ className }: GuideViewSwitchProps) {
   const { view, setView, handsSupported } = useGuideView();
   if (!handsSupported) return null;
   return (
-    <SegmentedControl
-      variant="inline"
-      size="sm"
-      aria-label="Typing guide"
-      data-testid="view-switch"
-      className={cx("shrink-0 flex-nowrap !gap-x-0", className)}
-      value={view}
-      onChange={(v) => {
-        if (v === "none") return;
-        setView(v);
-        // Clicked with the pointer: hand the keyboard back to the text (Enter / Tab keep working).
-        // Arrow-key changes re-focus the new option right after, so keyboard users keep their place.
-        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      }}
-      options={[
-        {
-          value: "hands",
-          icon: "hand",
-          label: (
-            <>
-              <span className="sr-only">3D </span>
-              <span className="sr-only md:not-sr-only">hands</span>
-            </>
-          ),
-        },
-        {
-          value: "keys",
-          icon: "keyboard",
-          label: (
-            <>
-              <span className="sr-only">2D </span>
-              <span className="sr-only md:not-sr-only">keys</span>
-            </>
-          ),
-        },
-        { value: "both", label: "both" },
-      ]}
-    />
+    <div className={cx("inline-flex shrink-0 items-center gap-1", className)}>
+      <span aria-hidden className="ll-lettering-sm mr-1 text-sub">
+        Guide
+      </span>
+      <SegmentedControl
+        variant="inline"
+        size="sm"
+        aria-label="Typing guide"
+        data-testid="view-switch"
+        className="shrink-0 flex-nowrap !gap-x-0"
+        value={view}
+        onChange={(v) => {
+          if (v === "none") return;
+          setView(v);
+          // Clicked with the pointer: hand the keyboard back to the text (Enter / Tab keep working).
+          // Arrow-key changes re-focus the new option right after, so keyboard users keep their place.
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        }}
+        options={[
+          {
+            value: "hands",
+            label: (
+              <>
+                <span className="sr-only">3D </span>hands
+              </>
+            ),
+          },
+          {
+            value: "keys",
+            label: (
+              <>
+                <span className="sr-only">2D </span>keys
+              </>
+            ),
+          },
+          { value: "both", label: "both" },
+        ]}
+      />
+    </div>
   );
 }
 
@@ -219,6 +220,8 @@ export interface HandsPanelProps {
   compact?: boolean;
   /** Fixed camera; hides the camera toggle. Default: the persisted choice (angled / top). */
   camera?: HandsPanelCamera;
+  /** Take the parent's full height instead of the default aspect box (pair with `<KeyboardGuide fill>`). */
+  fill?: boolean;
   className?: string;
 }
 
@@ -280,7 +283,7 @@ export function handsBoxStyle(compact: boolean): CSSProperties {
  * fitted) is drawn. Renders nothing when settings.showHands is off or WebGL is unavailable, and
  * hands the job to the 2D keyboard (useGuideView) when the scene fails to load.
  */
-export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextChar, nextAction = null, press, compact = false, camera, className }: HandsPanelProps) {
+export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextChar, nextAction = null, press, compact = false, camera, fill = false, className }: HandsPanelProps) {
   // A settings change re-parses the layout into an equal object: do not rebuild the scene for that.
   const layout = stableLayout(layoutProp);
   // Layouts without finger assignments (odd custom boards): the hands would only hide the keys.
@@ -347,7 +350,7 @@ export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextCha
 
   const fade = reduceMotion ? "" : "transition-opacity duration-300";
   const style = {
-    ...handsBoxStyle(compact),
+    ...(fill ? { height: "100%" } : handsBoxStyle(compact)),
     // the wrists run out of the frame: fade them instead of cutting them off
     maskImage: "linear-gradient(to bottom, #000 80%, transparent)",
     WebkitMaskImage: "linear-gradient(to bottom, #000 80%, transparent)",
@@ -355,10 +358,11 @@ export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextCha
 
   return (
     <div
-      className={cx("group/hands relative w-full overflow-hidden rounded-ui-lg", className)}
+      className={cx("group/hands relative w-full overflow-hidden", className)}
       style={style}
       data-testid="hands-panel"
       data-compact={compact ? "true" : "false"}
+      data-fill={fill ? "true" : "false"}
       data-camera={cam}
       data-status={mounted ? status : "pending"}
       data-hands-load={load}
@@ -387,10 +391,10 @@ export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextCha
           data-indeterminate={indeterminate ? "true" : "false"}
           role="status"
         >
-          <div className="w-[min(60%,220px)]">
+          <div className="w-[min(60%,240px)]">
             <ProgressBar data-testid="hands-progress" size="sm" value={progress * 100} aria-label="Loading 3D hands" />
           </div>
-          <span className="text-xs text-sub">Loading 3D hands…</span>
+          <span className="ll-lettering-sm text-sub">Drawing 3D hands</span>
         </div>
       )}
       {camera == null && (
@@ -404,13 +408,13 @@ export const HandsPanel = memo(function HandsPanel({ layout: layoutProp, nextCha
             setPrefs({ camera: cam === "angled" ? "top" : "angled" });
             e.currentTarget.blur();
           }}
-          className="tt-fade absolute top-1 right-1 inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11px] font-medium text-sub transition-colors duration-150 hover:bg-text/[0.07] hover:text-text"
+          className="tt-fade ll-lettering-sm absolute top-0 right-0 inline-flex h-7 items-center gap-1.5 border border-transparent px-2 text-sub transition-colors duration-150 hover:border-line hover:text-text"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M3 8.5a2 2 0 0 1 2-2h2.2l1.3-2h7l1.3 2H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8.500z" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="square" strokeLinejoin="miter" aria-hidden>
+            <path d="M3 7h4.5l1.5-2.500h6l1.500 2.500H21v12H3z" />
             <circle cx="12" cy="12.500" r="3.200" />
           </svg>
-          {cam}
+          <span className="ll-trim">View: {cam}</span>
         </button>
       )}
     </div>

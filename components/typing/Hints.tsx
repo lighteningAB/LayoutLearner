@@ -1,10 +1,10 @@
 "use client";
 // Two small one-time hints, dismissal kept in localStorage under "ll:v1:hints" ({ mobile?, welcome? }).
 // Both evaluate only after mount (no hydration mismatch) and render nothing until then, so desktop
-// users never see a layout change. Same look as EmulationHint.
+// users never see a layout change. Drawn as drafted notes, like EmulationHint.
 //
 //   <MobileNotice />                      in-flow banner, touch-only devices
-//   <WelcomeHint suppressed={…} />        fixed overlay (no layout shift), first visit only
+//   <WelcomeHint suppressed={…} />        in-flow note for a margin with room to spare, first visit only
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/ui";
@@ -48,7 +48,7 @@ function useDismissed(id: HintId): [boolean | null, () => void] {
 }
 
 const dismissButton =
-  "inline-flex size-6 shrink-0 items-center justify-center rounded-full text-sub transition-colors duration-150 hover:bg-text/[0.07] hover:text-text";
+  "inline-flex size-7 shrink-0 items-center justify-center border border-transparent text-sub transition-colors duration-150 hover:border-line hover:text-text";
 
 export function MobileNotice() {
   const [dismissed, dismiss] = useDismissed("mobile");
@@ -66,12 +66,12 @@ export function MobileNotice() {
     <div
       role="note"
       data-testid="mobile-notice"
-      className="animate-rise-in mb-3 flex w-full items-start gap-2.5 rounded-ui border border-border bg-bg-alt py-2 pr-1.5 pl-3 text-xs leading-snug text-sub"
+      className="animate-rise-in mb-4 flex w-full items-center gap-2.5 border border-line bg-bg py-1 pr-1 pl-3 text-[14px] leading-snug text-text"
     >
-      <Icon name="alert" size={14} className="mt-px shrink-0 text-main" />
-      <span className="min-w-0 flex-1 py-px">Best with a physical keyboard. A Bluetooth keyboard works too.</span>
+      <Icon name="keyboard" size={16} className="shrink-0 text-main" />
+      <span className="min-w-0 flex-1 py-1">Best with a physical keyboard. A Bluetooth keyboard works too.</span>
       <button type="button" data-testid="mobile-notice-dismiss" aria-label="Dismiss" onClick={dismiss} className={dismissButton}>
-        <Icon name="x" size={13} />
+        <Icon name="x" size={14} />
       </button>
     </div>
   );
@@ -89,14 +89,16 @@ export function WelcomeHint({ suppressed }: { suppressed: boolean }) {
     }
   }, []);
   if (dismissed !== false || !fresh || suppressed) return null;
-  const link = "font-medium text-main underline-offset-2 hover:underline";
+  const link = "font-medium text-main underline underline-offset-[3px] hover:text-text";
   return (
-    <div
-      role="status"
-      data-testid="welcome-hint"
-      className="animate-rise-in fixed inset-x-4 bottom-4 z-30 mx-auto flex w-fit max-w-[min(100%,46rem)] items-start gap-2.5 rounded-ui border border-border bg-bg-alt py-2 pr-1.5 pl-3 text-xs leading-snug text-sub shadow-lg"
-    >
-      <span className="min-w-0 py-px">
+    <div role="status" data-testid="welcome-hint" className="animate-rise-in border border-dashed border-border bg-bg text-[13px] leading-snug text-sub">
+      <div className="flex items-center justify-between border-b border-dashed border-border pl-2.5">
+        <span className="ll-lettering-sm text-text">New here</span>
+        <button type="button" data-testid="welcome-hint-dismiss" aria-label="Dismiss" onClick={dismiss} className={dismissButton}>
+          <Icon name="x" size={14} />
+        </button>
+      </div>
+      <p className="px-2.5 py-2">
         New to this layout? Start with the lessons in{" "}
         <Link href="/learn" className={link}>
           Learn
@@ -106,10 +108,7 @@ export function WelcomeHint({ suppressed }: { suppressed: boolean }) {
           Layouts
         </Link>
         .
-      </span>
-      <button type="button" data-testid="welcome-hint-dismiss" aria-label="Dismiss" onClick={dismiss} className={dismissButton}>
-        <Icon name="x" size={13} />
-      </button>
+      </p>
     </div>
   );
 }

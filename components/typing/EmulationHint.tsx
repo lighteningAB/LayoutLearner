@@ -7,7 +7,7 @@
 //   useKeyboardInput({ …, onKeystroke: hint.note });
 //   <EmulationHint hint={hint} layoutName={active.name} />
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Icon } from "@/components/ui";
+import { Button, Icon, cx } from "@/components/ui";
 import { keyForChar } from "@/lib/layout/keys";
 import { parseLayout } from "@/lib/layout/parse";
 import { DEFAULT_PRESET_ID, getPreset } from "@/lib/layout/presets";
@@ -104,34 +104,38 @@ export function useEmulationHint({ layout, emulate }: { layout: ParsedLayout; em
   return useMemo(() => ({ visible, note, dismiss, turnOn }), [visible, note, dismiss, turnOn]);
 }
 
-export function EmulationHint({ hint, layoutName }: { hint: EmulationHintState; layoutName: string }) {
+/**
+ * Default: a note pinned above the sheet's bottom strip. `inline`: an in-flow line, for a caller
+ * that has a place reserved for it (the typing test swaps its settings line for it).
+ */
+export function EmulationHint({ hint, layoutName, inline = false }: { hint: EmulationHintState; layoutName: string; inline?: boolean }) {
   if (!hint.visible) return null;
   return (
     <div
       role="status"
       data-testid="emulation-hint"
-      className="animate-rise-in fixed inset-x-4 bottom-4 z-40 mx-auto flex w-fit max-w-[min(100%,46rem)] items-start gap-2.5 rounded-ui border border-border bg-bg-alt py-2 pr-1.5 pl-3 text-xs leading-snug text-sub shadow-lg"
+      className={cx(
+        "animate-rise-in flex items-center gap-2.5 text-[14px] leading-snug text-text",
+        inline
+          ? "min-h-9 flex-wrap"
+          : "fixed inset-x-4 bottom-20 z-40 mx-auto w-fit max-w-[min(100%,46rem)] border border-line bg-bg py-1.5 pr-1.5 pl-3",
+      )}
     >
-      <Icon name="alert" size={14} className="mt-px shrink-0 text-main" />
-      <span className="min-w-0 py-px">
+      <Icon name="alert" size={16} className="shrink-0 text-main" />
+      <span className="min-w-0 flex-1 py-px">
         Looks like your keyboard is still set to QWERTY — turn on emulation to practise {layoutName} without changing system settings
       </span>
-      <button
-        type="button"
-        data-testid="emulation-hint-on"
-        onClick={hint.turnOn}
-        className="inline-flex h-6 shrink-0 items-center rounded-full bg-main/[0.14] px-2.5 text-xs font-medium text-main transition-colors duration-150 hover:bg-main/[0.22]"
-      >
+      <Button variant="primary" size="sm" data-testid="emulation-hint-on" onClick={hint.turnOn}>
         Turn on
-      </button>
+      </Button>
       <button
         type="button"
         data-testid="emulation-hint-dismiss"
         aria-label="Dismiss"
         onClick={hint.dismiss}
-        className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-sub transition-colors duration-150 hover:bg-text/[0.07] hover:text-text"
+        className="inline-flex size-8 shrink-0 items-center justify-center border border-transparent text-sub transition-colors duration-150 hover:border-line hover:text-text"
       >
-        <Icon name="x" size={13} />
+        <Icon name="x" size={14} />
       </button>
     </div>
   );
