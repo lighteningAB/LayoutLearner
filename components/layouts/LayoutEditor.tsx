@@ -8,8 +8,6 @@ import {
   MAX_SOURCE_BYTES,
   checkSource,
   cleanName,
-  exportFilename,
-  exportLayoutJson,
   importLayoutText,
   layoutWarnings,
   type SourceCheck,
@@ -29,6 +27,7 @@ import { CodeEditor } from "./CodeEditor";
 import { Note, Pane } from "./drafting";
 import { FingerPicker } from "./FingerPicker";
 import { LayersPanel } from "./LayersPanel";
+import { copyText, downloadLayout } from "./layoutIo";
 
 export interface EditorDraft {
   /** Set when editing a stored custom layout; absent for a new one. */
@@ -66,27 +65,6 @@ const MODE_NOTE: Record<EditorMode, string> = {
   fingers: "Correct which finger presses a key. Changes apply to tests, lessons and the hands view.",
   layers: "Give keys extra characters while a layer key is held. Changes apply to the keyboard guide and lessons.",
 };
-
-export async function copyText(text: string, what = "Layout data"): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast(`${what} copied to clipboard`, { variant: "success" });
-  } catch {
-    toast("Couldn't reach the clipboard", { variant: "error", description: "Select the text and copy it by hand instead." });
-  }
-}
-
-export function downloadLayout(name: string, source: string, fingers?: FingerOverrides, layers?: Layers): void {
-  const blob = new Blob([exportLayoutJson(name, source, fingers, layers)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = exportFilename(name);
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 function FormatHelp() {
   const [open, setOpen] = useState(false);

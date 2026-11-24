@@ -75,7 +75,10 @@ export function useWebGLSupport(): boolean | null {
 // profiles that never show them download nothing). Settings are read from localStorage here; nothing
 // is rendered from them, so hydration is unaffected. The panel's own effect calls the same
 // `import()` and `loadHandTemplate()`, which share their promises / cache: no second download.
-if (typeof window !== "undefined" && getSettings().showHands) {
+// Only on routes that show hands: Next prefetches this module from the nav links on every page, and
+// without the route check the settings and privacy pages would download three.js and the model too.
+const onHandsRoute = () => window.location.pathname === "/" || window.location.pathname.startsWith("/learn/");
+if (typeof window !== "undefined" && onHandsRoute() && getSettings().showHands) {
   import("@/components/hands/HandsScene").catch(() => {});
   import("@/lib/hands/rig").then((m) => m.loadHandTemplate()).catch(() => {});
 }
