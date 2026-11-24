@@ -60,7 +60,7 @@ export function SettingsView() {
   const customLayout = settings.customLayouts.find((l) => l.id === settings.layoutId);
 
   return (
-    <div data-testid="settings-view" className="max-w-[1120px]">
+    <div data-testid="settings-view">
       <Section id="appearance" title="Appearance" description="Pick a theme. The typing text size only affects the test and lessons.">
         <ThemePicker value={settings.theme} onChange={(theme) => update({ theme })} />
         <p className="mt-3 max-w-[75ch] text-[14px] leading-snug text-sub" data-testid="theme-follow-note">

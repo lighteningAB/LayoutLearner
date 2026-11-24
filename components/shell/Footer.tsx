@@ -42,7 +42,7 @@ export function Footer() {
           aria-checked={current.scheme === "light"}
           data-testid="theme-switcher"
           data-theme-id={current.id}
-          aria-label={`Theme: ${current.name}. Switch to ${other.name}`}
+          aria-label="Light theme"
           title={`Switch to ${other.name}`}
           onClick={() => update({ theme: other.id })}
           className="group inline-flex h-8 items-stretch border border-line text-text"

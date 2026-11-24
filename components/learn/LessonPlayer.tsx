@@ -644,75 +644,75 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
                 <span className="text-[13px] text-sub"> wpm</span>
               </Readout>
             </div>
-            <div className="flex items-center">
-              {showCaps ? (
-                <Badge tone="error" icon="alert" role="alert" data-testid="caps-warning">
-                  Caps Lock is on
-                </Badge>
-              ) : (
-                <span className="tt-fade ll-lettering-sm whitespace-nowrap text-sub" data-testid="lesson-goal">
-                  goal{" "}
-                  <span className="ll-readout text-[13px] tracking-normal text-text normal-case">
-                    {lesson.goal.accuracy}% · {lesson.goal.wpm} wpm
+            <div className="flex items-center gap-3">
+              {drillDone && lastResult ? (
+                <div
+                  className="animate-rise-in flex flex-wrap items-stretch justify-center border border-line bg-bg-alt"
+                  data-testid="drill-done"
+                  data-accuracy={lastResult.accuracy}
+                  data-wpm={lastResult.wpm}
+                >
+                  <span className="ll-lettering inline-flex items-center gap-2 border-r border-border px-3 text-text">
+                    <Icon name={lastGrade?.passed ? "check" : "x"} size={15} strokeWidth={2.2} />
+                    drill {drillIndex + 1} {lastGrade?.passed ? "on goal" : "under goal"}
                   </span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          <WordsDisplay words={test.words} caret={test.caret} status={status} lines={narrow ? 3 : 2} aria-label={`Drill ${drillIndex + 1} of ${drillCount}`} />
-
-          <div className="mt-3 flex min-h-12 items-center justify-center gap-2">
-            {drillDone && lastResult ? (
-              <div
-                className="animate-rise-in flex flex-wrap items-stretch justify-center border border-line bg-bg-alt"
-                data-testid="drill-done"
-                data-accuracy={lastResult.accuracy}
-                data-wpm={lastResult.wpm}
-              >
-                <span className="ll-lettering inline-flex items-center gap-2 border-r border-border px-3 text-text">
-                  <Icon name={lastGrade?.passed ? "check" : "x"} size={15} strokeWidth={2.2} />
-                  drill {drillIndex + 1} {lastGrade?.passed ? "on goal" : "under goal"}
-                </span>
-                <span className="ll-readout inline-flex items-center gap-3 border-r border-border px-3 text-[15px]">
-                  <span className={lastResult.accuracy >= lesson.goal.accuracy ? "text-text" : "text-error"}>{Math.floor(lastResult.accuracy)}%</span>
-                  <span className={lastResult.wpm >= lesson.goal.wpm ? "text-text" : "text-error"}>{Math.round(lastResult.wpm)} wpm</span>
-                </span>
-                <span className="inline-flex items-center gap-1 p-1.5">
-                  <Button variant="primary" size="sm" onClick={nextStep} data-testid="drill-next">
-                    <span className="ll-trim">Next drill</span>
-                    <Kbd size="sm" className="border-main-fg bg-main-fg text-main group-hover/btn:border-bg group-hover/btn:bg-bg group-hover/btn:text-text">
-                      enter
-                    </Kbd>
-                  </Button>
+                  <span className="ll-readout inline-flex items-center gap-3 border-r border-border px-3 text-[15px]">
+                    <span className={lastResult.accuracy >= lesson.goal.accuracy ? "text-text" : "text-error"}>{Math.floor(lastResult.accuracy)}%</span>
+                    <span className={lastResult.wpm >= lesson.goal.wpm ? "text-text" : "text-error"}>{Math.round(lastResult.wpm)} wpm</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 p-1.5">
+                    <Button variant="primary" size="sm" onClick={nextStep} data-testid="drill-next">
+                      <span className="ll-trim">Next drill</span>
+                      <Kbd size="sm" className="border-main-fg bg-main-fg text-main group-hover/btn:border-bg group-hover/btn:bg-bg group-hover/btn:text-text">
+                        enter
+                      </Kbd>
+                    </Button>
+                    <IconButton
+                      ref={restartRef}
+                      icon="restart"
+                      size="sm"
+                      label="Redo this drill"
+                      title="Redo this drill (tab, then enter)"
+                      data-testid="restart"
+                      onClick={(e) => {
+                        restartDrill();
+                        e.currentTarget.blur();
+                      }}
+                    />
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {showCaps ? (
+                    <Badge tone="error" icon="alert" role="alert" data-testid="caps-warning">
+                      Caps Lock is on
+                    </Badge>
+                  ) : (
+                    <span className="tt-fade ll-lettering-sm whitespace-nowrap text-sub" data-testid="lesson-goal">
+                      goal{" "}
+                      <span className="ll-readout text-[13px] tracking-normal text-text normal-case">
+                        {lesson.goal.accuracy}% · {lesson.goal.wpm} wpm
+                      </span>
+                    </span>
+                  )}
                   <IconButton
                     ref={restartRef}
                     icon="restart"
                     size="sm"
-                    label="Redo this drill"
-                    title="Redo this drill (tab, then enter)"
+                    label="Restart this drill"
+                    title="Restart drill (tab, then enter)"
                     data-testid="restart"
                     onClick={(e) => {
                       restartDrill();
                       e.currentTarget.blur();
                     }}
                   />
-                </span>
-              </div>
-            ) : (
-              <IconButton
-                ref={restartRef}
-                icon="restart"
-                label="Restart this drill"
-                title="Restart drill (tab, then enter)"
-                data-testid="restart"
-                onClick={(e) => {
-                  restartDrill();
-                  e.currentTarget.blur();
-                }}
-              />
-            )}
+                </>
+              )}
+            </div>
           </div>
+
+          <WordsDisplay words={test.words} caret={test.caret} status={status} lines={narrow ? 3 : 2} aria-label={`Drill ${drillIndex + 1} of ${drillCount}`} />
 
           <div className="learn-plate min-w-0">{guide}</div>
         </div>

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
 import { fingerName, guideForChar } from "@/components/typing/KeyboardGuide";
 import "@/components/typing/typing.css";
-import { Badge, Button, Card, Icon, Kbd, ProgressBar, Skeleton, cx } from "@/components/ui";
+import { Badge, Button, Card, Icon, Kbd, Skeleton, cx } from "@/components/ui";
 import { PRESETS } from "@/lib/layout/presets";
 import { parsePreset } from "@/lib/layout/layers";
 import { buildCurriculum, validateCurriculum } from "@/lib/lessons/curriculum";
@@ -133,16 +133,14 @@ function LessonPreview({
       aria-label={`Lesson ${item.number}: ${lesson.title}`}
     >
       <div className="flex h-10 items-center justify-between gap-3 border-b border-line px-4">
-        <span className="ll-lettering text-text">
-          Detail <span className="ll-readout ml-1 text-[13px] tracking-normal">{pad2(item.number)}</span>
+        <span className="ll-lettering min-w-0 truncate text-text">
+          Lesson <span className="ll-readout ml-1 text-[13px] tracking-normal">{pad2(item.number)}</span>
         </span>
-        <span className="ll-lettering-sm truncate text-sub">
-          lesson {item.number} · {lesson.kind === "new" ? "new keys" : "review"}
-        </span>
+        <span className="ll-lettering-sm truncate text-sub">{lesson.kind === "new" ? "new keys" : "review"}</span>
       </div>
 
-      <div className="tt-guide ll-grid border-b border-line bg-bg px-4 py-5" data-finger-colors={fingerColors ? "true" : "false"}>
-        <Keyboard2D layout={layout} highlightKeyIds={highlight} dimUnused={dim} fingerColors={fingerColors} maxUnit={26} />
+      <div className="tt-guide learn-minikb ll-grid border-b border-line bg-bg px-3 py-5" data-finger-colors={fingerColors ? "true" : "false"}>
+        <Keyboard2D layout={layout} highlightKeyIds={highlight} dimUnused={dim} fingerColors={fingerColors} maxUnit={30} />
       </div>
 
       <div className="p-5">
@@ -234,13 +232,35 @@ const NONE: string[] = [];
 
 // ────────────────────────────────────────────────────────────────────────── progress scale
 
-/** "7 / 34 lessons": a thin display numeral over its total and unit. */
-function Tally({ value, total, unit }: { value: number; total: number; unit: string }) {
+/**
+ * The course as one dimension line: a ticked scale with one tick per lesson (passed ones drawn
+ * heavy in the action colour), the lesson and star counts set as annotations at its ends.
+ */
+function ProgressScale({ completed, total, stars, maxStars }: { completed: number; total: number; stars: number; maxStars: number }) {
   return (
-    <div className="flex items-baseline gap-2 whitespace-nowrap">
-      <span className="ll-numeral text-[44px] text-text">{value}</span>
-      <span className="ll-numeral text-[22px] text-sub">/ {total}</span>
-      <span className="ll-lettering text-sub">{unit}</span>
+    <div>
+      <div className="flex items-baseline justify-between gap-4 whitespace-nowrap">
+        <span className="ll-lettering-sm text-sub">
+          lessons <span className="ll-readout text-[15px] tracking-normal text-text">{completed}/{total}</span>
+        </span>
+        <span className="ll-lettering-sm text-sub">
+          stars <span className="ll-readout text-[15px] tracking-normal text-text">{stars}/{maxStars}</span>
+        </span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label="Course progress"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={completed}
+        aria-valuetext={`${completed} of ${total} lessons passed`}
+        className="relative mt-2 flex h-4 items-end border-x border-line"
+      >
+        <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-line" />
+        {Array.from({ length: total }, (_, i) => (
+          <span key={i} aria-hidden className={cx("relative flex-1 border-l", i === 0 && "border-l-0", i < completed ? "h-4 border-main" : "h-2 border-border")} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -354,7 +374,6 @@ export function CourseMap() {
   }, [start]);
 
   const next = course.next;
-  const pct = course.total > 0 ? Math.round((course.completed / course.total) * 100) : 0;
   const ready = hydrated && course.total > 0;
 
   return (
@@ -407,17 +426,8 @@ export function CourseMap() {
             data-stars={course.stars}
             data-max-stars={course.maxStars}
           >
-            <Tally value={course.completed} total={course.total} unit="lessons" />
-            <ProgressBar className="mt-3" size="md" value={course.completed} max={course.total} aria-label="Course progress" />
-            <div aria-hidden className="ll-note mt-1 flex justify-between text-sub">
-              <span>0</span>
-              <span>{pct}% passed</span>
-              <span>{course.total}</span>
-            </div>
-            <div className="mt-3 flex items-end justify-between gap-4">
-              <Tally value={course.stars} total={course.maxStars} unit="stars" />
-            </div>
-            <p className="mt-3 truncate border-t border-border pt-2.5 text-[14px] text-sub">
+            <ProgressScale completed={course.completed} total={course.total} stars={course.stars} maxStars={course.maxStars} />
+            <p className="mt-3 truncate text-[14px] text-sub">
               {next ? (
                 <>
                   <span className="ll-lettering-sm mr-2">Next</span>
@@ -431,7 +441,7 @@ export function CourseMap() {
             </p>
           </div>
         ) : (
-          !hydrated && <Skeleton aria-hidden animate className="h-[186px] w-full" />
+          !hydrated && <Skeleton aria-hidden animate className="h-[84px] w-full" />
         )}
       </header>
 

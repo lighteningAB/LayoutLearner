@@ -50,16 +50,38 @@
   pointer-events: none;
 }
 
+/* ── detail box: the mini keyboard. Outlines of keys not yet taught stay readable (>= 3:1), and only
+   the highlighted keys carry legends: at this scale the others would be illegible. ── */
+.learn-minikb [data-key-id][data-state="dim"] > div {
+  opacity: 1;
+  border: 1px dashed var(--border);
+}
+.learn-minikb [data-key-id]:not([data-state="highlight"]) > div > span {
+  visibility: hidden;
+}
+.learn-minikb [data-key-id][data-state="highlight"] > div > span {
+  font-size: 12px !important;
+}
+
 /* ── lesson player ── */
-/* The hands are the teacher: inside a lesson the plate takes the room the sheet has. The box
-   sizes come from components/typing (inline styles), so they are lifted here. */
+/* The hands are the teacher: inside a lesson the plate takes the room the sheet has.
+   BATCH-A-SIZING-OVERRIDE START: these !important rules fight inline sizes from components/typing.
+   When HandsPanel gains a sizing prop, pass it from LessonPlayer and delete this whole block. */
+.learn-plate {
+  --learn-plate-h: clamp(240px, 43dvh, 480px);
+}
 @media (min-width: 1024px) {
   .learn-plate .tt-guide {
     max-width: min(100%, 1040px) !important;
   }
+  /* hands-only plate: the guide's edges follow the drawn keyboard, so the legend and view
+     toggles sit at the plate's corners instead of far out in empty sheet */
+  .learn-plate:not(:has([data-compact="true"])) .tt-guide {
+    max-width: min(100%, max(560px, calc(var(--learn-plate-h) * 2))) !important;
+  }
   .learn-plate [data-testid="hands-panel"] {
     aspect-ratio: auto !important;
-    height: clamp(220px, 36dvh, 430px);
+    height: var(--learn-plate-h);
     max-height: none !important;
   }
   .learn-plate [data-testid="hands-panel"][data-compact="true"] {
@@ -72,6 +94,7 @@
     height: clamp(170px, 30dvh, 320px);
   }
 }
+/* BATCH-A-SIZING-OVERRIDE END */
 
 /* one press of the "press it n times" counter being ticked off */
 .learn-press {

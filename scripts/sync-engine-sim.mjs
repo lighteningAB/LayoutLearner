@@ -44,6 +44,7 @@ process.emitWarning = (w, ...rest) => {
 const D = await import("../lib/sync/doc.ts");
 const C = await import("../lib/sync/cycle.ts");
 const M = await import("../lib/sync/meta.ts");
+const { normalizeThemeId } = await import("../lib/settings/themes.ts");
 const { emptyDoc, mergeDocs, pruneDoc, docsEqual, canonical, TOMBSTONE_TTL_MS, CLIENT_TOMBSTONE_TTL_MS, validateDoc, LIMITS } = D;
 
 function arg(name, fallback) {
@@ -71,7 +72,7 @@ const CONFIG = {
   deviceLocal: ["fontSize"],
   groups: [["testMode", "testAmount"]],
   layoutsField: "customLayouts",
-  settingsDefaults: { theme: "tide", punctuation: false, testMode: "time", testAmount: 30, fontSize: 24, customLayouts: [] },
+  settingsDefaults: { theme: "blueprint", punctuation: false, testMode: "time", testAmount: 30, fontSize: 24, customLayouts: [] },
   learnDefaults: { camera: "angled" },
 };
 const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -296,7 +297,7 @@ function pair() {
   const w = makeWorld();
   const a = w.device("A");
   const b = w.device("B");
-  Object.assign(a.store.settings, { theme: "dusk", testMode: "words", testAmount: 50, punctuation: true, customLayouts: [layout("x"), layout("y")] });
+  Object.assign(a.store.settings, { theme: "whiteprint", testMode: "words", testAmount: 50, punctuation: true, customLayouts: [layout("x"), layout("y")] });
   a.store.learn.camera = "top";
   a.store.lessons = { qwerty: { l1: lesson(5, 2) } };
   w.signIn(a, UA);
@@ -311,6 +312,12 @@ const bothSync = (w, ...devices) => {
 };
 
 const scenarios = {
+  "T0 a retired theme id read from storage or the account becomes its successor"() {
+    // The real normalisation (lib/settings/themes.ts), the one store.ts applies when it reads settings.
+    expect(normalizeThemeId("tide") === "blueprint", 'stored "tide" was not read back as blueprint', normalizeThemeId("tide"));
+    expect(normalizeThemeId("paper") === "whiteprint", 'stored "paper" was not read back as whiteprint', normalizeThemeId("paper"));
+    expect(normalizeThemeId("blueprint") === "blueprint" && normalizeThemeId("nonsense") === null, "current ids must pass through and unknown ids be rejected");
+  },
   "C1 a lost settings / learn key is restored, not synced as a reset"() {
     for (const loss of [null, {}, { fontSize: 30 }]) {
       const { w, a, b } = pair();
@@ -318,10 +325,10 @@ const scenarios = {
       a.store.learn = null;
       a.acked = {};
       w.track(a); // the page loads
-      expect(shown(w, a).settings.theme === "dusk" && layoutsOf(w, a).join() === "x,y" && shown(w, a).learn.camera === "top", "the device did not get its data back", shown(w, a));
+      expect(shown(w, a).settings.theme === "whiteprint" && layoutsOf(w, a).join() === "x,y" && shown(w, a).learn.camera === "top", "the device did not get its data back", shown(w, a));
       bothSync(w, a, b);
       const s = shown(w, b).settings;
-      expect(s.theme === "dusk" && s.testMode === "words" && s.testAmount === 50 && s.punctuation === true, "the other device was reset to defaults", s);
+      expect(s.theme === "whiteprint" && s.testMode === "words" && s.testAmount === 50 && s.punctuation === true, "the other device was reset to defaults", s);
       expect(layoutsOf(w, b).join() === "x,y" && shown(w, b).learn.camera === "top", "the other device lost layouts / prefs", shown(w, b));
       expect(Object.values(w.account("u_a").doc.layouts).every((i) => !i.del), "the account holds tombstones nobody asked for");
       expect(w.account("u_a").puts === 1, "something was uploaded because of the loss", w.account("u_a").puts);
@@ -337,20 +344,20 @@ const scenarios = {
     expect(attemptsOf(w, b, "l1") === 5, "lesson progress changed on the other device");
     // Anonymous device: tracked edits survive the loss of the key as well.
     const c = w.device("C");
-    c.store.settings.theme = "moss";
+    c.store.settings.theme = "whiteprint";
     c.store.settings.customLayouts = [layout("c1")];
     w.track(c);
     c.store.settings = null;
     c.acked = {};
     w.track(c);
-    expect(shown(w, c).settings.theme === "moss" && layoutsOf(w, c).join() === "c1", "anonymous device was not restored", shown(w, c).settings);
+    expect(shown(w, c).settings.theme === "whiteprint" && layoutsOf(w, c).join() === "c1", "anonymous device was not restored", shown(w, c).settings);
   },
   "C1 the legitimate flows still sync: reset settings, delete the last layout"() {
     const { w, a, b } = pair();
     // Reset settings writes the complete default object (and the UI keeps the layouts).
     a.store.settings = { ...clone(CONFIG.settingsDefaults), customLayouts: a.store.settings.customLayouts };
     bothSync(w, a, b);
-    expect(shown(w, b).settings.theme === "tide" && shown(w, b).settings.testMode === "time", "reset settings did not sync", shown(w, b).settings);
+    expect(shown(w, b).settings.theme === "blueprint" && shown(w, b).settings.testMode === "time", "reset settings did not sync", shown(w, b).settings);
     expect(layoutsOf(w, b).join() === "x,y", "reset settings removed layouts");
     w.T += 1000;
     a.store.settings.customLayouts = [];
@@ -464,23 +471,23 @@ const scenarios = {
     // (iii) the tab dies between writing the stores and saving the sidecar
     w.T += 1000;
     a.store.lessons.qwerty.l1.attempts += 3;
-    a.store.settings.theme = "paper";
+    a.store.settings.theme = "whiteprint";
     settled(w.sync(a), "A");
     w.track(b);
     w.integrate(b, clone(w.get("u_a")), "after-stores");
     expect(b.sc.applying === "merge", "no marker was left");
     w.T += 1000;
-    a.store.settings.theme = "moss";
+    a.store.settings.theme = "blueprint";
     settled(w.sync(a), "A");
     w.T += 1000;
     bothSync(w, b, a);
     expect(attemptsOf(w, a, "l1") === 15, "an interrupted projection counted downloaded attempts as local", w.account("u_a").doc.lessons.by.qwerty.l1.att);
-    expect(shown(w, a).settings.theme === "moss" && shown(w, b).settings.theme === "moss", "an interrupted projection re-stamped a remote value over a newer edit");
+    expect(shown(w, a).settings.theme === "blueprint" && shown(w, b).settings.theme === "blueprint", "an interrupted projection re-stamped a remote value over a newer edit");
   },
   "M1 an edit made between the crash and the recovery is kept"() {
     for (const crash of ["before-stores", "after-stores"]) {
       const { w, a, b } = pair();
-      a.store.settings.theme = "paper";
+      a.store.settings.theme = "whiteprint";
       a.store.lessons.qwerty.l1.attempts += 2;
       settled(w.sync(a), "A");
       w.track(b);
@@ -493,7 +500,7 @@ const scenarios = {
       bothSync(w, b, a);
       const s = shown(w, a).settings;
       expect(s.punctuation === false && shown(w, a).learn.camera === "side" && layoutsOf(w, a).join() === "x,z", `edit made after a crash (${crash}) was lost`, { s, learn: shown(w, a).learn });
-      expect(s.theme === "paper" && attemptsOf(w, a, "l1") === 7 && attemptsOf(w, a, "l7") === 1, `recovery after a crash (${crash}) broke remote data`, shown(w, a));
+      expect(s.theme === "whiteprint" && attemptsOf(w, a, "l1") === 7 && attemptsOf(w, a, "l7") === 1, `recovery after a crash (${crash}) broke remote data`, shown(w, a));
       expect(same(shown(w, a).lessons, shown(w, b).lessons) && b.sc.applying === null, "not converged after recovery");
     }
   },
@@ -528,7 +535,7 @@ const scenarios = {
     expect(layoutsOf(w, b).length === 0 && w.account("u_b").doc === null && b.sc.orphanOf === null, "use-account kept or uploaded the old data", layoutsOf(w, b));
     // Data that never belonged to an account joins whoever signs in.
     const c = w.device("C");
-    c.store.settings.theme = "moss";
+    c.store.settings.theme = "whiteprint";
     w.track(c);
     expect(w.signIn(c, UB) === "ok", "never-linked data was gated");
   },
@@ -593,7 +600,7 @@ const scenarios = {
     // More LIVE layouts than an account may hold: the rest stays on the device, sync goes on.
     const big = w.device("BIG");
     big.store.settings.customLayouts = Array.from({ length: LIMITS.layouts + 7 }, (_, i) => layout("b" + i));
-    big.store.settings.theme = "moss";
+    big.store.settings.theme = "whiteprint";
     w.track(big);
     const p = M.parseSidecar(M.serializeSidecar(big.sc));
     expect(p.kind === "ok" && Object.keys(p.sidecar.doc.layouts).length === LIMITS.layouts + 7, "a replica over the limit does not load or was rebuilt");
@@ -602,7 +609,7 @@ const scenarios = {
     const r = w.sync(big);
     expect(r.settled && r.overflow === true && r.error === undefined, "too many layouts blocked the sync", r);
     const doc = w.account("u_a").doc;
-    expect(Object.values(doc.layouts).filter((i) => !i.del).length === LIMITS.layouts && doc.settings.theme.v === "moss", "the account does not hold the newest 200 layouts and the rest of the data", Object.keys(doc.layouts).length);
+    expect(Object.values(doc.layouts).filter((i) => !i.del).length === LIMITS.layouts && doc.settings.theme.v === "whiteprint", "the account does not hold the newest 200 layouts and the rest of the data", Object.keys(doc.layouts).length);
     expect(layoutsOf(w, big).length === LIMITS.layouts + 7, "layouts that did not fit were removed from the device");
     const r2 = w.sync(big);
     expect(r2.settled && r2.puts === 0, "an over-full device keeps pushing", r2);
@@ -627,13 +634,13 @@ const scenarios = {
     settled(w.sync(a), "A");
     w.T += DAY;
     b.store.lessons.qwerty.l2 = lesson(4, 3); // ... B, offline since before, practises on
-    b.store.settings.theme = "moss";
+    b.store.settings.theme = "whiteprint";
     b.store.settings.customLayouts.push(layout("offline"));
     w.track(b);
     w.T += DAY;
     bothSync(w, b, a);
     expect(same(shown(w, b).lessons, {}) && same(shown(w, a).lessons, {}), "results of the old epoch survived the reset", shown(w, b).lessons);
-    expect(shown(w, a).settings.theme === "moss" && layoutsOf(w, a).join() === "offline,x,y", "the reset discarded more than lesson results", shown(w, a).settings);
+    expect(shown(w, a).settings.theme === "whiteprint" && layoutsOf(w, a).join() === "offline,x,y", "the reset discarded more than lesson results", shown(w, a).settings);
     w.T += 1000;
     b.store.lessons = { qwerty: { l2: lesson(1) } }; // after learning of it, results count again
     bothSync(w, b, a);
@@ -707,7 +714,7 @@ function run(seed) {
     const kind = pick(["theme", "theme", "punct", "mode", "camera", "font", "addLayout", "editLayout", "delLayout", "lesson", "lesson", "reset", "loseSettings", "loseLearn", "loseLessons", "loseSidecar"]);
     const s = d.store.settings;
     if (kind === "theme") {
-      s.theme = pick(["tide", "paper", "dusk", "moss"]) + Math.floor(rnd() * 3);
+      s.theme = pick(["blueprint", "whiteprint"]) + Math.floor(rnd() * 3);
     } else if (kind === "punct") {
       s.punctuation = !s.punctuation;
     } else if (kind === "mode") {
