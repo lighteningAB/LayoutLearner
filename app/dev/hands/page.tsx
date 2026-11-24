@@ -2,7 +2,7 @@
 
 // Dev harness for the 3D hands scene.
 // URL params: ?preset=<preset id | fixture | split-fixture>&camera=top|angled|front&target=<KeyboardEvent.code | key id>
-//             &hold=<code | id>,<code | id>  (keys held meanwhile; &mod=<code | id> still works)&orbit=1&h=<px>&theme=<data-theme, this page view only>
+//             &hold=<code | id>,<code | id>  (keys held meanwhile; &mod=<code | id> still works)&orbit=1&h=<px>&zones=0&theme=blueprint|whiteprint (data-theme, this page view only)
 // Press any physical key to make the hands reach for and tap it.
 // CLI helpers: window.__handsDev.{setTarget(codeOrId), setHolds([codeOrId, ...]), press(codeOrId), sweep()}, window.__hands (scene internals:
 // debug(), measureAll(), report() — per-row fingertip error, palm travel and how far the idle fingers leave home).
