@@ -8,12 +8,12 @@ export interface SkeletonProps {
   animate?: boolean;
 }
 
-/** Placeholder block: size it with className (`h-4 w-32`). */
+/** Placeholder block, drawn as section hatching: size it with className (`h-4 w-32`). */
 export function Skeleton({ className, style, animate }: SkeletonProps) {
   return (
     <div
       aria-hidden
-      className={cx("rounded-ui-sm bg-text/[0.07]", animate && "animate-shimmer", className)}
+      className={cx("ll-hatch bg-fill", animate && "animate-shimmer", className)}
       style={style}
     />
   );

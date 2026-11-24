@@ -1,5 +1,5 @@
 import type { HTMLAttributes } from "react";
-import { cx } from "./cx";
+import { cx, isText } from "./cx";
 import { Icon, type IconName } from "./Icon";
 
 export type BadgeTone = "neutral" | "main" | "success" | "error";
@@ -10,10 +10,10 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const TONES: Record<BadgeTone, string> = {
-  neutral: "bg-text/[0.08] text-sub",
-  main: "bg-main/[0.14] text-main",
-  success: "bg-success/[0.14] text-success",
-  error: "bg-error/[0.14] text-error",
+  neutral: "border-border text-sub",
+  main: "border-main bg-main text-main-fg",
+  success: "border-success text-success",
+  error: "border-error text-error",
 };
 
 export function Badge({ tone = "neutral", icon, className, children, ...rest }: BadgeProps) {
@@ -21,14 +21,14 @@ export function Badge({ tone = "neutral", icon, className, children, ...rest }: 
     <span
       data-tone={tone}
       className={cx(
-        "inline-flex h-[22px] items-center gap-1 rounded-full px-2 text-xs font-medium whitespace-nowrap",
+        "ll-lettering-sm inline-flex h-[22px] items-center gap-1 border px-1.5 whitespace-nowrap",
         TONES[tone],
         className,
       )}
       {...rest}
     >
       {icon && <Icon name={icon} size={12} />}
-      {children}
+      {isText(children) ? <span className="ll-trim">{children}</span> : children}
     </span>
   );
 }

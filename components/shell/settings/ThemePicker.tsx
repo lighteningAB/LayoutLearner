@@ -29,7 +29,7 @@ export function ThemePicker({ value, onChange, className }: ThemePickerProps) {
       aria-label="Theme"
       onKeyDown={onKeyDown}
       data-testid="theme-picker"
-      className={cx("grid w-full grid-cols-2 gap-3 sm:grid-cols-3", className)}
+      className={cx("grid w-full grid-cols-2 gap-3", className)}
     >
       {THEMES.map((t) => {
         const selected = t.id === value;
@@ -46,30 +46,30 @@ export function ThemePicker({ value, onChange, className }: ThemePickerProps) {
             data-state={selected ? "on" : "off"}
             onClick={() => onChange(t.id)}
             className={cx(
-              "rounded-ui-lg border bg-bg p-3.5 text-left transition-[border-color,box-shadow,transform] duration-150 active:scale-[0.99]",
-              selected ? "border-main shadow-[0_0_0_1px_var(--main)]" : "border-border hover:border-sub",
+              "border bg-bg p-3.5 text-left outline-offset-2 transition-[border-color] duration-150",
+              selected ? "border-line outline-2 outline-main" : "border-border hover:border-line",
             )}
           >
             <div className="font-mono text-[13px] leading-none whitespace-nowrap">
               <span className="text-text">home r</span>
-              <span className="mx-px inline-block h-[1.15em] w-[2px] rounded-full bg-caret align-[-0.2em]" />
+              <span className="mx-px inline-block h-[1.15em] w-[2px] bg-caret align-[-0.2em]" />
               <span className="text-sub">ow </span>
               <span className="text-error">k</span>
               <span className="text-sub">eys</span>
             </div>
             <div className="mt-3.5 flex gap-[3px]">
               {Array.from({ length: 10 }, (_, i) => (
-                <span key={i} className="h-1.5 flex-1 rounded-full" style={{ backgroundColor: `var(--finger-${i})` }} />
+                <span key={i} className="h-2.5 flex-1 border border-line" style={{ backgroundColor: `var(--finger-${i})` }} />
               ))}
             </div>
             <div className="mt-3.5 flex items-center justify-between gap-2">
-              <span className="text-sm font-medium text-text">{t.name}</span>
+              <span className="ll-lettering text-text">{t.name}</span>
               {selected ? (
-                <span className="inline-flex size-[18px] items-center justify-center rounded-full bg-main text-main-fg">
+                <span className="inline-flex size-[18px] items-center justify-center bg-main text-main-fg">
                   <Icon name="check" size={12} strokeWidth={2.5} />
                 </span>
               ) : (
-                <span className="text-xs text-sub">{t.scheme}</span>
+                <span className="ll-note text-sub">{t.scheme}</span>
               )}
             </div>
           </button>

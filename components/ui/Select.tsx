@@ -154,9 +154,10 @@ export function Select<T extends string = string>({
         onClick={() => (open ? close() : openList())}
         onKeyDown={onButtonKeyDown}
         className={cx(
-          "inline-flex w-full min-w-36 items-center justify-between gap-3 rounded-ui bg-text/[0.07] text-text",
-          "transition-colors duration-150 hover:bg-text/[0.12] disabled:cursor-not-allowed disabled:opacity-40",
-          size === "sm" ? "h-8 pr-2 pl-3 text-[13px]" : "h-10 pr-2.5 pl-3.5 text-sm",
+          "inline-flex w-full min-w-36 items-center justify-between gap-3 border border-border bg-fill text-text",
+          "transition-colors duration-150 hover:border-line aria-expanded:border-line",
+          "disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-sub disabled:hover:border-border",
+          size === "sm" ? "h-8 pr-2 pl-2.5 text-[14px]" : "h-10 pr-2.5 pl-3 text-[15px]",
         )}
         {...rest}
       >
@@ -181,8 +182,8 @@ export function Select<T extends string = string>({
           aria-labelledby={rest["aria-labelledby"]}
           onKeyDown={onListKeyDown}
           className={cx(
-            "absolute z-40 mt-1.5 max-h-72 min-w-full overflow-auto rounded-ui border border-border bg-bg-alt p-1",
-            "animate-pop-in shadow-pop outline-none",
+            "absolute z-40 mt-1 max-h-72 min-w-full overflow-auto border border-line bg-bg p-1",
+            "animate-pop-in outline-none",
             align === "end" ? "right-0 origin-top-right" : "left-0 origin-top-left",
           )}
         >
@@ -200,15 +201,15 @@ export function Select<T extends string = string>({
                 onPointerMove={() => !o.disabled && active !== i && setActive(i)}
                 onClick={() => choose(i)}
                 className={cx(
-                  "flex items-center gap-2.5 rounded-ui-sm px-2.5 text-sm whitespace-nowrap",
+                  "flex items-center gap-2.5 px-2.5 text-[15px] whitespace-nowrap",
                   size === "sm" ? "h-8" : "h-9",
-                  o.disabled ? "cursor-not-allowed text-sub/50" : i === active ? "bg-text/[0.09] text-text" : "text-text",
+                  o.disabled ? "cursor-not-allowed text-sub line-through decoration-1" : i === active ? "bg-text text-bg" : "text-text",
                 )}
               >
-                {o.icon && <Icon name={o.icon} size={16} className="text-sub" />}
+                {o.icon && <Icon name={o.icon} size={16} />}
                 <span className="flex-1">{o.label}</span>
-                {o.hint && <span className="pl-4 text-xs text-sub">{o.hint}</span>}
-                <Icon name="check" size={15} className={cx("text-main", !isSelected && "invisible")} />
+                {o.hint && <span className="ll-note pl-4 opacity-80">{o.hint}</span>}
+                <Icon name="check" size={15} className={cx(!isSelected && "invisible")} />
               </li>
             );
           })}

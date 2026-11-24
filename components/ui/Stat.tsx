@@ -24,12 +24,12 @@ const ALIGN = { start: "items-start text-left", center: "items-center text-cente
 export function Stat({ label, value, unit, hint, size = "md", tone = "main", align = "start", className, ...rest }: StatProps) {
   return (
     <div className={cx("flex flex-col", ALIGN[align], className)} {...rest}>
-      <div className={cx("text-sub lowercase", size === "sm" ? "text-xs" : "text-sm")}>{label}</div>
-      <div className={cx("flex items-baseline font-mono leading-none font-medium tabular-nums", size === "lg" ? "mt-2" : "mt-1.5", VALUE[size], TONE[tone])}>
+      <div className={cx("text-sub", size === "sm" ? "ll-lettering-sm" : "ll-lettering")}>{label}</div>
+      <div className={cx("ll-readout flex items-baseline leading-none font-medium", size === "lg" ? "mt-3" : "mt-2", VALUE[size], TONE[tone])}>
         {value}
-        {unit && <span className={cx("ml-1 font-normal text-sub", size === "lg" ? "text-xl" : size === "md" ? "text-base" : "text-xs")}>{unit}</span>}
+        {unit && <span className={cx("ml-1 font-normal text-sub", size === "lg" ? "text-xl" : size === "md" ? "text-base" : "text-[13px]")}>{unit}</span>}
       </div>
-      {hint && <div className="mt-2 text-xs text-sub">{hint}</div>}
+      {hint && <div className="ll-note mt-2 text-sub">{hint}</div>}
     </div>
   );
 }

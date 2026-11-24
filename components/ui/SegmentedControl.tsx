@@ -17,7 +17,7 @@ export interface SegmentedControlProps<T extends string | number> {
   value: T;
   onChange: (value: NoInfer<T>) => void;
   options: readonly (SegmentOption<NoInfer<T>> | NoInfer<T>)[];
-  /** "pill": options sit in a tinted track. "inline": bare text row, accent marks the choice. */
+  /** "pill": ruled cells in one outlined box, the choice inverted. "inline": bare text row, the choice underlined in the action colour. */
   variant?: "pill" | "inline";
   size?: "sm" | "md";
   disabled?: boolean;
@@ -70,8 +70,8 @@ export function SegmentedControl<T extends string | number>({
       data-variant={variant}
       className={cx(
         "inline-flex max-w-full flex-wrap items-center",
-        variant === "pill" ? "gap-0.5 rounded-ui bg-text/[0.06] p-1" : "gap-x-1 gap-y-0.5",
-        disabled && "pointer-events-none opacity-40",
+        variant === "pill" ? "border border-line" : "gap-x-1 gap-y-0.5",
+        disabled && "pointer-events-none border-dashed border-border",
         className,
       )}
       {...rest}
@@ -92,14 +92,17 @@ export function SegmentedControl<T extends string | number>({
             onClick={() => onChange(o.value)}
             className={cx(
               "inline-flex items-center justify-center gap-1.5 font-medium whitespace-nowrap transition-colors duration-150",
-              "disabled:cursor-not-allowed disabled:opacity-40",
-              size === "sm" ? "h-7 px-2.5 text-[13px]" : "h-8 px-3 text-sm",
+              "disabled:cursor-not-allowed disabled:line-through disabled:decoration-1",
+              size === "sm" ? "h-7 px-2.5 text-[14px]" : "h-8 px-3 text-[15px]",
               variant === "pill"
                 ? cx(
-                    "rounded-ui-sm",
-                    selected ? "bg-bg text-main shadow-[0_1px_2px_rgb(0_0_0/0.18)]" : "text-sub hover:text-text",
+                    "grow border-l border-border first:border-l-0 focus-visible:outline-offset-[-2px]",
+                    selected ? "bg-text text-bg" : "text-sub hover:bg-fill-strong hover:text-text",
                   )
-                : cx("rounded-ui-sm", selected ? "text-main" : "text-sub hover:text-text"),
+                : cx(
+                    "underline-offset-[7px]",
+                    selected ? "text-main underline decoration-2" : "text-sub hover:text-text",
+                  ),
             )}
           >
             {o.icon && <Icon name={o.icon} size={size === "sm" ? 14 : 15} />}

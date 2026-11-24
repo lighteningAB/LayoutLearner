@@ -6,6 +6,7 @@ import { AccountControl } from "@/components/account/AccountControl";
 import { Icon, IconButton, cx } from "@/components/ui";
 import { getPreset } from "@/lib/layout/presets";
 import { useSettings } from "@/lib/settings";
+import { SHEET_COLUMN } from "./sheet";
 import { openCommandPalette } from "./commands";
 import { Logo, Wordmark } from "./Logo";
 import { NAV_LINKS, isActivePath } from "./nav-links";
@@ -14,19 +15,20 @@ function layoutLabel(id: string, custom: { id: string; name: string }[]): string
   return getPreset(id)?.name ?? custom.find((l) => l.id === id)?.name ?? id;
 }
 
+/** The sheet's header strip: wordmark, lettered tabs, active-layout chip, palette and account. */
 export function Nav() {
   const pathname = usePathname();
   const [settings] = useSettings();
   return (
-    <header className="mx-auto w-full max-w-[1120px] px-4 sm:px-8" data-testid="nav">
-      <div className="flex flex-wrap items-center gap-x-6 pt-4 md:h-20 md:flex-nowrap md:pt-0">
-        <Link href="/" aria-label="LayoutLearner home" className="flex h-10 items-center gap-2.5 rounded-ui" data-testid="nav-home">
+    <header className={cx(SHEET_COLUMN, "relative")} data-testid="nav">
+      <div className="flex flex-wrap items-center gap-x-6 border-b border-border pt-3 md:h-16 md:flex-nowrap md:gap-x-8 md:pt-0 lg:gap-x-11">
+        <Link href="/" aria-label="LayoutLearner home" className="flex h-10 items-center gap-2.5" data-testid="nav-home">
           <Logo />
-          <Wordmark />
+          <Wordmark className="max-[380px]:hidden" />
         </Link>
         <nav
           aria-label="Main"
-          className="order-last -mx-1 mt-2 flex w-[calc(100%+0.5rem)] items-center justify-between gap-0.5 md:order-none md:mx-0 md:mt-0 md:w-auto md:justify-start md:gap-1"
+          className="order-last mt-2 flex w-full items-stretch justify-between md:order-none md:mt-0 md:w-auto md:justify-start md:gap-1.5 md:self-stretch"
         >
           {NAV_LINKS.map((l) => {
             const active = isActivePath(pathname, l.href);
@@ -38,26 +40,26 @@ export function Nav() {
                 data-active={active}
                 data-testid={`nav-link-${l.label.toLowerCase()}`}
                 className={cx(
-                  "inline-flex h-9 items-center gap-2 rounded-ui px-2.5 text-sm font-medium transition-colors duration-150 sm:px-3",
-                  active ? "text-main" : "text-sub hover:text-text",
+                  "ll-lettering-lg relative -mb-px inline-flex h-11 items-center border-b-2 px-2 transition-colors duration-150 sm:px-3.5 md:h-auto",
+                  "focus-visible:outline-offset-[-2px]",
+                  active ? "border-main text-text" : "border-transparent text-sub hover:border-border hover:text-text",
                 )}
               >
-                <Icon name={l.icon} size={16} className="hidden sm:block" />
-                {l.label}
+                <span className="ll-trim">{l.label}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1.5">
           <Link
             href="/layouts"
             title="Current layout: change it"
             data-testid="layout-chip"
             data-layout={settings.layoutId}
-            className="mr-1 inline-flex h-8 max-w-40 items-center gap-2 rounded-full border border-border px-3 font-mono text-xs text-sub transition-colors duration-150 hover:border-sub/60 hover:text-text"
+            className="ll-lettering mr-1 inline-flex h-8 max-w-44 items-center gap-2 border border-line px-3 text-text transition-colors duration-150 hover:bg-text hover:text-bg"
           >
-            <Icon name="keyboard" size={15} />
-            <span className="truncate">{layoutLabel(settings.layoutId, settings.customLayouts)}</span>
+            <Icon name="keyboard" size={15} className="max-sm:hidden" />
+            <span className="ll-trim truncate">{layoutLabel(settings.layoutId, settings.customLayouts)}</span>
           </Link>
           <IconButton
             icon="search"

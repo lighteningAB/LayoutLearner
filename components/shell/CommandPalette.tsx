@@ -109,8 +109,13 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
       icon: t.icon,
       keywords: `toggle setting ${t.keywords ?? ""}`,
       hint: (
-        <span className={cx("font-mono text-xs", settings[t.key] ? "text-main" : "text-sub")}>
-          {settings[t.key] ? "on" : "off"}
+        <span
+          className={cx(
+            "ll-lettering-sm inline-flex h-5 items-center border px-1.5",
+            settings[t.key] ? "border-main bg-main text-main-fg" : "border-border text-sub",
+          )}
+        >
+          <span className="ll-trim">{settings[t.key] ? "on" : "off"}</span>
         </span>
       ),
       keepOpen: true,
@@ -190,7 +195,7 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
 
   return (
       <div onKeyDown={onKeyDown}>
-        <div className="flex h-14 items-center gap-3 border-b border-border px-4">
+        <div className="flex h-14 items-center gap-3 border-b border-line px-4">
           <Icon name="search" size={18} className="text-sub" />
           <input
             data-autofocus=""
@@ -208,7 +213,7 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
             placeholder="Type a command or search…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-text outline-none placeholder:text-sub"
+            className="h-full min-w-0 flex-1 bg-transparent text-[17px] text-text outline-none placeholder:text-sub"
           />
           <Kbd>esc</Kbd>
         </div>
@@ -217,10 +222,10 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
           id={`${uid}-list`}
           role="listbox"
           aria-label="Commands"
-          className="max-h-[min(52vh,420px)] overflow-y-auto p-2"
+          className="max-h-[min(52vh,420px)] overflow-y-auto p-1.5"
         >
           {results.length === 0 && (
-            <div className="px-3 py-8 text-center text-sm text-sub" data-testid="command-empty">
+            <div className="px-3 py-8 text-center text-[15px] text-sub" data-testid="command-empty">
               Nothing matches “{query.trim()}”
             </div>
           )}
@@ -230,8 +235,12 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
             return (
               <div key={c.id} role="none">
                 {heading && (
-                  <div role="presentation" className={cx("px-3 pb-1.5 text-xs font-medium text-sub", i > 0 ? "pt-4" : "pt-1.5")}>
+                  <div
+                    role="presentation"
+                    className={cx("ll-lettering-sm flex items-center gap-3 px-2.5 pb-1.5 text-sub", i > 0 ? "pt-4" : "pt-2")}
+                  >
                     {heading}
+                    <span aria-hidden className="h-px flex-1 bg-hairline" />
                   </div>
                 )}
                 <div
@@ -243,8 +252,8 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
                   onPointerMove={() => !isActive && setActive(i)}
                   onClick={() => run(c)}
                   className={cx(
-                    "flex h-10 cursor-pointer items-center gap-3 rounded-ui-sm px-3 text-sm",
-                    isActive ? "bg-text/[0.08] text-text" : "text-sub",
+                    "flex h-10 cursor-pointer items-center gap-3 border px-2.5 text-[15px]",
+                    isActive ? "border-line bg-fill-strong text-text" : "border-transparent text-sub",
                   )}
                 >
                   {c.icon ? (
@@ -254,13 +263,13 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
                   )}
                   <span className="min-w-0 flex-1 truncate">{c.label}</span>
                   {c.hint}
-                  {!showGroups && c.group && !c.label.startsWith(c.group) && <span className="text-xs text-sub/80">{c.group}</span>}
+                  {!showGroups && c.group && !c.label.startsWith(c.group) && <span className="ll-lettering-sm text-sub">{c.group}</span>}
                 </div>
               </div>
             );
           })}
         </div>
-        <div className="flex items-center gap-4 border-t border-border px-4 py-2.5 text-xs text-sub">
+        <div className="flex items-center gap-4 border-t border-border px-4 py-2.5 text-[13px] text-sub">
           <span className="flex items-center gap-1.5">
             <Kbd size="sm">↑</Kbd>
             <Kbd size="sm">↓</Kbd>
@@ -270,7 +279,7 @@ function PaletteBody({ initialQuery }: { initialQuery: string }) {
             <Kbd size="sm">↵</Kbd>
             select
           </span>
-          <span className="ml-auto font-mono tabular-nums" data-testid="command-count">
+          <span className="ll-readout ml-auto" data-testid="command-count">
             {results.length}
           </span>
         </div>

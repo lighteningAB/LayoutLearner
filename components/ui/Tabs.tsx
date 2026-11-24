@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
-import { cx } from "./cx";
+import { cx, isText } from "./cx";
 import { Icon, type IconName } from "./Icon";
 
 export interface TabItem<T extends string = string> {
@@ -23,7 +23,7 @@ export interface TabsProps<T extends string = string> {
   "data-testid"?: string;
 }
 
-/** Underlined tab list (role="tablist") with roving tabindex; Left/Right/Home/End move and activate. */
+/** Lettered tab list on a rule (role="tablist") with roving tabindex; Left/Right/Home/End move and activate. */
 export function Tabs<T extends string = string>({ items, value, onChange, className, panelClassName, ...rest }: TabsProps<T>) {
   const uid = useId();
   const listRef = useRef<HTMLDivElement>(null);
@@ -69,14 +69,14 @@ export function Tabs<T extends string = string>({ items, value, onChange, classN
               disabled={t.disabled}
               onClick={() => onChange(t.value)}
               className={cx(
-                "relative -mb-px inline-flex h-10 items-center gap-2 border-b-2 px-3 text-sm font-medium whitespace-nowrap",
-                "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40",
-                "focus-visible:rounded-ui-sm focus-visible:outline-offset-[-2px]",
-                selected ? "border-main text-text" : "border-transparent text-sub hover:text-text",
+                "ll-lettering relative -mb-px inline-flex h-10 items-center gap-2 border-b-2 px-3 whitespace-nowrap",
+                "transition-colors duration-150 disabled:cursor-not-allowed disabled:line-through disabled:decoration-1",
+                "focus-visible:outline-offset-[-2px]",
+                selected ? "border-main text-text" : "border-transparent text-sub hover:border-border hover:text-text",
               )}
             >
               {t.icon && <Icon name={t.icon} size={16} />}
-              {t.label}
+              {isText(t.label) ? <span className="ll-trim">{t.label}</span> : t.label}
             </button>
           );
         })}

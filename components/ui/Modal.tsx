@@ -92,7 +92,7 @@ export function Modal({
     >
       <div
         aria-hidden
-        className="fixed inset-0 animate-fade-in bg-black/45 backdrop-blur-[1px]"
+        className="fixed inset-0 animate-fade-in bg-scrim"
         onClick={closeOnBackdrop ? onClose : undefined}
       />
       <div
@@ -104,32 +104,44 @@ export function Modal({
         aria-describedby={description ? `${uid}-desc` : undefined}
         tabIndex={-1}
         className={cx(
-          "relative w-full animate-pop-in rounded-ui-lg border border-border bg-bg shadow-pop outline-none",
+          "relative w-full animate-pop-in border border-line bg-bg outline-none",
           WIDTH[size],
-          !bare && "p-6",
           className,
         )}
         {...rest}
       >
-        {!bare && (title || description) && (
-          <div className="mb-5 pr-8">
+        {/* Title strip: the sheet's lettered heading, ruled off from the body. */}
+        {!bare && (title || (showClose ?? !!title)) && (
+          <div className="flex min-h-11 items-stretch border-b border-line">
             {title && (
-              <h2 id={`${uid}-title`} className="text-lg font-semibold tracking-tight text-text">
+              <h2 id={`${uid}-title`} className="ll-lettering-lg min-w-0 flex-1 self-center px-5 py-3 text-text">
                 {title}
               </h2>
             )}
-            {description && (
-              <p id={`${uid}-desc`} className="mt-1.5 text-sm text-sub">
-                {description}
-              </p>
+            {(showClose ?? !!title) && (
+              <IconButton
+                icon="x"
+                label="Close"
+                size="sm"
+                className="ml-auto h-auto w-11 self-stretch border-0 border-l border-line hover:bg-text hover:text-bg"
+                onClick={onClose}
+              />
             )}
           </div>
         )}
-        {!bare && (showClose ?? !!title) && (
-          <IconButton icon="x" label="Close" size="sm" className="absolute top-4 right-4" onClick={onClose} />
+        {bare ? (
+          children
+        ) : (
+          <div className="p-5">
+            {description && (
+              <p id={`${uid}-desc`} className={cx("text-[15px] leading-snug text-sub", children ? "mb-5" : undefined)}>
+                {description}
+              </p>
+            )}
+            {children}
+            {footer && <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div>}
+          </div>
         )}
-        {children}
-        {footer && <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div>}
       </div>
     </div>,
     document.body,

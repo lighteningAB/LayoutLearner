@@ -19,7 +19,7 @@ export interface SliderProps {
   "data-testid"?: string;
 }
 
-/** Styled native range input (arrow keys, Home/End, PageUp/Down work natively). */
+/** Native range input drawn as a dimension line with a marker (arrow keys, Home/End, PageUp/Down work natively). */
 export function Slider({ value, onChange, min = 0, max = 100, step = 1, className, valueText, ...rest }: SliderProps) {
   const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
   return (
@@ -31,7 +31,7 @@ export function Slider({ value, onChange, min = 0, max = 100, step = 1, classNam
       value={value}
       aria-valuetext={valueText}
       onChange={(e) => onChange(Number(e.target.value))}
-      className={cx("ll-slider w-40 rounded-full", className)}
+      className={cx("ll-slider w-40", className)}
       style={{ "--ll-pct": `${pct}%` } as CSSProperties}
       {...rest}
     />

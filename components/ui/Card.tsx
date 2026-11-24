@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { cx } from "./cx";
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  /** "solid": bg-alt surface. "outline": transparent with a border. */
+  /** "solid": a ruled box, line-weight outline over a filled plate. "outline": hairline box, no fill. */
   variant?: "solid" | "outline";
   padding?: "none" | "sm" | "md" | "lg";
   as?: "div" | "section" | "article" | "aside" | "li";
@@ -17,8 +17,8 @@ export function Card({ variant = "solid", padding = "md", as = "div", className,
     <Tag
       data-variant={variant}
       className={cx(
-        "rounded-ui-lg",
-        variant === "solid" ? "bg-bg-alt" : "border border-border",
+        "border",
+        variant === "solid" ? "border-line bg-bg-alt" : "border-border",
         PAD[padding],
         className,
       )}
@@ -31,9 +31,9 @@ export function Card({ variant = "solid", padding = "md", as = "div", className,
 export const Panel = Card;
 
 export function CardTitle({ className, ...rest }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cx("text-[15px] font-semibold tracking-tight text-text", className)} {...rest} />;
+  return <h3 className={cx("ll-lettering-lg text-text", className)} {...rest} />;
 }
 
 export function CardDescription({ className, ...rest }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cx("mt-1 text-sm text-sub", className)} {...rest} />;
+  return <p className={cx("mt-1.5 text-[15px] leading-snug text-sub", className)} {...rest} />;
 }

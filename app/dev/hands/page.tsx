@@ -16,7 +16,7 @@ import type { LayoutKey, ParsedLayout } from "@/lib/types";
 
 const SEQUENCE = ["KeyQ", "KeyT", "KeyB", "KeyY", "KeyP", "Digit4", "Digit9", "Enter", "Space", "ShiftLeft", "KeyZ", "Backspace", "KeyG", "KeyH", "Slash"];
 const CAMERAS: HandsCamera[] = ["angled", "top", "front"];
-const THEMES = ["tide", "paper", "dusk"];
+const THEMES = ["blueprint", "whiteprint"];
 
 interface LiveDebug {
   targetKeyId?: string | null;

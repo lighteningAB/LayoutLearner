@@ -1,32 +1,44 @@
-/* 2D keyboard. Everything is sized in multiples of --u (one key unit, in px).
-   --u comes from container-query units (SSR / first paint) and is then pinned to an
-   exact px value by a ResizeObserver in Keyboard2D.tsx. */
+/* 2D keyboard, drawn as a drafting plate. Everything is sized in multiples of --u (one key
+   unit, in px). --u comes from container-query units (SSR / first paint) and is then pinned to
+   an exact px value by a ResizeObserver in Keyboard2D.tsx.
+
+   Key states, all carried by line and fill (no shadows, no glows):
+     idle            outlined cell, mono legend
+     finger colours  a tint of the finger colour; home keys are filled solid
+     highlight       solid finger fill + a heavy action-colour outline standing off the key
+     pressed / held  inverted (line-colour fill, sheet-colour legend)
+     error           solid error fill
+     dim             dashed outline, no fill (a hidden line) */
 
 .root {
-  --kb-key-bg: var(--key-bg, #2c2e31);
-  --kb-key-border: var(--key-border, #3b3e43);
-  --kb-key-text: var(--key-text, #d1d0c5);
-  --kb-sub: var(--sub, #7f8288);
-  --kb-main: var(--main, #e2b714);
-  --kb-main-fg: var(--main-fg, #1e1f22);
-  --kb-error: var(--error, #ca4754);
-  --kb-f0: var(--finger-0, #e06c75);
-  --kb-f1: var(--finger-1, #e5a05a);
-  --kb-f2: var(--finger-2, #d8c556);
-  --kb-f3: var(--finger-3, #7fc27a);
-  --kb-f4: var(--finger-4, #9aa0a8);
-  --kb-f5: var(--finger-5, #9aa0a8);
-  --kb-f6: var(--finger-6, #56b6c2);
-  --kb-f7: var(--finger-7, #61a0ef);
-  --kb-f8: var(--finger-8, #a78bfa);
-  --kb-f9: var(--finger-9, #e879b9);
+  --kb-bg: var(--bg, #164b9b);
+  --kb-key-bg: var(--key-bg, #2765bd);
+  --kb-key-border: var(--key-border, #f2f6ff);
+  --kb-key-text: var(--key-text, #f2f6ff);
+  --kb-sub: var(--sub, #bdd2f4);
+  --kb-main: var(--main, #ffc61a);
+  --kb-main-fg: var(--main-fg, #0b2350);
+  --kb-error: var(--error, #ffc0b4);
+  --kb-tint-base: var(--key-tint-base, #164b9b);
+  --kb-tint: var(--finger-tint, 24%);
+  --kb-finger-fg: var(--finger-fg, #0b2350);
+  --kb-f0: var(--finger-0, #ff9ec4);
+  --kb-f1: var(--finger-1, #ffa857);
+  --kb-f2: var(--finger-2, #c4e86a);
+  --kb-f3: var(--finger-3, #4fe8c8);
+  --kb-f4: var(--finger-4, #e9e2ff);
+  --kb-f5: var(--finger-5, #d3b3ff);
+  --kb-f6: var(--finger-6, #9db4ff);
+  --kb-f7: var(--finger-7, #5fd4ff);
+  --kb-f8: var(--finger-8, #f5ea8c);
+  --kb-f9: var(--finger-9, #ff8f7a);
 
   container-type: inline-size;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  font-family: var(--font-sans, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -42,7 +54,7 @@
 .key {
   position: absolute;
   box-sizing: border-box;
-  padding: calc(var(--u) * 0.045);
+  padding: calc(var(--u) * 0.05);
 }
 
 .cap {
@@ -60,38 +72,24 @@
   justify-content: center;
   gap: calc(var(--u) * 0.01);
   overflow: hidden;
-  border-radius: calc(var(--u) * 0.15);
   border: 1px solid var(--cap-border);
   background: var(--cap-bg);
   color: var(--cap-fg);
-  box-shadow:
-    0 calc(var(--u) * 0.05) 0 color-mix(in srgb, #000 30%, var(--cap-bg)),
-    inset 0 1px 0 rgb(255 255 255 / 0.07);
-  transform: translateY(calc(var(--u) * -0.02));
+  outline: 0 solid transparent;
   transition:
-    background-color 110ms ease,
-    color 110ms ease,
-    border-color 110ms ease,
-    box-shadow 110ms ease,
-    transform 70ms ease,
-    opacity 160ms ease;
+    background-color 120ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 120ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 120ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Finger colour: soft tint + a solid underline. */
+/* Finger colour: a tint on every key the finger owns; the key it rests on is filled solid. */
 .finger {
-  --cap-bg: color-mix(in srgb, var(--fc) 15%, var(--kb-key-bg));
-  --cap-border: color-mix(in srgb, var(--fc) 32%, var(--kb-key-border));
+  --cap-bg: color-mix(in srgb, var(--fc) var(--kb-tint), var(--kb-tint-base));
 }
-.finger::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: max(2px, calc(var(--u) * 0.07));
-  background: var(--fc);
-  opacity: 0.9;
-  transition: opacity 110ms ease;
+.finger.home {
+  --cap-bg: var(--fc);
+  --cap-fg: var(--kb-finger-fg);
 }
 .f0 { --fc: var(--kb-f0); }
 .f1 { --fc: var(--kb-f1); }
@@ -104,61 +102,58 @@
 .f8 { --fc: var(--kb-f8); }
 .f9 { --fc: var(--kb-f9); }
 
-/* Home-row bump. */
+/* Home-row bump: a short drafted tick under the legend. */
 .home::before {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: calc(var(--u) * 0.13);
-  width: calc(var(--u) * 0.2);
-  height: max(1.5px, calc(var(--u) * 0.035));
-  border-radius: 99px;
+  bottom: calc(var(--u) * 0.08);
+  width: calc(var(--u) * 0.22);
+  height: max(1px, calc(var(--u) * 0.03));
   transform: translateX(-50%);
   background: currentColor;
-  opacity: 0.55;
 }
 
 /* Heat: --heat-pct is set inline (0%..100%). */
 .heat {
-  --cap-bg: color-mix(in srgb, var(--kb-error) var(--heat-pct), var(--kb-key-bg));
-  --cap-border: color-mix(in srgb, var(--kb-error) var(--heat-pct), var(--kb-key-border));
+  --cap-bg: color-mix(in srgb, var(--kb-error) var(--heat-pct), var(--kb-tint-base));
 }
 .heatHot {
-  --cap-fg: #fff;
+  --cap-fg: var(--kb-main-fg);
 }
 
 /* ---- states (data-state on the .key wrapper) ---- */
 
 .key[data-state="dim"] .cap {
-  opacity: 0.32;
+  --cap-bg: transparent;
+  --cap-fg: var(--kb-sub);
+  border-style: dashed;
+  opacity: 0.55;
 }
 
 .key[data-state="highlight"] {
   z-index: 2;
 }
+/* Without finger colours the next key is the action colour itself. */
 .key[data-state="highlight"] .cap {
   --cap-bg: var(--kb-main);
   --cap-fg: var(--kb-main-fg);
   --cap-border: var(--kb-main);
-  transform: translateY(calc(var(--u) * -0.05));
-  box-shadow:
-    0 calc(var(--u) * 0.08) 0 color-mix(in srgb, #000 35%, var(--kb-main)),
-    0 0 0 max(2px, calc(var(--u) * 0.05)) color-mix(in srgb, var(--kb-main) 35%, transparent),
-    0 0 calc(var(--u) * 0.5) color-mix(in srgb, var(--kb-main) 60%, transparent);
+  overflow: visible;
+  outline: max(2px, calc(var(--u) * 0.06)) solid var(--kb-main);
+  outline-offset: max(1px, calc(var(--u) * 0.035));
 }
-.key[data-state="highlight"] .cap::after {
-  opacity: 0;
+/* With them it keeps its finger's colour, solid, inside the action outline. */
+.key[data-state="highlight"] .finger {
+  --cap-bg: var(--fc);
+  --cap-fg: var(--kb-finger-fg);
+  --cap-border: var(--kb-finger-fg);
 }
 
 .key[data-state="pressed"] .cap {
-  --cap-bg: color-mix(in srgb, var(--kb-key-text) 30%, var(--kb-key-bg));
-  --cap-border: color-mix(in srgb, var(--kb-key-text) 65%, var(--kb-key-bg));
-  transform: translateY(calc(var(--u) * 0.035));
-  box-shadow: inset 0 calc(var(--u) * 0.04) calc(var(--u) * 0.08) rgb(0 0 0 / 0.35);
-}
-.key[data-state="pressed"] .finger {
-  --cap-bg: color-mix(in srgb, var(--fc) 55%, var(--kb-key-bg));
-  --cap-border: var(--fc);
+  --cap-bg: var(--kb-key-text);
+  --cap-fg: var(--kb-bg);
+  --cap-border: var(--kb-key-text);
 }
 
 .key[data-state="error"] {
@@ -166,14 +161,8 @@
 }
 .key[data-state="error"] .cap {
   --cap-bg: var(--kb-error);
-  --cap-fg: #fff;
-  --cap-border: var(--kb-error);
-  box-shadow:
-    0 calc(var(--u) * 0.05) 0 color-mix(in srgb, #000 40%, var(--kb-error)),
-    0 0 calc(var(--u) * 0.35) color-mix(in srgb, var(--kb-error) 55%, transparent);
-}
-.key[data-state="error"] .cap::after {
-  opacity: 0;
+  --cap-fg: var(--kb-main-fg);
+  --cap-border: var(--kb-key-text);
 }
 
 /* ---- legends ---- */
@@ -185,8 +174,8 @@
   box-sizing: border-box;
   text-align: center;
   line-height: 1.02;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-weight: 500;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 .wrap {
@@ -194,12 +183,12 @@
   overflow-wrap: normal;
 }
 .muted {
-  opacity: 0.6;
-  font-weight: 500;
+  opacity: 0.75;
+  font-weight: 400;
 }
 .name {
-  font-weight: 500;
-  opacity: 0.8;
+  font-weight: 400;
+  letter-spacing: -0.02em;
   text-transform: lowercase;
 }
 
@@ -216,34 +205,33 @@
   outline: none;
 }
 .key[role="button"]:hover .cap {
-  --cap-border: color-mix(in srgb, var(--kb-key-text) 55%, var(--kb-key-bg));
+  --cap-bg: var(--kb-key-text);
+  --cap-fg: var(--kb-bg);
 }
 .key[role="button"]:focus-visible {
   z-index: 3;
 }
 .key[role="button"]:focus-visible .cap {
-  box-shadow:
-    0 0 0 max(2px, calc(var(--u) * 0.05)) var(--kb-key-bg),
-    0 0 0 max(4px, calc(var(--u) * 0.1)) var(--kb-key-text);
+  overflow: visible;
+  outline: 2px solid var(--kb-key-text);
+  outline-offset: 2px;
 }
 .key[data-selected] {
   z-index: 4;
 }
 .key[data-selected] .cap {
   --cap-border: var(--kb-main);
-  transform: translateY(calc(var(--u) * -0.05));
-  box-shadow:
-    0 0 0 max(2px, calc(var(--u) * 0.06)) var(--kb-main),
-    0 calc(var(--u) * 0.08) calc(var(--u) * 0.2) rgb(0 0 0 / 0.35);
+  overflow: visible;
+  outline: max(2px, calc(var(--u) * 0.06)) solid var(--kb-main);
+  outline-offset: 0;
 }
-/* Small corner dot: this key's finger or home role was set by hand. */
+/* Corner flag: this key's finger or home role was set by hand. */
 .mark {
   position: absolute;
-  top: calc(var(--u) * 0.07);
-  right: calc(var(--u) * 0.07);
-  width: max(5px, calc(var(--u) * 0.16));
-  height: max(5px, calc(var(--u) * 0.16));
-  border-radius: 99px;
+  top: 0;
+  right: 0;
+  width: max(6px, calc(var(--u) * 0.2));
+  height: max(6px, calc(var(--u) * 0.2));
   background: var(--kb-main);
-  box-shadow: 0 0 0 max(1px, calc(var(--u) * 0.03)) var(--kb-key-bg);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
 }

@@ -35,7 +35,9 @@ import { THEMES, useSettings, type ThemeId } from "@/lib/settings";
 const COLOR_TOKENS = [
   "bg",
   "bg-alt",
+  "line",
   "border",
+  "hairline",
   "text",
   "sub",
   "main",
@@ -50,22 +52,28 @@ const COLOR_TOKENS = [
 ] as const;
 
 const TYPE_SCALE: [string, string, string][] = [
-  ["text-6xl font-mono font-medium", "96", "Stat lg · mono 60"],
-  ["text-4xl font-mono font-medium", "74.2", "Stat md · mono 36"],
-  ["text-[28px] font-semibold tracking-tight", "Page title", "sans 28 / 600"],
-  ["text-lg font-semibold tracking-tight", "Dialog title", "sans 18 / 600"],
-  ["text-[15px] font-semibold tracking-tight", "Section & card title", "sans 15 / 600"],
-  ["text-[15px]", "Body copy for descriptions and longer prose.", "sans 15 / 400"],
-  ["text-sm", "Controls, rows and menu items.", "sans 14 / 400"],
-  ["text-[13px] text-sub", "Secondary descriptions under labels.", "sans 13 / sub"],
-  ["text-xs text-sub", "Captions, hints and footer text.", "sans 12 / sub"],
-  ["font-mono text-2xl", "the quick brown fox", "typing text · mono 24"],
+  ["ll-title", "Page title", "ll-title · Josefin 300"],
+  ["ll-numeral text-7xl", "0:30", "ll-numeral · Josefin 300 figures"],
+  ["ll-heading", "Section heading", "ll-heading · Josefin 600 / 20"],
+  ["ll-lettering-lg", "Tabs, card and dialog titles", "ll-lettering-lg · 14"],
+  ["ll-lettering", "Labels and buttons", "ll-lettering · 12"],
+  ["ll-lettering-sm text-sub", "Tags and table heads", "ll-lettering-sm · 11"],
+  ["ll-readout text-4xl font-medium", "74.2", "ll-readout · Plex Mono tabular"],
+  ["text-[17px]", "Lead copy under a page title.", "Barlow 17 / 400"],
+  ["text-base", "Body copy, setting labels and longer prose.", "Barlow 16 / 400"],
+  ["text-[15px]", "Controls, rows and menu items.", "Barlow 15 / 400"],
+  ["text-[14px] text-sub", "Secondary descriptions under labels.", "Barlow 14 / sub"],
+  ["ll-note text-sub", "SCALE 1:1 · KEYS IN u", "ll-note · Plex Mono 11"],
+  ["font-mono text-2xl", "the quick brown fox", "typing text · Plex Mono 24"],
 ];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border-t border-border py-8" data-testid={`ui-${title.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
-      <h2 className="mb-5 font-mono text-xs text-main lowercase">{title}</h2>
+    <section className="py-8" data-testid={`ui-${title.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
+      <div className="mb-5 flex items-center gap-4">
+        <h2 className="ll-heading text-text">{title}</h2>
+        <span aria-hidden className="h-px flex-1 bg-border" />
+      </div>
       {children}
     </section>
   );
@@ -74,7 +82,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-x-4 gap-y-2 py-2 sm:flex-row sm:items-center">
-      <div className="w-24 shrink-0 text-xs text-sub">{label}</div>
+      <div className="ll-lettering-sm w-24 shrink-0 text-sub">{label}</div>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">{children}</div>
     </div>
   );
@@ -87,19 +95,19 @@ function fingerName(i: number) {
 
 function ThemeTokens({ theme }: { theme: (typeof THEMES)[number] }) {
   return (
-    <div data-theme={theme.id} data-testid={`tokens-${theme.id}`} className="rounded-ui-lg border border-border bg-bg p-5 text-text">
+    <div data-theme={theme.id} data-testid={`tokens-${theme.id}`} className="ll-grid border border-line bg-bg p-5 text-text">
       <div className="flex items-baseline justify-between">
-        <div className="text-[15px] font-semibold tracking-tight">{theme.name}</div>
-        <div className="font-mono text-xs text-sub">
+        <div className="ll-lettering-lg">{theme.name}</div>
+        <div className="ll-note text-sub">
           {theme.id} · {theme.scheme}
         </div>
       </div>
-      <p className="mt-1 text-[13px] text-sub">{theme.description}</p>
+      <p className="mt-1 text-[14px] text-sub">{theme.description}</p>
       <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">
         {COLOR_TOKENS.map((t) => (
           <div key={t} className="min-w-0">
-            <div className="h-9 rounded-ui-sm border border-border" style={{ backgroundColor: `var(--${t})` }} />
-            <div className="mt-1 truncate font-mono text-[10px] text-sub">{t}</div>
+            <div className="h-9 border border-line" style={{ backgroundColor: `var(--${t})` }} />
+            <div className="ll-note mt-1 truncate text-sub">{t}</div>
           </div>
         ))}
       </div>
@@ -108,11 +116,8 @@ function ThemeTokens({ theme }: { theme: (typeof THEMES)[number] }) {
           <div
             key={`tint-${i}`}
             title={`--finger-${i} (${fingerName(i)}) as a keycap tint`}
-            className="flex size-9 items-center justify-center rounded-ui-sm border font-mono text-xs text-key-text"
-            style={{
-              backgroundColor: `color-mix(in srgb, var(--finger-${i}) 30%, var(--key-bg))`,
-              borderColor: `color-mix(in srgb, var(--finger-${i}) 55%, var(--key-border))`,
-            }}
+            className="flex size-9 items-center justify-center border border-key-border font-mono text-[13px] text-key-text"
+            style={{ backgroundColor: `color-mix(in srgb, var(--finger-${i}) var(--finger-tint), var(--key-tint-base))` }}
           >
             {i}
           </div>
@@ -123,8 +128,8 @@ function ThemeTokens({ theme }: { theme: (typeof THEMES)[number] }) {
           <div
             key={`solid-${i}`}
             title={`--finger-${i} (${fingerName(i)}) solid`}
-            className="flex size-9 items-center justify-center rounded-ui-sm font-mono text-xs font-medium"
-            style={{ backgroundColor: `var(--finger-${i})`, color: theme.scheme === "dark" ? "var(--bg)" : "#fff" }}
+            className="flex size-9 items-center justify-center border border-key-border font-mono text-[13px] font-medium text-finger-fg"
+            style={{ backgroundColor: `var(--finger-${i})` }}
           >
             {"asdf  jkl;"[i] === " " ? "␣" : "asdf  jkl;"[i]}
           </div>
@@ -137,8 +142,8 @@ function ThemeTokens({ theme }: { theme: (typeof THEMES)[number] }) {
           <span className="text-error">wrong</span>
           <span className="text-error-alt">extra</span>
         </span>
-        <span className="rounded-ui-sm bg-main px-2 py-0.5 text-xs font-medium text-main-fg">accent</span>
-        <span className="text-xs text-success">success</span>
+        <span className="ll-lettering-sm bg-main px-2 py-1 text-main-fg">action</span>
+        <span className="text-[14px] text-success">success</span>
         <Kbd>esc</Kbd>
       </div>
     </div>
@@ -162,7 +167,7 @@ export default function UiKitchenSink() {
     <div data-testid="ui-kitchen-sink">
       <PageHeader
         eyebrow="dev / ui"
-        title="Design system"
+        title="Drawing kit"
         description="Every primitive, token and state. Switch theme to check them all."
         actions={
           <SegmentedControl<ThemeId>
@@ -182,6 +187,7 @@ export default function UiKitchenSink() {
           <Button variant="primary">Start test</Button>
           <Button variant="primary" size="lg" icon="play">Large</Button>
           <Button variant="primary" disabled>Disabled</Button>
+          <Button variant="primary" loading>Saving</Button>
         </Row>
         <Row label="subtle">
           <Button size="sm">Small</Button>
@@ -263,11 +269,11 @@ export default function UiKitchenSink() {
               { label: "Delete", icon: "trash", danger: true, separator: true, onSelect: () => setMenuLog("delete") },
             ]}
           />
-          <span className="font-mono text-xs text-sub" data-testid="ui-menu-log">last: {menuLog}</span>
+          <span className="ll-note text-sub" data-testid="ui-menu-log">last: {menuLog}</span>
         </Row>
         <Row label="slider">
           <Slider aria-label="Demo slider" value={slider} onChange={setSlider} data-testid="ui-slider" />
-          <span className="font-mono text-sm text-main tabular-nums">{slider}</span>
+          <span className="ll-readout text-[15px] text-main">{slider}</span>
           <Slider aria-label="Disabled slider" value={30} onChange={() => {}} disabled />
         </Row>
         <Row label="input">
@@ -287,9 +293,9 @@ export default function UiKitchenSink() {
           value={tab}
           onChange={setTab}
           items={[
-            { value: "overview", label: "Overview", icon: "chart", content: <p className="text-sm text-sub">Overview panel. Arrow keys move between tabs.</p> },
-            { value: "keys", label: "Per key", icon: "keyboard", content: <p className="text-sm text-sub">Per-key panel.</p> },
-            { value: "history", label: "History", icon: "clock", content: <p className="text-sm text-sub">History panel.</p> },
+            { value: "overview", label: "Overview", icon: "chart", content: <p className="text-[15px] text-sub">Overview panel. Arrow keys move between tabs.</p> },
+            { value: "keys", label: "Per key", icon: "keyboard", content: <p className="text-[15px] text-sub">Per-key panel.</p> },
+            { value: "history", label: "History", icon: "clock", content: <p className="text-[15px] text-sub">History panel.</p> },
             { value: "off", label: "Disabled", disabled: true },
           ]}
         />
@@ -311,7 +317,7 @@ export default function UiKitchenSink() {
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
           <Card>
             <CardTitle>Card title</CardTitle>
-            <CardDescription>Solid panel on bg-alt, for grouped content.</CardDescription>
+            <CardDescription>A ruled box: line-weight outline over a filled plate.</CardDescription>
             <div className="mt-5 space-y-3">
               <ProgressBar aria-label="Lesson progress" value={64} />
               <ProgressBar aria-label="Accuracy" value={92} tone="success" size="md" />
@@ -320,23 +326,23 @@ export default function UiKitchenSink() {
           </Card>
           <Card variant="outline">
             <CardTitle>Outline card</CardTitle>
-            <CardDescription>Transparent with a border, for quieter grouping.</CardDescription>
+            <CardDescription>Hairline box with no fill, for quieter grouping.</CardDescription>
             <div className="mt-5 flex flex-wrap gap-2">
               <Badge>neutral</Badge>
               <Badge tone="main">current</Badge>
               <Badge tone="success" icon="check">done</Badge>
               <Badge tone="error" icon="alert">3 weak keys</Badge>
             </div>
-            <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-sub">
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-[13px] text-sub">
               <Kbd>tab</Kbd>+<Kbd>enter</Kbd><span className="mx-2">·</span><Kbd>esc</Kbd><span className="mx-2">·</span><Kbd size="sm">⌘</Kbd><Kbd size="sm">K</Kbd>
             </div>
             <div className="mt-5 space-y-2">
-              <Skeleton animate className="h-3 w-2/3 rounded-full" />
-              <Skeleton animate className="h-3 w-1/3 rounded-full" />
+              <Skeleton animate className="h-3 w-2/3" />
+              <Skeleton animate className="h-3 w-1/3" />
             </div>
           </Card>
         </div>
-        <Card padding="none" className="mt-3 divide-y divide-border/70 px-5">
+        <Card padding="none" className="mt-3 divide-y divide-hairline px-5">
           <SettingRow label="Setting row" description="Label and description left, control right." htmlFor="ui-row-toggle">
             <Toggle id="ui-row-toggle" checked={on} onChange={setOn} />
           </SettingRow>
@@ -384,11 +390,11 @@ export default function UiKitchenSink() {
       </Section>
 
       <Section title="Type scale">
-        <div className="divide-y divide-border/70">
+        <div className="divide-y divide-hairline">
           {TYPE_SCALE.map(([cls, sample, note]) => (
             <div key={note} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-3">
               <div className={`min-w-0 truncate ${cls}`}>{sample}</div>
-              <div className="font-mono text-xs text-sub">{note}</div>
+              <div className="ll-note text-sub">{note}</div>
             </div>
           ))}
         </div>
@@ -397,9 +403,9 @@ export default function UiKitchenSink() {
       <Section title="Icons">
         <div className="grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-2">
           {ICON_NAMES.map((n) => (
-            <div key={n} className="flex flex-col items-center gap-2 rounded-ui bg-bg-alt px-1 py-3 text-text">
+            <div key={n} className="flex flex-col items-center gap-2 border border-hairline px-1 py-3 text-text">
               <Icon name={n} size={20} />
-              <span className="max-w-full truncate font-mono text-[10px] text-sub">{n}</span>
+              <span className="ll-note max-w-full truncate text-sub">{n}</span>
             </div>
           ))}
         </div>

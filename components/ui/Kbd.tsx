@@ -5,13 +5,13 @@ export interface KbdProps extends HTMLAttributes<HTMLElement> {
   size?: "sm" | "md";
 }
 
-/** Keycap-styled key hint: <Kbd>esc</Kbd> */
+/** Key hint drawn as an outlined key cell: <Kbd>esc</Kbd> */
 export function Kbd({ size = "md", className, ...rest }: KbdProps) {
   return (
     <kbd
       className={cx(
-        "inline-flex items-center justify-center rounded-[5px] border border-b-2 border-key-border bg-key-bg font-mono font-medium text-key-text",
-        size === "sm" ? "h-[18px] min-w-[18px] px-1 text-[10px]" : "h-[22px] min-w-[22px] px-1.5 text-[11px]",
+        "inline-flex items-center justify-center border border-key-border bg-key-bg font-mono leading-none font-medium text-key-text",
+        size === "sm" ? "h-[20px] min-w-[20px] px-1 text-[11px]" : "h-[24px] min-w-[24px] px-1.5 text-[12px]",
         className,
       )}
       {...rest}

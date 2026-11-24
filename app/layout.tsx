@@ -1,14 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Geist, JetBrains_Mono } from "next/font/google";
+import { Barlow_Semi_Condensed, IBM_Plex_Mono, Josefin_Sans } from "next/font/google";
 import { AccountProvider } from "@/components/account/AccountProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { getAuthConfig } from "@/lib/auth/config";
 import { DEFAULT_THEME, themeInitScript } from "@/lib/settings/themes";
 import "./globals.css";
 
-const sans = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", display: "swap" });
+// Sheet lettering (tracked caps), UI and body, and typing text / legends / readouts.
+const display = Josefin_Sans({ subsets: ["latin"], weight: ["300", "600", "700"], variable: "--font-josefin", display: "swap" });
+const sans = Barlow_Semi_Condensed({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-barlow", display: "swap" });
+const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-mono", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "LayoutLearner", template: "%s · LayoutLearner" },
@@ -22,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" data-theme={DEFAULT_THEME} className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" data-theme={DEFAULT_THEME} className={`${display.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
