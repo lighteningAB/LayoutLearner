@@ -16,14 +16,18 @@ export interface LayoutCardProps {
   menuItems: MenuItem[];
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+/** One cell of the ruled spec row under a plate. */
+function Spec({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0">
-      <dt className="truncate text-[11px] text-sub">{label}</dt>
-      <dd className="mt-0.5 truncate font-mono text-[13px] text-text tabular-nums">{value}</dd>
+    <div className="min-w-0 border-hairline px-3 py-2.5 max-sm:[&:nth-child(even)]:border-l max-sm:[&:nth-child(n+3)]:border-t sm:border-l sm:first:border-l-0">
+      <dt className="ll-lettering-sm truncate text-sub">{label}</dt>
+      <dd className="ll-readout mt-1.5 truncate text-[14px] leading-none text-text">{value}</dd>
     </div>
   );
 }
+
+/** Height of the plate window in a gallery cell (px). */
+const PLATE_H = 152;
 
 /**
  * True once the element has come within `margin` of the viewport; stays true
@@ -55,11 +59,14 @@ function useNearViewport(margin = "300px") {
   return [ref, near] as const;
 }
 
+/** One plate of the sheet index: title strip, the board drawn as the content, a note, a ruled spec row. */
 export const LayoutCard = memo(function LayoutCard({ entry, selected, inspected, onSelect, onInspect, menuItems }: LayoutCardProps) {
   const { layout, analysis, diff } = entry;
   const broken = !layout;
   const [previewRef, nearViewport] = useNearViewport();
   const moved = diff ? diff.movedLetters.length : null;
+  // Boards differ a lot in aspect (a 60% is 15u x 5u, an ErgoDox far taller): fit the unit to the window's height too.
+  const unit = layout ? Math.max(9, Math.min(23, Math.floor((PLATE_H - 28) / layout.height))) : 0;
 
   return (
     <li
@@ -69,72 +76,85 @@ export const LayoutCard = memo(function LayoutCard({ entry, selected, inspected,
       data-inspected={inspected}
       data-broken={broken || undefined}
       className={cx(
-        "group relative flex min-w-0 flex-col rounded-ui-lg border bg-bg-alt p-3.5 transition-[border-color,box-shadow] duration-150",
-        selected
-          ? "border-main shadow-[0_0_0_1px_var(--main)]"
-          : broken
-            ? "border-error/40"
-            : inspected
-              ? "border-sub/70"
-              : "border-transparent hover:border-sub/40",
+        "group relative flex min-w-0 flex-col border-r border-b border-border transition-colors duration-150 hover:bg-fill",
+        // The plate in use: a line-weight outline in the action colour, over the shared hairline grid.
+        selected && "z-[1] outline-2 -outline-offset-2 outline-main",
+        !selected && broken && "outline-1 -outline-offset-4 outline-error outline-dashed",
+        !selected && !broken && inspected && "outline-1 -outline-offset-4 outline-line outline-dashed",
       )}
     >
-      {/* Whole-card click target; the menu sits above it. */}
+      {/* Whole-cell click target; the menu sits above it. */}
       <button
         type="button"
         aria-pressed={selected}
         aria-label={broken ? `${entry.name}: needs fixing, show details` : selected ? `${entry.name}, current layout` : `Use ${entry.name}`}
         data-testid="layout-card-select"
         onClick={() => (broken ? onInspect(entry) : onSelect(entry))}
-        className="absolute inset-0 z-[1] cursor-pointer rounded-ui-lg"
+        className="absolute inset-0 z-[1] cursor-pointer focus-visible:outline-offset-[-6px]"
       />
 
-      {/* Fixed height, so the lazily mounted keyboard never moves the card. */}
-      <div ref={previewRef} className="flex h-[118px] items-center justify-center rounded-ui bg-bg px-3">
-        {layout ? (
-          nearViewport && <Keyboard2D layout={layout} fingerColors maxUnit={21} className="pointer-events-none" />
-        ) : (
-          <div className="flex flex-col items-center gap-2 text-error">
-            <Icon name="alert" size={22} />
-            <span className="text-xs font-medium">Can't be read</span>
-          </div>
+      {/* Title strip: name in sheet lettering, state tag, overflow menu. */}
+      <div
+        className={cx(
+          "flex h-11 items-center gap-2 border-b pr-1.5 pl-3 sm:pl-4",
+          selected ? "border-main bg-main text-main-fg" : "border-hairline text-text",
         )}
-      </div>
-
-      <div className="mt-3.5 flex items-center gap-2 pl-1">
-        <h3 className="min-w-0 truncate text-[15px] font-semibold tracking-tight text-text">{entry.name}</h3>
+      >
+        <h3 className="ll-lettering-lg ll-trim min-w-0 truncate">{entry.name}</h3>
         {selected && (
-          <Badge tone="main" icon="check" data-testid="layout-card-active">
-            Active
-          </Badge>
+          <span
+            className="ll-lettering-sm inline-flex h-[22px] shrink-0 items-center gap-1 border border-main-fg px-1.5"
+            data-testid="layout-card-active"
+          >
+            <Icon name="check" size={12} strokeWidth={2.25} />
+            <span className="ll-trim">Active</span>
+          </span>
         )}
         {broken && (
-          <Badge tone="error" icon="alert" data-testid="layout-card-error">
+          <Badge tone="error" icon="alert" className="shrink-0" data-testid="layout-card-error">
             Error
           </Badge>
         )}
+        {!selected && !broken && inspected && <Badge className="shrink-0">Shown below</Badge>}
         <Menu
           aria-label={`${entry.name} actions`}
           align="end"
-          className="relative z-[2] -my-1 ml-auto"
+          className="relative z-[2] ml-auto"
           items={menuItems}
           trigger={(props) => (
-            <IconButton icon="more" label={`${entry.name} actions`} size="sm" data-testid="layout-card-menu" {...props} />
+            <IconButton
+              icon="more"
+              label={`${entry.name} actions`}
+              size="sm"
+              data-testid="layout-card-menu"
+              className={selected ? "!text-main-fg hover:!border-main-fg" : "!text-text"}
+              {...props}
+            />
           )}
         />
       </div>
 
-      <p className="mt-1 line-clamp-2 min-h-[36px] pl-1 text-[13px] leading-[18px] text-sub">
+      {/* Fixed height, so the lazily mounted keyboard never moves the cell. */}
+      <div ref={previewRef} className={cx("flex items-center justify-center px-3", broken && "ll-hatch")} style={{ height: PLATE_H }}>
+        {layout ? (
+          nearViewport && <Keyboard2D layout={layout} fingerColors maxUnit={unit} className="pointer-events-none" />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-error">
+            <Icon name="alert" size={22} />
+            <span className="ll-lettering-sm">Can&apos;t be read</span>
+          </div>
+        )}
+      </div>
+
+      <p className="line-clamp-2 min-h-[52px] px-3 pb-3 text-[14px] leading-[20px] text-sub sm:px-4">
         {broken ? entry.error : entry.description}
       </p>
 
-      <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-border/70 pt-3 pl-1">
-        <Fact label={FAMILY_LABEL[entry.family]} value={layout ? `${layout.keys.length} keys` : "-"} />
-        <Fact label="Home row" value={analysis?.rows ? pct(analysis.rows.home) : "-"} />
-        <Fact
-          label="vs QWERTY"
-          value={moved === null || !diff?.comparable ? "-" : moved === 0 ? "same" : `${moved} moved`}
-        />
+      <dl className="mt-auto grid grid-cols-2 border-t sm:grid-cols-[1.2fr_0.65fr_1.1fr_1.15fr] border-hairline">
+        <Spec label="Board" value={FAMILY_LABEL[entry.family]} />
+        <Spec label="Keys" value={layout ? String(layout.keys.length) : "-"} />
+        <Spec label="Home row" value={analysis?.rows ? pct(analysis.rows.home) : "-"} />
+        <Spec label="vs QWERTY" value={moved === null || !diff?.comparable ? "-" : moved === 0 ? "same" : `${moved} moved`} />
       </dl>
     </li>
   );

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
-import { Badge, Button, Card, ConfirmDialog, Icon, Input, Menu, SegmentedControl, cx, toast, useOutsidePointer } from "@/components/ui";
+import { Badge, Button, ConfirmDialog, Icon, IconButton, Input, Menu, SegmentedControl, cx, toast, useOutsidePointer } from "@/components/ui";
 import {
   MAX_NAME_LENGTH,
   MAX_SOURCE_BYTES,
@@ -26,6 +26,7 @@ import { displayLegends } from "@/lib/layout/parse";
 import { PRESETS } from "@/lib/layout/presets";
 import type { FingerId, LayoutKey, ParsedLayout } from "@/lib/types";
 import { CodeEditor } from "./CodeEditor";
+import { Note, Pane } from "./drafting";
 import { FingerPicker } from "./FingerPicker";
 import { LayersPanel } from "./LayersPanel";
 
@@ -60,6 +61,12 @@ export interface LayoutEditorProps {
 const PARSE_DEBOUNCE_MS = 220;
 const EMPTY_CHECK: SourceCheck = { warnings: [] };
 
+const MODE_NOTE: Record<EditorMode, string> = {
+  source: "The board itself: one bracketed list per row. The preview redraws as you type.",
+  fingers: "Correct which finger presses a key. Changes apply to tests, lessons and the hands view.",
+  layers: "Give keys extra characters while a layer key is held. Changes apply to the keyboard guide and lessons.",
+};
+
 export async function copyText(text: string, what = "Layout data"): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
@@ -88,16 +95,16 @@ function FormatHelp() {
   useOutsidePointer([rootRef], open, () => setOpen(false));
 
   const row = (code: string, text: string) => (
-    <li className="grid grid-cols-[minmax(0,116px)_minmax(0,1fr)] items-baseline gap-3">
-      <code className="truncate rounded-ui-sm bg-text/[0.07] px-1.5 py-0.5 font-mono text-xs text-main">{code}</code>
-      <span className="text-[13px] leading-snug text-text">{text}</span>
+    <li className="grid grid-cols-[minmax(0,116px)_minmax(0,1fr)] items-baseline gap-3 border-t border-hairline py-2 first:border-t-0">
+      <code className="truncate font-mono text-[13px] text-text">{code}</code>
+      <span className="text-[14px] leading-snug text-sub">{text}</span>
     </li>
   );
 
   return (
     <div
       ref={rootRef}
-      className="static sm:relative"
+      className="relative"
       onKeyDown={(e) => {
         if (e.key === "Escape" && open) {
           e.preventDefault();
@@ -123,27 +130,29 @@ function FormatHelp() {
           role="dialog"
           aria-label="Layout data format"
           data-testid="editor-help-popover"
-          className="absolute inset-x-0 top-full z-30 mt-2 animate-pop-in rounded-ui border border-border bg-bg p-4 shadow-pop sm:right-0 sm:left-auto sm:w-[400px]"
+          className="absolute top-full right-0 z-30 mt-2 w-[min(400px,calc(100vw-3rem))] animate-pop-in border border-line bg-bg"
         >
-          <p className="text-sm font-medium text-text">Keyboard Layout Editor raw data</p>
-          <p className="mt-1 text-[13px] leading-snug text-sub">One bracketed list per keyboard row, top to bottom. Inside a row:</p>
-          <ul className="mt-3 flex flex-col gap-2">
-            {row('"Q"', "A string is one key.")}
-            {row('"!\\n1"', "Shifted character over the base one.")}
-            {row("{w:1.5}", "The next key is 1.5 units wide.")}
-            {row("{x:0.5}", "Leave a half-unit gap before the next key.")}
-            {row('"Shift", ""', "Names make modifier keys; an empty string is the space bar.")}
-          </ul>
-          <a
-            href="http://www.keyboard-layout-editor.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3.5 inline-flex items-center gap-1.5 text-[13px] font-medium text-main hover:underline"
-          >
-            Design visually on keyboard-layout-editor.com
-            <Icon name="external" size={13} />
-          </a>
-          <p className="mt-1 text-xs text-sub">Copy the text from its "Raw data" tab and paste it here.</p>
+          <p className="ll-lettering border-b border-line px-4 py-3 text-text">Keyboard Layout Editor raw data</p>
+          <div className="px-4 pt-3 pb-4">
+            <p className="text-[14px] leading-snug text-sub">One bracketed list per keyboard row, top to bottom. Inside a row:</p>
+            <ul className="mt-2">
+              {row('"Q"', "A string is one key.")}
+              {row('"!\\n1"', "Shifted character over the base one.")}
+              {row("{w:1.5}", "The next key is 1.5 units wide.")}
+              {row("{x:0.5}", "Leave a half-unit gap before the next key.")}
+              {row('"Shift", ""', "Names make modifier keys; an empty string is the space bar.")}
+            </ul>
+            <a
+              href="http://www.keyboard-layout-editor.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 text-[14px] font-medium text-text underline decoration-main decoration-2 underline-offset-4 hover:text-main"
+            >
+              Design visually on keyboard-layout-editor.com
+              <Icon name="external" size={14} />
+            </a>
+            <p className="mt-1.5 text-[14px] text-sub">Copy the text from its &quot;Raw data&quot; tab and paste it here.</p>
+          </div>
         </div>
       )}
     </div>
@@ -305,35 +314,11 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
     if (id) window.setTimeout(() => document.querySelector<HTMLElement>(`[data-testid="editor-preview"] [data-key-id="${id}"]`)?.focus(), 0);
   };
   const letters = useMemo(() => (preview ? new Set(preview.keys.map((k) => k.base).filter((b) => /^[a-z]$/.test(b))).size : 0), [preview]);
-
-  const nameField = (
-          <div>
-      <label htmlFor={nameId} className="mb-1.5 block text-[13px] font-medium text-text">
-        Name
-      </label>
-      <Input
-        id={nameId}
-        data-testid="editor-name"
-        value={name}
-        maxLength={MAX_NAME_LENGTH}
-        placeholder="e.g. My Colemak mod"
-        aria-invalid={!!nameError && (dirty || !isNew)}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && canSave) save();
-        }}
-      />
-      {nameError && (dirty || !isNew) && (
-        <p className="mt-1.5 text-xs text-error" data-testid="editor-name-error">
-          {nameError}
-        </p>
-      )}
-    </div>
-  );
+  const showNameError = !!nameError && (dirty || !isNew);
 
   const hasFingers = !!preview?.keys.some((k) => k.finger);
   const fingersPanel = (
-    <div className="flex flex-col gap-4" data-testid="fingers-panel">
+    <div className="flex flex-col gap-4 p-3 sm:p-4" data-testid="fingers-panel">
       {selectedKey && baseKey ? (
         <FingerPicker
           keyName={keyName(selectedKey)}
@@ -348,17 +333,16 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
           onClose={closePicker}
         />
       ) : (
-        <div className="flex items-start gap-3 rounded-ui-lg border border-dashed border-border px-4 py-4" data-testid="finger-hint">
-          <Icon name="hand" size={20} className="mt-0.5 shrink-0 text-sub" />
-          <p className="text-[13px] leading-snug text-sub">
+        <Note icon="hand" data-testid="finger-hint">
+          <span className="text-sub">
             {preview
               ? "Select a key on the keyboard to choose which finger presses it and whether it is a home key. Arrow keys move between keys; Enter selects."
               : "Fix the layout data first; the keyboard appears here when it parses."}
-          </p>
-        </div>
+          </span>
+        </Note>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <p className="text-[13px] text-sub" data-testid="override-count" data-count={customisedCount} aria-live="polite">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-hairline pt-3">
+        <p className="text-[14px] text-sub" data-testid="override-count" data-count={customisedCount} aria-live="polite">
           {customisedCount === 0 ? "No keys customised" : `${customisedCount} ${customisedCount === 1 ? "key" : "keys"} customised`}
           {!hasFingers && preview ? " · no automatic fingers for this board" : ""}
         </p>
@@ -379,24 +363,85 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
     </div>
   );
 
+  const sourcePane = (
+    <Pane
+      heading="div"
+      title={<label htmlFor={sourceId}>Layout data</label>}
+      className="relative"
+      tools={
+        <>
+          <Menu
+            aria-label="Start from a preset"
+            align="end"
+            items={PRESETS.map((p) => ({ id: p.id, label: p.name, onSelect: () => startFrom(p.id) }))}
+            trigger={(props) => (
+              <Button size="sm" variant="ghost" icon="copy" data-testid="editor-start-from" {...props}>
+                Start from
+              </Button>
+            )}
+          />
+          <Button size="sm" variant="ghost" icon="upload" data-testid="editor-import" onClick={() => fileRef.current?.click()}>
+            Import
+          </Button>
+          <FormatHelp />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,.txt,application/json,text/plain"
+            className="sr-only"
+            tabIndex={-1}
+            aria-label="Import a layout file"
+            data-testid="editor-file"
+            onChange={(e) => {
+              void onFile(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </>
+      }
+    >
+      <CodeEditor
+        id={sourceId}
+        data-testid="editor-source"
+        value={source}
+        onChange={setSource}
+        errorLine={check.error?.line}
+        aria-invalid={!!check.error}
+        aria-describedby={check.error ? errorId : undefined}
+        placeholder={'["Q","W","E","R","T","Y"],\n["A","S","D","F","G","H"]\n\nPaste raw data, import a file, or start from a preset.'}
+        className="h-[300px] border-0 sm:h-[400px]"
+      />
+      <div className="flex flex-wrap items-center justify-between gap-x-3 border-t border-border py-1 pr-1 pl-3 sm:pl-4">
+        <span className="ll-note text-sub" data-testid="editor-status">
+          {source.split("\n").length} lines · {source.length.toLocaleString("en-US")} chars
+        </span>
+        <div className="flex items-center">
+          <Button size="sm" variant="ghost" icon="copy" disabled={empty} data-testid="editor-copy" onClick={() => void copyText(source)}>
+            Copy
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon="download"
+            disabled={empty}
+            data-testid="editor-download"
+            onClick={() => downloadLayout(trimmedName || "layout", source, overrides, layers)}
+          >
+            Download
+          </Button>
+        </div>
+      </div>
+    </Pane>
+  );
+
   return (
     <div data-testid="layout-editor" data-mode={isNew ? "new" : "edit"}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 sm:mb-8">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={cancel}
-            data-testid="editor-back"
-            className="mb-2 inline-flex items-center gap-1.5 rounded-ui-sm font-mono text-xs text-sub transition-colors hover:text-text"
-          >
-            <Icon name="arrow-left" size={13} />
-            layouts
-          </button>
-          <h1 className="text-2xl font-semibold tracking-tight text-text sm:text-[28px]">
-            {isNew ? "New custom layout" : "Edit layout"}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
+      {/* Heading line: back, lettered title, a rule run out to the actions. */}
+      <div className="mb-7 flex flex-wrap items-end gap-x-4 gap-y-4 sm:mb-9">
+        <IconButton icon="arrow-left" label="Back to layouts" variant="subtle" data-testid="editor-back" className="mb-0.5" onClick={cancel} />
+        <h1 className="ll-title min-w-0 text-text [font-size:clamp(1.75rem,1.2rem+1.9vw,2.875rem)]">{isNew ? "New custom layout" : "Edit layout"}</h1>
+        <span aria-hidden className="mb-2 hidden h-px min-w-8 flex-1 bg-border lg:block" />
+        <div className="flex flex-wrap items-center gap-2 max-lg:w-full">
           {onDelete && (
             <Button variant="ghost" icon="trash" data-testid="editor-delete" onClick={onDelete}>
               Delete
@@ -411,147 +456,104 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
         </div>
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <SegmentedControl<EditorMode>
-          aria-label="Editor view"
-          data-testid="editor-mode"
-          size="sm"
-          value={mode}
-          onChange={(m) => {
-            setMode(m);
-            setSelectedId(null);
-            setSettingActivator(false);
-            if (m === "layers" && !layers?.some((l) => l.id === activeLayerId)) setActiveLayerId(layers?.[0]?.id ?? null);
-          }}
-          options={[
-            { value: "source", label: "Layout data", icon: "code", testId: "editor-mode-source" },
-            { value: "fingers", label: "Fingers", icon: "hand", testId: "editor-mode-fingers" },
-            { value: "layers", label: "Layers", icon: "layers", testId: "editor-mode-layers" },
-          ]}
-        />
-        {mode === "layers" && <span className="text-xs text-sub">Give keys extra characters while a layer key is held. Changes apply to the keyboard guide and lessons.</span>}
-        {mode === "fingers" && <span className="text-xs text-sub">Correct which finger presses a key. Changes apply to tests, lessons and the hands view.</span>}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* ── source ── */}
-        <div className="flex min-w-0 flex-col gap-4">
-{mode === "layers" ? (
-            <>
-              <LayersPanel
-                layout={preview}
-                layers={layers}
-                onChange={setLayers}
-                activeId={activeLayerId}
-                onActiveId={setActiveLayerId}
-                selectedKey={selectedKey ?? null}
-                settingActivator={settingActivator}
-                onSettingActivator={setSettingActivator}
-                onClearSelection={() => setSelectedId(null)}
+      {/* The working sheet: name, view switch, then two ruled panes. */}
+      <div className="border border-line">
+        <div className="grid border-b border-line md:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start">
+            <label htmlFor={nameId} className="ll-lettering flex h-12 items-center border-r border-border px-3 text-text sm:px-4">
+              Name
+            </label>
+            <div className="min-w-0">
+              <Input
+                id={nameId}
+                data-testid="editor-name"
+                value={name}
+                maxLength={MAX_NAME_LENGTH}
+                placeholder="e.g. My Colemak mod"
+                aria-invalid={showNameError}
+                aria-describedby={showNameError ? `${nameId}-error` : undefined}
+                className="h-12 border-0 bg-transparent px-3 text-[17px] hover:bg-fill focus:bg-fill sm:px-4"
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canSave) save();
+                }}
               />
-              {nameField}
-            </>
-          ) : mode === "fingers" ? (
-            <>
-              {fingersPanel}
-              {nameField}
-            </>
-          ) : (
-          <>
-          {nameField}
-
-          <div>
-            <div className="relative mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <label htmlFor={sourceId} className="text-[13px] font-medium text-text">
-                Layout data
-              </label>
-              <div className="-mr-1 flex items-center">
-                <Menu
-                  aria-label="Start from a preset"
-                  align="end"
-                  items={PRESETS.map((p) => ({ id: p.id, label: p.name, onSelect: () => startFrom(p.id) }))}
-                  trigger={(props) => (
-                    <Button size="sm" variant="ghost" icon="copy" data-testid="editor-start-from" {...props}>
-                      Start from
-                    </Button>
-                  )}
-                />
-                <Button size="sm" variant="ghost" icon="upload" data-testid="editor-import" onClick={() => fileRef.current?.click()}>
-                  Import
-                </Button>
-                <FormatHelp />
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".json,.txt,application/json,text/plain"
-                  className="sr-only"
-                  tabIndex={-1}
-                  aria-label="Import a layout file"
-                  data-testid="editor-file"
-                  onChange={(e) => {
-                    void onFile(e.target.files?.[0]);
-                    e.target.value = "";
-                  }}
-                />
-              </div>
-            </div>
-            <CodeEditor
-              id={sourceId}
-              data-testid="editor-source"
-              value={source}
-              onChange={setSource}
-              errorLine={check.error?.line}
-              aria-invalid={!!check.error}
-              aria-describedby={check.error ? errorId : undefined}
-              placeholder={'["Q","W","E","R","T","Y"],\n["A","S","D","F","G","H"]\n\nPaste raw data, import a file, or start from a preset.'}
-              className="h-[300px] sm:h-[360px]"
-            />
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <span className="font-mono text-xs text-sub" data-testid="editor-status">
-                {source.split("\n").length} lines · {source.length.toLocaleString("en-US")} chars
-              </span>
-              <div className="-mr-1 flex items-center">
-                <Button size="sm" variant="ghost" icon="copy" disabled={empty} data-testid="editor-copy" onClick={() => void copyText(source)}>
-                  Copy
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  icon="download"
-                  disabled={empty}
-                  data-testid="editor-download"
-                  onClick={() => downloadLayout(trimmedName || "layout", source, overrides, layers)}
-                >
-                  Download
-                </Button>
-              </div>
+              {showNameError && (
+                <p id={`${nameId}-error`} className="flex items-center gap-2 border-t border-error px-3 py-2 text-[14px] text-error sm:px-4" data-testid="editor-name-error">
+                  <Icon name="alert" size={15} className="shrink-0" />
+                  {nameError}
+                </p>
+              )}
             </div>
           </div>
-          </>
-          )}
+          <div className="flex items-center border-t border-border px-2 py-2 md:border-t-0 md:border-l">
+            <SegmentedControl<EditorMode>
+              aria-label="Editor view"
+              data-testid="editor-mode"
+              size="sm"
+              value={mode}
+              onChange={(m) => {
+                setMode(m);
+                setSelectedId(null);
+                setSettingActivator(false);
+                if (m === "layers" && !layers?.some((l) => l.id === activeLayerId)) setActiveLayerId(layers?.[0]?.id ?? null);
+              }}
+              options={[
+                { value: "source", label: "Layout data", icon: "code", testId: "editor-mode-source" },
+                { value: "fingers", label: "Fingers", icon: "hand", testId: "editor-mode-fingers" },
+                { value: "layers", label: "Layers", icon: "layers", testId: "editor-mode-layers" },
+              ]}
+            />
+          </div>
         </div>
+        <p className="border-b border-border px-3 py-2 text-[14px] text-sub sm:px-4">{MODE_NOTE[mode]}</p>
 
-        {/* ── preview ── */}
-        <div className={cx("flex min-w-0 flex-col gap-3", mode !== "source" && "order-first lg:order-none")}>
-          <div className="flex h-[21px] items-center justify-between gap-3 lg:mt-px">
-            <span className="text-[13px] font-medium text-text">Preview</span>
-            {preview && (
-              <span className="flex items-center gap-2.5">
-                {stale && <Badge data-testid="editor-preview-stale">last valid version</Badge>}
-                <span className="font-mono text-xs text-sub" data-testid="editor-preview-meta" data-keys={preview.keys.length}>
-                  {preview.keys.length} keys · {letters}/26 letters
-                </span>
-              </span>
+        <div className="grid lg:grid-cols-2">
+          {/* ── working pane: data, fingers or layers ── */}
+          <div className="flex min-w-0 flex-col lg:border-r lg:border-border">
+            {mode === "layers" ? (
+              <Pane title="Layers" meta={`${layers?.length ?? 0} on this layout`}>
+                <LayersPanel
+                  layout={preview}
+                  layers={layers}
+                  onChange={setLayers}
+                  activeId={activeLayerId}
+                  onActiveId={setActiveLayerId}
+                  selectedKey={selectedKey ?? null}
+                  settingActivator={settingActivator}
+                  onSettingActivator={setSettingActivator}
+                  onClearSelection={() => setSelectedId(null)}
+                />
+              </Pane>
+            ) : mode === "fingers" ? (
+              <Pane title="Fingers" meta={customisedCount > 0 ? `${customisedCount} customised` : "automatic"}>
+                {fingersPanel}
+              </Pane>
+            ) : (
+              sourcePane
             )}
           </div>
-          <Card
-            padding="none"
-            className={cx("relative flex min-h-[200px] items-center justify-center px-3 py-6 sm:px-5 lg:min-h-[236px]")}
-            data-testid="editor-preview"
-            data-stale={stale || undefined}
+
+          {/* ── preview ── */}
+          <Pane
+            title="Preview"
+            className={cx("border-border max-lg:border-t", mode !== "source" && "order-first max-lg:border-t-0 max-lg:border-b lg:order-none")}
+            bodyClassName="flex flex-col"
+            meta={
+              preview ? (
+                <span data-testid="editor-preview-meta" data-keys={preview.keys.length}>
+                  {preview.keys.length} keys · {letters}/26 letters
+                </span>
+              ) : undefined
+            }
+            tools={stale ? <Badge data-testid="editor-preview-stale">last valid version</Badge> : undefined}
           >
-            {preview ? (
-              <>
+            <div
+              className="ll-grid relative flex min-h-[220px] flex-1 items-center justify-center px-3 py-7 sm:px-5 lg:min-h-[280px]"
+              data-testid="editor-preview"
+              data-stale={stale || undefined}
+            >
+              {preview ? (
                 <Keyboard2D
                   layout={preview}
                   fingerColors
@@ -565,68 +567,69 @@ export function LayoutEditor({ draft, takenNames, onSave, onCancel, onDelete }: 
                         highlightKeyIds: activeLayer?.activatorIds,
                       }
                     : mode === "fingers" && !stale
-                    ? {
-                        onKeyClick: setSelectedId,
-                        selectedKeyIds: selectedId ? [selectedId] : undefined,
-                        markedKeyIds: markedIds,
-                      }
-                    : { markedKeyIds: mode === "fingers" ? markedIds : undefined })}
+                      ? {
+                          onKeyClick: setSelectedId,
+                          selectedKeyIds: selectedId ? [selectedId] : undefined,
+                          markedKeyIds: markedIds,
+                        }
+                      : { markedKeyIds: mode === "fingers" ? markedIds : undefined })}
                 />
-              </>
-            ) : (
-              <div className="flex max-w-xs flex-col items-center gap-3 px-4 text-center">
-                <Icon name="keyboard" size={28} className="text-sub/70" />
-                <p className="text-[13px] leading-snug text-sub">
-                  {check.error ? "Nothing to show until the data parses." : "Your keyboard appears here as you type."}
-                </p>
+              ) : (
+                <div className="flex max-w-xs flex-col items-center gap-3 border border-dashed border-border px-6 py-6 text-center">
+                  <Icon name="keyboard" size={28} className="text-sub" />
+                  <p className="text-[14px] leading-snug text-sub">
+                    {check.error ? "Nothing to show until the data parses." : "Your keyboard appears here as you type."}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {(check.error || warnings.length > 0 || check.layout || staleCount > 0) && (
+              <div className="flex flex-col gap-2 border-t border-border p-3 sm:p-4">
+                {check.error ? (
+                  <Note
+                    id={errorId}
+                    role="alert"
+                    tone="error"
+                    data-testid="editor-error"
+                    data-line={check.error.line}
+                    data-column={check.error.column}
+                    title={
+                      check.error.line != null ? (
+                        <>
+                          Line {check.error.line}
+                          {check.error.column != null && `, column ${check.error.column}`}
+                        </>
+                      ) : (
+                        "Layout data can't be read"
+                      )
+                    }
+                  >
+                    {check.error.message.replace(/ \(line \d+, column \d+\)/, "")}
+                  </Note>
+                ) : warnings.length > 0 ? (
+                  <ul className="flex flex-col gap-2" data-testid="editor-warnings">
+                    {warnings.map((w) => (
+                      <li key={w} data-testid="editor-warning">
+                        <Note tone="warn">{w}</Note>
+                      </li>
+                    ))}
+                  </ul>
+                ) : check.layout ? (
+                  <p className="flex items-center gap-2 text-[14px] text-text" data-testid="editor-ok">
+                    <Icon name="check" size={16} className="text-success" />
+                    Looks good. Fingers and home row were recognised.
+                  </p>
+                ) : null}
+                {staleCount > 0 && (
+                  <Note tone="warn" data-testid="override-dropped" data-count={staleCount} role="status">
+                    {staleCount === 1 ? "1 finger override no longer matches a key" : `${staleCount} finger overrides no longer match a key`} after your edits to
+                    the layout data. {staleCount === 1 ? "It was" : "They were"} dropped and will not be saved.
+                  </Note>
+                )}
               </div>
             )}
-          </Card>
-
-          {check.error ? (
-            <div
-              id={errorId}
-              role="alert"
-              data-testid="editor-error"
-              data-line={check.error.line}
-              data-column={check.error.column}
-              className="flex items-start gap-3 rounded-ui border border-error/40 bg-error/[0.08] px-3.5 py-3"
-            >
-              <Icon name="alert" size={17} className="mt-0.5 shrink-0 text-error" />
-              <div className="min-w-0">
-                {check.error.line != null && (
-                  <p className="font-mono text-xs font-semibold text-error">
-                    Line {check.error.line}
-                    {check.error.column != null && `, column ${check.error.column}`}
-                  </p>
-                )}
-                <p className="text-[13px] leading-snug break-words text-text">{check.error.message.replace(/ \(line \d+, column \d+\)/, "")}</p>
-              </div>
-            </div>
-          ) : warnings.length > 0 ? (
-            <ul className="flex flex-col gap-2" data-testid="editor-warnings">
-              {warnings.map((w) => (
-                <li key={w} data-testid="editor-warning" className="flex items-start gap-3 rounded-ui bg-text/[0.05] px-3.5 py-2.5">
-                  <Icon name="info" size={16} className="mt-0.5 shrink-0 text-main" />
-                  <span className="text-[13px] leading-snug text-sub">{w}</span>
-                </li>
-              ))}
-            </ul>
-          ) : check.layout ? (
-            <p className="flex items-center gap-2 px-1 text-[13px] text-sub" data-testid="editor-ok">
-              <Icon name="check" size={15} className="text-success" />
-              Looks good. Fingers and home row were recognised.
-            </p>
-          ) : null}
-          {staleCount > 0 && (
-            <p className="flex items-start gap-3 rounded-ui bg-text/[0.05] px-3.5 py-2.5 text-[13px] leading-snug text-sub" data-testid="override-dropped" data-count={staleCount} role="status">
-              <Icon name="info" size={16} className="mt-0.5 shrink-0 text-main" />
-              <span>
-                {staleCount === 1 ? "1 finger override no longer matches a key" : `${staleCount} finger overrides no longer match a key`} after your edits to
-                the layout data. {staleCount === 1 ? "It was" : "They were"} dropped and will not be saved.
-              </span>
-            </p>
-          )}
+          </Pane>
         </div>
       </div>
 
