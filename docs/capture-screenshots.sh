@@ -9,6 +9,6 @@ $V "goto:/" "eval:$(S "{layoutId:'corne-36'}")" "goto:/?seed=7" wait:4000 "type:
 $V "goto:/learn" wait:2000 shot:learn-map
 $V "goto:/learn/home-fj" wait:3000 shot:lesson
 $V "goto:/layouts" wait:2500 shot:layouts
-$V "goto:/" "eval:$(S "{theme:'paper'}")" "goto:/?seed=7" wait:4000 "type:they an" wait:800 shot:theme-paper
+$V "goto:/" "eval:$(S "{theme:'whiteprint'}")" "goto:/?seed=7" wait:4000 "type:they an" wait:800 shot:theme-paper
 for n in hero test-split learn-map lesson layouts theme-paper; do cp .verify/$n.png docs/screenshots/$n.png; done
 ls -la docs/screenshots

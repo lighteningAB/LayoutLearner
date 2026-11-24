@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, type KeyboardEvent } from "react";
-import { Button, Icon, Toggle, cx } from "@/components/ui";
+import { Button, Icon, IconButton, Toggle, cx } from "@/components/ui";
 import { fingerToString } from "@/lib/layout/overrides";
 import { FINGER_ORDER, type FingerId } from "@/lib/types";
+import { KeyChip } from "./drafting";
 
 export const fingerName = (f: FingerId) => `${f.hand === "L" ? "left" : "right"} ${f.finger}`;
 
@@ -28,11 +29,12 @@ export interface FingerPickerProps {
 const LEFT = FINGER_ORDER.slice(0, 5);
 const RIGHT = FINGER_ORDER.slice(5);
 
+/** Five fingers of one hand as a ruled row of cells: a colour swatch plus the finger's name; the choice is filled solid. */
 function HandRow({ label, fingers, current, onPick }: { label: string; fingers: FingerId[]; current: FingerId | null; onPick: (f: FingerId) => void }) {
   return (
-    <div>
-      <p className="mb-1.5 text-[11px] font-medium tracking-wide text-sub uppercase">{label}</p>
-      <div className="grid grid-cols-5 gap-1.5">
+    <div className="grid grid-cols-[minmax(0,1fr)] sm:grid-cols-[116px_minmax(0,1fr)]">
+      <p className="ll-lettering-sm flex items-center border-b border-hairline px-3 py-2 whitespace-nowrap text-sub sm:border-r sm:border-b-0">{label}</p>
+      <div className="grid grid-cols-5">
         {fingers.map((f) => {
           const i = FINGER_ORDER.findIndex((o) => o.hand === f.hand && o.finger === f.finger);
           const on = !!current && current.hand === f.hand && current.finger === f.finger;
@@ -47,18 +49,18 @@ function HandRow({ label, fingers, current, onPick }: { label: string; fingers: 
               title={fingerName(f)}
               tabIndex={on || (!current && i === 3) ? 0 : -1}
               onClick={() => onPick(f)}
-              style={{
-                borderColor: on ? `var(--finger-${i})` : undefined,
-                background: `color-mix(in srgb, var(--finger-${i}) ${on ? 38 : 14}%, var(--bg-alt, transparent))`,
-              }}
+              style={on ? { background: `var(--finger-${i})` } : undefined}
               className={cx(
-                "relative flex h-[52px] min-w-0 flex-col items-center justify-end gap-0.5 overflow-hidden rounded-ui-sm border px-0.5 pb-1.5 text-[11px] leading-none font-medium text-text transition-colors",
-                on ? "border-2" : "border-border hover:border-sub",
+                "relative flex h-16 min-w-0 flex-col items-center justify-center gap-2 border-l border-hairline px-0.5 text-[13px] leading-none font-medium transition-colors duration-150 first:border-l-0 focus-visible:z-[1] focus-visible:outline-offset-[-3px]",
+                on ? "text-finger-fg outline-2 -outline-offset-2 outline-line" : "text-text hover:bg-fill-strong",
               )}
             >
-              {on && <Icon name="check" size={13} className="absolute top-1.5" />}
+              {on ? (
+                <Icon name="check" size={16} strokeWidth={2.25} />
+              ) : (
+                <span aria-hidden className="size-4 border border-line" style={{ background: `var(--finger-${i})` }} />
+              )}
               <span className="max-w-full truncate">{f.finger}</span>
-              <span aria-hidden className="absolute inset-x-0 bottom-0 h-[3px]" style={{ background: `var(--finger-${i})` }} />
             </button>
           );
         })}
@@ -111,37 +113,34 @@ export function FingerPicker({ keyName, finger, isHome, autoFinger, autoHome, cu
       data-testid="finger-picker"
       data-key-name={keyName}
       onKeyDown={onKeyDown}
-      className="rounded-ui-lg border border-border bg-bg-alt p-3.5 sm:p-4"
+      className="border border-line"
     >
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[13px] font-medium text-text">
-            Key{" "}
-            <span className="ml-0.5 inline-flex min-w-6 items-center justify-center rounded-ui-sm bg-text/[0.09] px-1.5 py-0.5 font-mono text-xs text-main" data-testid="finger-picker-key">
-              {keyName}
-            </span>
+      <div className="flex items-stretch border-b border-line">
+        <div className="min-w-0 flex-1 px-3 py-2.5">
+          <p className="ll-lettering flex items-center gap-2 text-text">
+            Key
+            <KeyChip data-testid="finger-picker-key">{keyName}</KeyChip>
           </p>
-          <p className="mt-1 text-xs text-sub" data-testid="finger-picker-state">
+          <p className="mt-1.5 text-[14px] leading-snug text-sub" data-testid="finger-picker-state">
             {finger ? `Pressed by the ${fingerName(finger)}${isHome ? ", resting here" : ""}.` : "Pressed by no finger."}
             {customised ? ` Automatic: ${auto}.` : " Automatic."}
           </p>
         </div>
-        <button
-          type="button"
+        <IconButton
+          icon="x"
+          label="Close the finger picker"
+          size="sm"
+          className="h-auto w-11 self-stretch border-0 border-l border-line text-text hover:bg-text hover:text-bg"
           onClick={onClose}
-          aria-label="Close the finger picker"
-          className="-mt-1 -mr-1 shrink-0 rounded-ui-sm p-1.5 text-sub transition-colors hover:text-text"
-        >
-          <Icon name="x" size={15} />
-        </button>
+        />
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="divide-y divide-border">
         <HandRow label="Left hand" fingers={LEFT} current={finger} onPick={onFinger} />
         <HandRow label="Right hand" fingers={RIGHT} current={finger} onPick={onFinger} />
       </div>
 
-      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 border-t border-border pt-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 border-t border-line px-3 py-2.5">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Toggle
             size="sm"
@@ -165,7 +164,7 @@ export function FingerPicker({ keyName, finger, isHome, autoFinger, autoHome, cu
           Reset to automatic
         </Button>
       </div>
-      <p className="mt-2 text-xs text-sub">A finger rests on one home key. Choosing a new one moves it.</p>
+      <p className="border-t border-hairline px-3 py-2 text-[14px] text-sub">A finger rests on one home key. Choosing a new one moves it.</p>
     </div>
   );
 }

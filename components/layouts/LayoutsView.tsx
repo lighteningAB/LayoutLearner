@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader, useRegisterCommands, type Command } from "@/components/shell";
-import { Button, ConfirmDialog, Icon, SegmentedControl, toast, type MenuItem } from "@/components/ui";
+import { Button, ConfirmDialog, Icon, cx, toast, type MenuItem } from "@/components/ui";
 import { newCustomId, uniqueName } from "@/lib/layout/custom";
 import { DEFAULT_PRESET_ID, PRESETS } from "@/lib/layout/presets";
 import { useSettings } from "@/lib/settings";
@@ -15,12 +15,55 @@ import { LayoutEditor, copyText, downloadLayout, type EditorDraft } from "./Layo
 type Filter = "all" | Family;
 const FAMILY_ORDER: Family[] = ["ansi-60", "ansi-100", "ortho", "split", "custom"];
 
-const filterLabel = (text: string, count: number) => (
-  <>
-    {text}
-    <span className="font-mono text-[11px] opacity-60">{count}</span>
-  </>
-);
+/**
+ * Family filter drawn as lettered tabs on a rule, each with its plate count. One choice of many
+ * (role="radiogroup"): arrow keys move and select, Home / End jump.
+ */
+function FilterTabs({ value, onChange, options }: { value: Filter; onChange: (f: Filter) => void; options: { value: Filter; label: string; count: number }[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const onKeyDown = (e: KeyboardEvent) => {
+    const i = options.findIndex((o) => o.value === value);
+    const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    const next = dir ? options[(i + dir + options.length) % options.length] : e.key === "Home" ? options[0] : e.key === "End" ? options[options.length - 1] : undefined;
+    if (!next) return;
+    e.preventDefault();
+    onChange(next.value);
+    ref.current?.querySelector<HTMLElement>(`[data-value="${next.value}"]`)?.focus();
+  };
+  return (
+    <div
+      ref={ref}
+      role="radiogroup"
+      aria-label="Filter layouts by family"
+      data-testid="layout-filter"
+      onKeyDown={onKeyDown}
+      className="flex min-w-0 flex-wrap items-end gap-x-1"
+    >
+      {options.map((o) => {
+        const selected = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            data-state={selected ? "on" : "off"}
+            data-value={o.value}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(o.value)}
+            className={cx(
+              "ll-lettering -mb-px inline-flex h-10 items-center gap-2 border-b-2 px-2.5 whitespace-nowrap transition-colors duration-150 focus-visible:outline-offset-[-2px] sm:px-3",
+              selected ? "border-main text-text" : "border-transparent text-sub hover:border-border hover:text-text",
+            )}
+          >
+            <span className="ll-trim">{o.label}</span>
+            <span className={cx("ll-readout text-[12px] font-normal tracking-normal", selected ? "text-text" : "text-sub")}>{o.count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function LayoutsView() {
   const router = useRouter();
@@ -193,6 +236,7 @@ export function LayoutsView() {
   const visible = filter === "all" ? entries : entries.filter((e) => e.family === filter);
   const customCount = counts.get("custom") ?? 0;
   const showNewCard = filter === "all" || filter === "custom";
+  const activeName = entries.find((e) => e.id === activeId)?.name;
 
   const menuFor = (entry: LayoutEntry): MenuItem[] => [
     { label: "Show details", icon: "eye", onSelect: () => inspect(entry) },
@@ -213,6 +257,7 @@ export function LayoutsView() {
     <div data-testid="layouts-view" data-active-layout={activeId}>
       <PageHeader
         title="Layouts"
+        eyebrow={activeName ? <>Learning {activeName}</> : undefined}
         description="Choose the layout you are learning, see how it compares, or bring your own."
         actions={
           <Button icon="plus" data-testid="new-layout" onClick={openNew}>
@@ -221,22 +266,20 @@ export function LayoutsView() {
         }
       />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <SegmentedControl<Filter>
-          aria-label="Filter layouts by family"
-          data-testid="layout-filter"
-          size="sm"
+      <div className="flex flex-wrap items-end justify-between gap-x-6 border-b border-border">
+        <FilterTabs
           value={filter}
           onChange={setFilter}
           options={[
-            { value: "all", label: filterLabel("All", entries.length) },
-            ...FAMILY_ORDER.map((f) => ({ value: f as Filter, label: filterLabel(FAMILY_LABEL[f], counts.get(f) ?? 0) })),
+            { value: "all", label: "All", count: entries.length },
+            ...FAMILY_ORDER.map((f) => ({ value: f as Filter, label: FAMILY_LABEL[f], count: counts.get(f) ?? 0 })),
           ]}
         />
-        <p className="hidden text-xs text-sub md:block">Click a layout to start learning it.</p>
+        <p className="hidden pb-2.5 text-[14px] text-sub lg:block">Click a layout to start learning it.</p>
       </div>
 
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="layout-gallery">
+      {/* The sheet index: every plate is a ruled cell on one shared hairline grid. */}
+      <ul className="grid border-l border-border sm:grid-cols-2 lg:grid-cols-3" data-testid="layout-gallery">
         {visible.map((entry) => (
           <LayoutCard
             key={entry.id}
@@ -249,21 +292,21 @@ export function LayoutsView() {
           />
         ))}
         {showNewCard && (
-          <li className="min-w-0">
+          <li className="min-w-0 border-r border-b border-border p-2">
             <button
               type="button"
               onClick={openNew}
               data-testid="new-layout-card"
-              className="group flex h-full min-h-[200px] w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-ui-lg border border-dashed border-border px-6 py-8 text-center transition-colors duration-150 hover:border-main/70 hover:bg-main/[0.04]"
+              className="group flex h-full min-h-[240px] w-full cursor-pointer flex-col items-center justify-center gap-4 border border-dashed border-border px-6 py-8 text-center transition-colors duration-150 hover:border-solid hover:border-line hover:bg-fill"
             >
-              <span className="flex size-10 items-center justify-center rounded-full bg-text/[0.07] text-sub transition-colors duration-150 group-hover:bg-main/[0.16] group-hover:text-main">
+              <span className="flex size-11 items-center justify-center border border-line text-text transition-colors duration-150 group-hover:bg-text group-hover:text-bg">
                 <Icon name="plus" size={20} />
               </span>
               <span>
-                <span className="block text-[15px] font-semibold tracking-tight text-text">
+                <span className="ll-lettering-lg block text-text">
                   {customCount === 0 ? "Bring your own layout" : "New custom layout"}
                 </span>
-                <span className="mx-auto mt-1 block max-w-[250px] text-[13px] leading-snug text-sub">
+                <span className="mx-auto mt-2 block max-w-[280px] text-[14px] leading-snug text-sub">
                   {customCount === 0
                     ? "Tweak a preset, paste raw data from keyboard-layout-editor.com, or import a .json file."
                     : "Start from a preset, paste raw data or import a file."}
@@ -274,7 +317,7 @@ export function LayoutsView() {
         )}
       </ul>
 
-      <div ref={detailRef} className="mt-12 scroll-mt-6 border-t border-border pt-10 sm:mt-14">
+      <div ref={detailRef} className="mt-14 scroll-mt-6 sm:mt-20">
         {inspected && (
           <LayoutDetail
             key={inspected.id}

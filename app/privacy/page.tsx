@@ -7,15 +7,15 @@ export const metadata: Metadata = { title: "Privacy" };
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border-t border-border py-6 first:border-t-0 first:pt-0">
-      <h2 className="text-[15px] font-semibold tracking-tight text-text">{title}</h2>
-      <div className="mt-2 space-y-2 text-[15px] leading-relaxed text-sub">{children}</div>
+    <section className="border-t border-border pt-5 pb-10 first:border-t-line">
+      <h2 className="ll-heading text-text">{title}</h2>
+      <div className="mt-4 space-y-3.5 text-[17px] leading-[1.6] text-text">{children}</div>
     </section>
   );
 }
 
 const List = ({ children }: { children: ReactNode }) => (
-  <ul className="list-disc space-y-1.5 pl-5 marker:text-sub/60">{children}</ul>
+  <ul className="list-[square] space-y-2.5 pl-5 marker:text-border">{children}</ul>
 );
 
 // Keep this sentence word for word in step with docs/accounts-setup.md (section 11, "What is stored").
@@ -30,7 +30,7 @@ export default function PrivacyPage() {
   return (
     <>
       <PageHeader title="Privacy" description="What LayoutLearner stores, where, and how to get rid of it." />
-      <div className="max-w-2xl" data-testid="privacy-page">
+      <div className="max-w-[70ch] text-[17px]" data-testid="privacy-page">
         <Block title="Without an account">
           <p>
             Your settings, custom layouts and lesson progress stay in this browser&rsquo;s localStorage. They are not sent
@@ -108,11 +108,11 @@ export default function PrivacyPage() {
 
         <Block title="Export and delete">
           <p>
-            <span className="text-text">Export:</span> Settings &rarr; Account &amp; sync &rarr; Export my data downloads
+            <span className="font-semibold">Export:</span> Settings &rarr; Account &amp; sync &rarr; Export my data downloads
             what syncs as a JSON file.
           </p>
           <p>
-            <span className="text-text">Delete:</span> Settings &rarr; Account &amp; sync &rarr; Delete account data erases
+            <span className="font-semibold">Delete:</span> Settings &rarr; Account &amp; sync &rarr; Delete account data erases
             your document from our database immediately and signs this device out. The data on this device is kept.
           </p>
           <p>What deleting does not do:</p>
@@ -142,8 +142,8 @@ export default function PrivacyPage() {
           <p>Accounts and sync add no analytics, advertising or tracking.</p>
         </Block>
 
-        <p className="pt-2 text-[13px] text-sub">
-          <Link href="/settings#account" className="text-main underline-offset-2 hover:underline">
+        <p className="border-t border-line pt-5 text-[17px]">
+          <Link href="/settings#account" className="text-text underline decoration-main decoration-2 underline-offset-4 hover:text-main">
             Go to Account &amp; sync settings
           </Link>
         </p>

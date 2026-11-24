@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { cx } from "@/components/ui";
+import styles from "./layouts.module.css";
 
 const LINE_HEIGHT = 20;
 const PAD_Y = 12;
@@ -16,7 +17,10 @@ export interface CodeEditorProps
   "data-testid"?: string;
 }
 
-/** Plain themed <textarea> with a line-number gutter and an optional highlighted error line. */
+/**
+ * Plain <textarea> in the sheet's mono face with a ruled line-number gutter and an optional marked
+ * error line. Selection, caret and scrollbar come from the palette; focus thickens the frame.
+ */
 export function CodeEditor({ value, onChange, errorLine, className, onKeyDown, ...rest }: CodeEditorProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -33,9 +37,8 @@ export function CodeEditor({ value, onChange, errorLine, className, onKeyDown, .
   return (
     <div
       className={cx(
-        "relative flex overflow-hidden rounded-ui border border-border bg-bg-alt font-mono text-[13px] transition-colors duration-150",
-        "focus-within:border-main/70",
-        marked != null && "border-error/60 focus-within:border-error/80",
+        "relative flex overflow-hidden border border-border font-mono text-[13px] outline-2 -outline-offset-2 outline-transparent transition-[outline-color] duration-150",
+        marked != null ? "focus-within:outline-error" : "focus-within:outline-main",
         className,
       )}
       style={{ lineHeight: `${LINE_HEIGHT}px` }}
@@ -43,14 +46,14 @@ export function CodeEditor({ value, onChange, errorLine, className, onKeyDown, .
     >
       <div
         aria-hidden
-        className="shrink-0 overflow-hidden border-r border-border/70 bg-text/[0.03] text-right text-sub/70 select-none"
+        className="ll-readout shrink-0 overflow-hidden border-r border-hairline text-right text-sub select-none"
         style={{ width: `calc(${digits}ch + 22px)` }}
       >
         <div style={{ transform: `translateY(${PAD_Y - scrollTop}px)` }}>
           {Array.from({ length: lineCount }, (_, i) => (
             <div
               key={i}
-              className={cx("pr-2.5 pl-2", marked === i + 1 && "bg-error/[0.16] font-semibold text-error")}
+              className={cx("pr-2.5 pl-2", marked === i + 1 && "bg-error font-semibold text-bg")}
               style={{ height: LINE_HEIGHT }}
             >
               {i + 1}
@@ -64,7 +67,7 @@ export function CodeEditor({ value, onChange, errorLine, className, onKeyDown, .
             aria-hidden
             data-testid="editor-error-line"
             data-line={marked}
-            className="pointer-events-none absolute inset-x-0 bg-error/[0.13]"
+            className="pointer-events-none absolute inset-x-0 border-y border-error bg-error/15"
             style={{ top: PAD_Y + (marked - 1) * LINE_HEIGHT - scrollTop, height: LINE_HEIGHT }}
           />
         )}
@@ -86,7 +89,10 @@ export function CodeEditor({ value, onChange, errorLine, className, onKeyDown, .
               e.currentTarget.blur();
             }
           }}
-          className="absolute inset-0 block h-full w-full resize-none overflow-auto bg-transparent pr-3 pl-3 whitespace-pre text-text caret-caret outline-none placeholder:text-sub/60"
+          className={cx(
+            styles.code,
+            "absolute inset-0 block h-full w-full resize-none overflow-auto bg-transparent pr-3 pl-3 whitespace-pre text-text outline-none placeholder:text-sub",
+          )}
           style={{ paddingTop: PAD_Y, paddingBottom: PAD_Y, lineHeight: `${LINE_HEIGHT}px`, tabSize: 2 }}
           {...rest}
         />
