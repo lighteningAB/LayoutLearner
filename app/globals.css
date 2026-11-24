@@ -1,206 +1,130 @@
 @import "tailwindcss";
 
 /* ──────────────────────────────────────────────────────────────────────────
-   LayoutLearner design tokens
-   Tokens are plain CSS custom properties, set per theme via [data-theme] (on
-   <html>, or on any subtree for scoped previews) and consumed as var(--x).
-   They are mapped into Tailwind below, so `bg-bg`, `bg-bg-alt`, `text-text`,
-   `text-sub`, `text-main`, `border-border`, `bg-finger-3`, `rounded-ui`,
-   `font-mono` … all work, including opacity modifiers (`bg-text/10`).
+   LayoutLearner design tokens: the Blueprint world.
+   Two themes, set per [data-theme] (on <html>, or on any subtree for scoped
+   previews) and consumed as var(--x):
+     blueprint   cyanotype sheet, chalk linework, safety-yellow action (dark)
+     whiteprint  drafting paper, blue ink, red-pencil action (light)
+   Tokens are mapped into Tailwind below, so `bg-bg`, `bg-bg-alt`, `text-text`,
+   `text-sub`, `text-main`, `border-border`, `border-line`, `bg-fill`,
+   `bg-finger-3`, `text-finger-fg`, `font-display`, `font-mono` … all work,
+   including opacity modifiers (`bg-text/10`).
+
+   Contrast (WCAG, computed): text and sub >= 4.5:1 on --bg and --bg-alt; --main,
+   --error, --success >= 4.5:1 on --bg and --bg-alt; --border >= 3:1 on --bg and
+   --bg-alt; --finger-fg >= 4.5:1 on every --finger-N; --key-text >= 4.5:1 on a
+   finger tint (--finger-tint % of the finger colour over --key-tint-base).
+   --sub is NOT legible on --key-bg in blueprint: use --text there.
    ────────────────────────────────────────────────────────────────────────── */
 
 :root,
-[data-theme="tide"] {
+[data-theme="blueprint"] {
   color-scheme: dark;
-  --bg: #0f1317;
-  --bg-alt: #171c22;
-  --border: #262d36;
-  --text: #d3dae3;
-  --sub: #7d8896;
-  --main: #62d2b0;
-  --main-fg: #08221b;
-  --caret: #62d2b0;
-  --error: #f2616f;
-  --error-alt: #a23a48;
-  --success: #8fd46b;
-  --key-bg: #1a2027;
-  --key-border: #2b333d;
-  --key-text: #aab4c0;
-  --finger-0: #ee95b8;
-  --finger-1: #e6a560;
-  --finger-2: #89c782;
-  --finger-3: #48c7e2;
-  --finger-4: #bdb2e3;
-  --finger-5: #d2aec5;
-  --finger-6: #86b6fd;
-  --finger-7: #51ccb4;
-  --finger-8: #c5b65a;
-  --finger-9: #f59888;
-  --radius: 10px;
+  /* sheet and fills */
+  --bg: #164b9b;
+  --bg-alt: #1b54a8;
+  --key-bg: #2765bd;
+  /* linework */
+  --text: #f2f6ff;
+  --sub: #bdd2f4;
+  --line: #f2f6ff;
+  --border: #93b5ea;
+  --hairline: #5c8ad0;
+  --grid: rgb(242 246 255 / 0.04);
+  --grid-strong: rgb(242 246 255 / 0.085);
+  --fill: rgb(242 246 255 / 0.06);
+  --fill-strong: rgb(242 246 255 / 0.12);
+  --scrim: rgb(9 30 68 / 0.74);
+  /* action and status */
+  --main: #ffc61a;
+  --main-fg: #0b2350;
+  --caret: #ffc61a;
+  --error: #ffbcc4;
+  --error-alt: #ff808f;
+  --success: #8ff0b6;
+  /* keys */
+  --key-border: #f2f6ff;
+  --key-text: #f2f6ff;
+  --key-tint-base: #164b9b;
+  --finger-tint: 24%;
+  --finger-fg: #0b2350;
+  --finger-0: #f09ae6;
+  --finger-1: #ffa857;
+  --finger-2: #c8ea60;
+  --finger-3: #3fe0d0;
+  --finger-4: #e9e2ff;
+  --finger-5: #c3acff;
+  --finger-6: #86b6ff;
+  --finger-7: #5fd4ff;
+  --finger-8: #f5ea8c;
+  --finger-9: #74dc86;
+  --radius: 0px;
 }
 
-[data-theme="paper"] {
+[data-theme="whiteprint"] {
   color-scheme: light;
-  --bg: #f5f2ec;
-  --bg-alt: #ebe7de;
-  --border: #d9d3c7;
-  --text: #26282c;
-  --sub: #6a665f;
-  --main: #3552d1;
+  --bg: #f3f6fb;
+  --bg-alt: #e6edf8;
+  --key-bg: #ffffff;
+  --text: #123f8c;
+  --sub: #3f5f99;
+  --line: #123f8c;
+  --border: #5f7fb8;
+  --hairline: #b9c9e4;
+  --grid: rgb(18 63 140 / 0.045);
+  --grid-strong: rgb(18 63 140 / 0.095);
+  --fill: rgb(18 63 140 / 0.06);
+  --fill-strong: rgb(18 63 140 / 0.12);
+  --scrim: rgb(18 63 140 / 0.42);
+  --main: #c92620;
   --main-fg: #ffffff;
-  --caret: #3552d1;
-  --error: #c8323c;
-  --error-alt: #e39a9a;
-  --success: #2a7d44;
-  --key-bg: #fdfcf9;
-  --key-border: #d5cfc2;
-  --key-text: #45474c;
-  --finger-0: #bb4e7f;
-  --finger-1: #ad6800;
-  --finger-2: #3d8f35;
-  --finger-3: #0389a0;
-  --finger-4: #7869a4;
-  --finger-5: #906581;
-  --finger-6: #3c79d1;
-  --finger-7: #048e7a;
-  --finger-8: #8b7b0a;
-  --finger-9: #c35141;
-  --radius: 10px;
+  --caret: #c92620;
+  --error: #a3127a;
+  --error-alt: #c458a6;
+  --success: #17734a;
+  --key-border: #123f8c;
+  --key-text: #123f8c;
+  --key-tint-base: #ffffff;
+  --finger-tint: 16%;
+  --finger-fg: #ffffff;
+  --finger-0: #3e5a2a;
+  --finger-1: #b85c00;
+  --finger-2: #4f8212;
+  --finger-3: #0a8573;
+  --finger-4: #7459c2;
+  --finger-5: #586273;
+  --finger-6: #3558cc;
+  --finger-7: #0878b8;
+  --finger-8: #8f7400;
+  --finger-9: #9a5a3c;
+  --radius: 0px;
 }
-
-[data-theme="dusk"] {
-  color-scheme: dark;
-  --bg: #17141f;
-  --bg-alt: #201c2b;
-  --border: #322c42;
-  --text: #e3def0;
-  --sub: #8d85a1;
-  --main: #c3a2ff;
-  --main-fg: #1d1233;
-  --caret: #ff9ad5;
-  --error: #ff6b81;
-  --error-alt: #a3445a;
-  --success: #86e0b0;
-  --key-bg: #231e30;
-  --key-border: #382f4c;
-  --key-text: #b9b0cf;
-  --finger-0: #f496bb;
-  --finger-1: #eba75f;
-  --finger-2: #8acb83;
-  --finger-3: #43cae7;
-  --finger-4: #c0b5e8;
-  --finger-5: #d6b1c9;
-  --finger-6: #8ab9ff;
-  --finger-7: #4dd0b7;
-  --finger-8: #c9b957;
-  --finger-9: #fb9989;
-  --radius: 12px;
-}
-
-[data-theme="moss"] {
-  color-scheme: dark;
-  --bg: #141812;
-  --bg-alt: #1c2119;
-  --border: #2d3528;
-  --text: #dde3d2;
-  --sub: #858e78;
-  --main: #c5d86d;
-  --main-fg: #1c2208;
-  --caret: #c5d86d;
-  --error: #f0705a;
-  --error-alt: #9c4636;
-  --success: #8fd08a;
-  --key-bg: #20261c;
-  --key-border: #343d2d;
-  --key-text: #b3bca5;
-  --finger-0: #e496b4;
-  --finger-1: #dda46a;
-  --finger-2: #8cc186;
-  --finger-3: #5bc1d9;
-  --finger-4: #bab0da;
-  --finger-5: #ccadc0;
-  --finger-6: #89b3f1;
-  --finger-7: #61c6b1;
-  --finger-8: #c0b365;
-  --finger-9: #ea998b;
-  --radius: 8px;
-}
-
-[data-theme="ember"] {
-  color-scheme: dark;
-  --bg: #181311;
-  --bg-alt: #211a17;
-  --border: #362a25;
-  --text: #eeded2;
-  --sub: #96847c;
-  --main: #ff9a5a;
-  --main-fg: #2a1304;
-  --caret: #ffc38f;
-  --error: #ff5c7a;
-  --error-alt: #a33a52;
-  --success: #a6d17a;
-  --key-bg: #261e1a;
-  --key-border: #3d302a;
-  --key-text: #c4b3a8;
-  --finger-0: #f093b8;
-  --finger-1: #e8a45c;
-  --finger-2: #87c880;
-  --finger-3: #3fc7e4;
-  --finger-4: #bdb2e5;
-  --finger-5: #d3aec6;
-  --finger-6: #85b6fe;
-  --finger-7: #49cdb4;
-  --finger-8: #c6b654;
-  --finger-9: #f79686;
-  --radius: 10px;
-}
-
-[data-theme="glacier"] {
-  color-scheme: light;
-  --bg: #edf1f5;
-  --bg-alt: #e0e6ed;
-  --border: #cbd4de;
-  --text: #1d2733;
-  --sub: #566575;
-  --main: #0a7397;
-  --main-fg: #ffffff;
-  --caret: #0a7397;
-  --error: #c92c49;
-  --error-alt: #e59aaa;
-  --success: #1a7a50;
-  --key-bg: #f9fbfd;
-  --key-border: #c5cfda;
-  --key-text: #3a4654;
-  --finger-0: #ba507f;
-  --finger-1: #ad6800;
-  --finger-2: #408f39;
-  --finger-3: #08899f;
-  --finger-4: #786aa2;
-  --finger-5: #8f6581;
-  --finger-6: #3f79ce;
-  --finger-7: #0a8e7a;
-  --finger-8: #8b7b00;
-  --finger-9: #c15344;
-  --radius: 6px;
-}
-
 
 :root {
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
-    "Liberation Mono", monospace;
+  --font-display: var(--font-josefin), "Josefin Sans", "Century Gothic", "Avenir Next", sans-serif;
+  --font-sans: var(--font-barlow), "Barlow Semi Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* 2px focus ring, token-coloured */
+  --focus: var(--main);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
-    "Liberation Mono", monospace;
+  --font-display: var(--font-josefin), "Josefin Sans", "Century Gothic", "Avenir Next", sans-serif;
+  --font-sans: var(--font-barlow), "Barlow Semi Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   --color-bg: var(--bg);
   --color-bg-alt: var(--bg-alt);
   --color-border: var(--border);
+  --color-line: var(--line);
+  --color-hairline: var(--hairline);
+  --color-grid: var(--grid);
+  --color-grid-strong: var(--grid-strong);
+  --color-fill: var(--fill);
+  --color-fill-strong: var(--fill-strong);
+  --color-scrim: var(--scrim);
   --color-text: var(--text);
   --color-sub: var(--sub);
   --color-main: var(--main);
@@ -212,6 +136,7 @@
   --color-key-bg: var(--key-bg);
   --color-key-border: var(--key-border);
   --color-key-text: var(--key-text);
+  --color-finger-fg: var(--finger-fg);
   --color-finger-0: var(--finger-0);
   --color-finger-1: var(--finger-1);
   --color-finger-2: var(--finger-2);
@@ -223,18 +148,22 @@
   --color-finger-8: var(--finger-8);
   --color-finger-9: var(--finger-9);
 
-  --radius-ui-sm: calc(var(--radius) * 0.6);
+  /* Square world: every radius token resolves to 0. */
+  --radius-ui-sm: var(--radius);
   --radius-ui: var(--radius);
-  --radius-ui-lg: calc(var(--radius) * 1.5);
+  --radius-ui-lg: var(--radius);
 
-  --shadow-pop: 0 1px 0 0 rgb(255 255 255 / 0.03) inset, 0 16px 48px -12px rgb(0 0 0 / 0.45),
-    0 4px 12px -4px rgb(0 0 0 / 0.25);
+  /* No shadows in this world. The token stays so `shadow-pop` keeps compiling. */
+  --shadow-pop: 0 0 #0000;
 
-  --animate-fade-in: ll-fade-in 140ms ease-out both;
-  --animate-pop-in: ll-pop-in 160ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
-  --animate-rise-in: ll-rise-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-caret: ll-caret 1s ease-in-out infinite;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-fade-in: ll-fade-in 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-pop-in: ll-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-rise-in: ll-rise-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-caret: ll-caret 1s steps(1, end) infinite;
   --animate-shimmer: ll-shimmer 2.4s ease-in-out infinite;
+  --animate-hatch: ll-hatch 700ms linear infinite;
 
   @keyframes ll-fade-in {
     from {
@@ -244,7 +173,7 @@
   @keyframes ll-pop-in {
     from {
       opacity: 0;
-      transform: translateY(-6px) scale(0.98);
+      transform: translateY(-4px);
     }
   }
   @keyframes ll-rise-in {
@@ -271,6 +200,111 @@
       opacity: 1;
     }
   }
+  @keyframes ll-hatch {
+    to {
+      background-position: 8px 0;
+    }
+  }
+}
+
+/* ── Type roles ───────────────────────────────────────────────────────────
+   Josefin Sans (font-display): sheet lettering, always uppercase and tracked.
+   Barlow Semi Condensed (font-sans): UI and body.
+   IBM Plex Mono (font-mono): typing text, key legends, readouts.
+   Use these utilities for the recurring roles instead of ad-hoc sizes.     */
+
+/* Page title: one per page. */
+@utility ll-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(2.125rem, 1.4rem + 2.6vw, 3.75rem);
+  line-height: 0.95;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+/* Section heading on the sheet. */
+@utility ll-heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.15;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+/* Sheet lettering: labels, tabs, buttons, table heads. Three sizes. */
+@utility ll-lettering-lg {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+@utility ll-lettering {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+@utility ll-lettering-sm {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+/* Numeric readout: mono, tabular, slashed zero. Size it with text-*. */
+@utility ll-readout {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: 0;
+}
+/* Display numerals (timer, big counts): thin Josefin figures. Size it with text-*. */
+@utility ll-numeral {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-variant-numeric: lining-nums tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+/* Marginal annotation: small mono note (scale, units, ids). */
+@utility ll-note {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+/* Trim a single line of caps to its cap height, so tracked lettering sits
+   optically centred inside fixed-height controls (ignored where unsupported). */
+@utility ll-trim {
+  text-box: trim-both cap alphabetic;
+}
+/* Section hatching: the drafted way to say "pending / not there yet". */
+@utility ll-hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--fill-strong) 0 1px,
+    transparent 1px 6px
+  );
+}
+/* Drafting grid, for plates that sit on the sheet and want the grid through them. */
+@utility ll-grid {
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    linear-gradient(var(--grid-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px);
+  background-size:
+    10px 10px,
+    10px 10px,
+    50px 50px,
+    50px 50px;
 }
 
 @layer base {
@@ -289,29 +323,73 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     scrollbar-gutter: stable;
-    scrollbar-color: color-mix(in srgb, var(--sub) 45%, transparent) transparent;
+    scrollbar-color: var(--border) transparent;
+    caret-color: var(--caret);
+    accent-color: var(--main);
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* The drawing sheet: fine 10px grid, heavier line every 50px. */
   body {
     min-height: 100dvh;
     background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+      linear-gradient(var(--grid-strong) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px);
+    background-size:
+      10px 10px,
+      10px 10px,
+      50px 50px,
+      50px 50px;
+    background-position: 2px 2px;
     color: var(--text);
-    font-size: 15px;
-    line-height: 1.55;
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: 0.005em;
   }
 
   ::selection {
-    background-color: color-mix(in srgb, var(--main) 35%, transparent);
-    color: var(--text);
+    background-color: var(--main);
+    color: var(--main-fg);
+  }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border: 4px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--line);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   :focus {
     outline: none;
   }
   :focus-visible {
-    outline: 2px solid var(--main);
+    outline: 2px solid var(--focus);
     outline-offset: 2px;
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+
+  ::placeholder {
+    color: var(--sub);
+    opacity: 1;
   }
 
   button,
@@ -339,60 +417,68 @@
   }
 }
 
-/* Range input used by <Slider>. --ll-pct is set inline by the component. */
+/* Range input used by <Slider>: a dimension line with end ticks and a marker.
+   --ll-pct is set inline by the component. */
 .ll-slider {
   -webkit-appearance: none;
   appearance: none;
   height: 20px;
-  background: transparent;
+  border-radius: 0;
   cursor: pointer;
+  /* end ticks + the 1px dimension line + the heavier measured part */
+  background:
+    linear-gradient(var(--line), var(--line)) left center / 1px 12px no-repeat,
+    linear-gradient(var(--line), var(--line)) right center / 1px 12px no-repeat,
+    linear-gradient(var(--main), var(--main)) left center / var(--ll-pct, 0%) 3px no-repeat,
+    linear-gradient(var(--border), var(--border)) center / 100% 1px no-repeat;
 }
 .ll-slider::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    var(--main) 0 var(--ll-pct, 0%),
-    color-mix(in srgb, var(--text) 14%, transparent) var(--ll-pct, 0%) 100%
-  );
+  height: 20px;
+  background: transparent;
 }
 .ll-slider::-moz-range-track {
-  height: 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text) 14%, transparent);
-}
-.ll-slider::-moz-range-progress {
-  height: 4px;
-  border-radius: 999px;
-  background: var(--main);
+  height: 20px;
+  background: transparent;
 }
 .ll-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: -6px;
-  border-radius: 999px;
+  width: 10px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 0;
   background: var(--main);
-  border: 3px solid var(--bg-alt);
-  box-shadow: 0 0 0 1px var(--main);
-  transition: transform 120ms ease;
+  border: 1px solid var(--line);
+  transition: transform 140ms var(--ease-out);
 }
 .ll-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
+  width: 8px;
+  height: 16px;
+  border-radius: 0;
   background: var(--main);
-  border: 3px solid var(--bg-alt);
-  box-shadow: 0 0 0 1px var(--main);
+  border: 1px solid var(--line);
 }
 .ll-slider:hover::-webkit-slider-thumb,
 .ll-slider:active::-webkit-slider-thumb {
-  transform: scale(1.15);
+  transform: scaleY(1.12);
+}
+.ll-slider:focus-visible {
+  outline-offset: 4px;
 }
 .ll-slider:disabled {
-  opacity: 0.4;
   cursor: not-allowed;
+  background:
+    linear-gradient(var(--border), var(--border)) left center / 1px 12px no-repeat,
+    linear-gradient(var(--border), var(--border)) right center / 1px 12px no-repeat,
+    repeating-linear-gradient(90deg, var(--border) 0 4px, transparent 4px 8px) center / 100% 1px no-repeat;
+}
+.ll-slider:disabled::-webkit-slider-thumb {
+  background: var(--bg);
+  border-color: var(--border);
+}
+.ll-slider:disabled::-moz-range-thumb {
+  background: var(--bg);
+  border-color: var(--border);
 }
 
 /* Smooth cross-fade when the theme changes (added briefly by the settings store). */

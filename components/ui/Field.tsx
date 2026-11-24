@@ -28,10 +28,10 @@ export function SettingRow({ label, description, htmlFor, labelId, children, sta
       {...rest}
     >
       <div className="min-w-0 flex-1 basis-56">
-        <label id={labelId} htmlFor={htmlFor} className="block text-sm font-medium text-text">
+        <label id={labelId} htmlFor={htmlFor} className="block text-[16px] font-medium text-text">
           {label}
         </label>
-        {description && <p className="mt-0.5 text-[13px] leading-snug text-sub">{description}</p>}
+        {description && <p className="mt-0.5 max-w-[62ch] text-[14px] leading-snug text-sub">{description}</p>}
       </div>
       <div className={cx("flex shrink-0 items-center gap-3", stacked && "w-full")}>{children}</div>
     </div>

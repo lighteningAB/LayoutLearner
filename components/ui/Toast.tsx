@@ -71,7 +71,7 @@ export function Toaster() {
       role="region"
       aria-label="Notifications"
       data-testid="toaster"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center gap-2 px-4 pb-6"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center gap-2 px-4 pb-9"
     >
       {list.map((t) => (
         <div
@@ -79,10 +79,12 @@ export function Toaster() {
           role={t.variant === "error" ? "alert" : "status"}
           data-variant={t.variant}
           data-testid="toast"
-          className="pointer-events-auto flex w-full max-w-sm animate-rise-in items-start gap-3 rounded-ui border border-border bg-bg-alt py-3 pr-2 pl-3.5 shadow-pop"
+          className="pointer-events-auto flex w-full max-w-sm animate-rise-in items-stretch border border-line bg-bg"
         >
-          <Icon name={ICON[t.variant]} size={18} className={cx("mt-px", TONE[t.variant])} />
-          <div className="min-w-0 flex-1 text-sm">
+          <span className={cx("flex w-11 shrink-0 items-center justify-center border-r border-line", TONE[t.variant])}>
+            <Icon name={ICON[t.variant]} size={18} />
+          </span>
+          <div className="min-w-0 flex-1 px-3 py-2.5 text-[15px] leading-snug">
             <div className="font-medium text-text">{t.message}</div>
             {t.description && <div className="mt-0.5 text-sub">{t.description}</div>}
           </div>
@@ -90,7 +92,7 @@ export function Toaster() {
             type="button"
             aria-label="Dismiss"
             onClick={() => dismissToast(t.id)}
-            className="inline-flex size-6 items-center justify-center rounded-ui-sm text-sub transition-colors hover:bg-text/[0.08] hover:text-text"
+            className="m-1.5 inline-flex size-7 shrink-0 items-center justify-center border border-transparent text-sub transition-colors hover:border-line hover:text-text"
           >
             <Icon name="x" size={14} />
           </button>

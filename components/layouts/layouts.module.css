@@ -1,14 +1,23 @@
 /* "vs QWERTY" view: many keys are highlighted at once, so swap Keyboard2D's single-key
-   glow for a calm accent tint. The doubled class outranks the keyboard module's own rule. */
+   action outline for a flat action fill: moved keys read as filled cells, unmoved ones as
+   hidden (dashed) lines. The doubled class outranks the keyboard module's own rule. */
 .diffKb.diffKb [data-state="highlight"] > div {
-  --cap-bg: color-mix(in srgb, var(--main) 24%, var(--key-bg));
-  --cap-fg: var(--text);
-  --cap-border: color-mix(in srgb, var(--main) 80%, var(--key-bg));
-  transform: translateY(calc(var(--u) * -0.02));
-  box-shadow:
-    0 calc(var(--u) * 0.05) 0 color-mix(in srgb, #000 30%, var(--cap-bg)),
-    inset 0 1px 0 rgb(255 255 255 / 0.07);
+  --cap-bg: var(--main);
+  --cap-fg: var(--main-fg);
+  --cap-border: var(--line);
+  outline: 0 solid transparent;
+  transform: none;
 }
 .diffKb.diffKb [data-state="dim"] > div {
-  opacity: 0.38;
+  opacity: 0.6;
+}
+
+/* Source editor: the browser surfaces of the textarea, drawn from the palette. */
+.code::selection {
+  background-color: var(--main);
+  color: var(--main-fg);
+}
+.code {
+  caret-color: var(--caret);
+  scrollbar-color: var(--border) transparent;
 }

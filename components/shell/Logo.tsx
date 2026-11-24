@@ -1,23 +1,33 @@
 import { cx } from "@/components/ui/cx";
 
-/** The LayoutLearner mark: a keycap carrying two L strokes. Follows the theme accent. */
-export function Logo({ size = 28, className }: { size?: number; className?: string }) {
+/**
+ * The LayoutLearner mark: a key drawn in plan, its diagonal run out past two corners as a
+ * construction line, and the point where the finger lands filled in the action colour.
+ */
+export function Logo({ size = 30, className }: { size?: number; className?: string }) {
   return (
-    <svg viewBox="0 0 28 28" width={size} height={size} aria-hidden focusable="false" className={className}>
-      <rect x="1" y="1" width="26" height="26" rx="7.5" fill="var(--main)" />
-      <g fill="none" stroke="var(--main-fg)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8.75 8.25v11.5h3.75" />
-        <path d="M15.75 8.25v11.5h3.75" opacity="0.5" />
-      </g>
+    <svg
+      viewBox="0 0 30 30"
+      width={size}
+      height={size}
+      aria-hidden
+      focusable="false"
+      fill="none"
+      stroke="var(--line)"
+      className={cx("shrink-0", className)}
+    >
+      <rect x="5.5" y="5.5" width="19" height="19" strokeWidth="1.5" />
+      <path d="M0.5 29.5 29.5 0.5" strokeWidth="1" />
+      <circle cx="15" cy="15" r="3.25" fill="var(--main)" stroke="none" />
     </svg>
   );
 }
 
 export function Wordmark({ className }: { className?: string }) {
   return (
-    <span className={cx("text-[17px] leading-none font-semibold tracking-tight", className)}>
-      <span className="text-text">layout</span>
-      <span className="text-sub">learner</span>
+    <span className={cx("ll-trim font-display text-[17px] leading-none tracking-[0.2em] whitespace-nowrap uppercase sm:text-[19px]", className)}>
+      <span className="font-bold text-text">Layout</span>
+      <span className="ml-[0.45em] font-light text-sub">Learner</span>
     </span>
   );
 }

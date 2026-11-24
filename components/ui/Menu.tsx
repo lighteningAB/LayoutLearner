@@ -121,26 +121,26 @@ export function Menu({ trigger, items, align = "start", side = "bottom", classNa
           aria-label={rest["aria-label"]}
           onKeyDown={onMenuKeyDown}
           className={cx(
-            "absolute z-40 min-w-44 rounded-ui border border-border bg-bg-alt p-1 animate-pop-in shadow-pop",
+            "absolute z-40 min-w-44 animate-pop-in border border-line bg-bg p-1",
             side === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5",
             align === "end" ? "right-0" : "left-0",
           )}
         >
           {items.map((item, i) => {
             const cls = cx(
-              "flex h-9 w-full items-center gap-2.5 rounded-ui-sm px-2.5 text-left text-sm whitespace-nowrap",
+              "flex h-9 w-full items-center gap-2.5 px-2.5 text-left text-[15px] whitespace-nowrap",
               "outline-none transition-colors duration-100",
               item.disabled
-                ? "cursor-not-allowed text-sub/50"
+                ? "cursor-not-allowed text-sub line-through decoration-1"
                 : item.danger
-                  ? "text-error hover:bg-error/[0.12] focus:bg-error/[0.12]"
-                  : "text-text hover:bg-text/[0.09] focus:bg-text/[0.09]",
+                  ? "text-error hover:bg-error hover:text-bg focus:bg-error focus:text-bg"
+                  : "text-text hover:bg-text hover:text-bg focus:bg-text focus:text-bg",
             );
             const body = (
               <>
-                {item.icon && <Icon name={item.icon} size={16} className={item.danger ? undefined : "text-sub"} />}
+                {item.icon && <Icon name={item.icon} size={16} />}
                 <span className="flex-1">{item.label}</span>
-                {item.hint && <span className="pl-4 text-xs text-sub">{item.hint}</span>}
+                {item.hint && <span className="ll-note pl-4 opacity-80">{item.hint}</span>}
               </>
             );
             const select = () => {
@@ -150,7 +150,7 @@ export function Menu({ trigger, items, align = "start", side = "bottom", classNa
             };
             return (
               <div key={item.id ?? i} role="none">
-                {item.separator && <div role="separator" className="mx-1 my-1 h-px bg-border" />}
+                {item.separator && <div role="separator" className="my-1 h-px bg-border" />}
                 {item.href && !item.disabled ? (
                   <Link href={item.href} role="menuitem" tabIndex={-1} className={cls} onClick={select}>
                     {body}

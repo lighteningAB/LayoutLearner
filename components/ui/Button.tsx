@@ -1,27 +1,31 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
-import { cx } from "./cx";
+import { cx, isText } from "./cx";
 import { Icon, type IconName } from "./Icon";
 
 export type ButtonVariant = "primary" | "subtle" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
+// Lettered, square, 1px outline. Pressed: the label drops 1px. Disabled: a dashed outline with no
+// fill (a hidden line). Busy (aria-busy / `loading`): section hatching runs across the face.
 const BASE =
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-ui font-medium whitespace-nowrap select-none " +
-  "transition-[background-color,color,filter,transform] duration-150 active:scale-[0.98] " +
-  "disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40";
+  "group/btn relative inline-flex shrink-0 items-center justify-center gap-2 border font-display font-semibold tracking-[0.12em] whitespace-nowrap uppercase select-none " +
+  "transition-[background-color,color,border-color] duration-150 active:translate-y-px " +
+  "disabled:pointer-events-none disabled:border-dashed disabled:border-border disabled:bg-transparent disabled:text-sub " +
+  "aria-disabled:pointer-events-none aria-disabled:border-dashed aria-disabled:border-border aria-disabled:bg-transparent aria-disabled:text-sub " +
+  "aria-busy:pointer-events-none aria-busy:border-solid aria-busy:border-line aria-busy:text-text aria-busy:ll-hatch aria-busy:animate-hatch aria-busy:[background-size:8px_8px]";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-main text-main-fg hover:brightness-110",
-  subtle: "bg-text/[0.07] text-text hover:bg-text/[0.13]",
-  ghost: "text-sub hover:bg-text/[0.07] hover:text-text",
-  danger: "bg-error/[0.14] text-error hover:bg-error/[0.24]",
+  primary: "border-line bg-main text-main-fg hover:bg-text hover:text-bg",
+  subtle: "border-line text-text hover:bg-text hover:text-bg",
+  ghost: "border-transparent text-sub underline-offset-[5px] hover:text-text hover:underline disabled:border-transparent aria-disabled:border-transparent",
+  danger: "border-error text-error hover:bg-error hover:text-bg",
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-[13px]",
-  md: "h-10 px-4 text-sm",
-  lg: "h-12 px-6 text-base",
+  sm: "h-8 px-3 text-[12px]",
+  md: "h-10 px-4 text-[13px]",
+  lg: "h-12 px-6 text-[15px]",
 };
 
 const ICON_SIZES: Record<ButtonSize, string> = { sm: "size-8", md: "size-10", lg: "size-12" };
@@ -37,6 +41,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Renders a next/link <a> instead of a <button>. */
   href?: string;
   fullWidth?: boolean;
+  /** Work in progress: the button is disabled, announced busy and drawn hatched. */
+  loading?: boolean;
   ref?: Ref<HTMLButtonElement>;
   children?: ReactNode;
 }
@@ -48,6 +54,7 @@ export function Button({
   iconRight,
   href,
   fullWidth,
+  loading,
   className,
   children,
   type = "button",
@@ -58,7 +65,7 @@ export function Button({
   const body = (
     <>
       {icon && <Icon name={icon} size={ICON_PX[size]} />}
-      {children}
+      {isText(children) ? <span className="ll-trim">{children}</span> : children}
       {iconRight && <Icon name={iconRight} size={ICON_PX[size]} />}
     </>
   );
@@ -77,13 +84,21 @@ export function Button({
     );
   }
   return (
-    <button ref={ref} type={type} className={cls} data-variant={variant} {...rest}>
+    <button
+      ref={ref}
+      type={type}
+      className={cls}
+      data-variant={variant}
+      {...rest}
+      disabled={rest.disabled || loading || undefined}
+      aria-busy={loading || rest["aria-busy"]}
+    >
       {body}
     </button>
   );
 }
 
-export interface IconButtonProps extends Omit<ButtonProps, "icon" | "iconRight" | "children" | "fullWidth"> {
+export interface IconButtonProps extends Omit<ButtonProps, "icon" | "iconRight" | "children" | "fullWidth" | "loading"> {
   icon: IconName;
   /** Required accessible name (also used as the native tooltip unless `title` is given). */
   label: string;
@@ -100,7 +115,8 @@ export function IconButton({
   ref,
   ...rest
 }: IconButtonProps) {
-  const cls = cx(BASE, VARIANTS[variant], ICON_SIZES[size], className);
+  // A ghost icon button has no label to underline: it gets an outline on hover instead.
+  const cls = cx(BASE, VARIANTS[variant], variant === "ghost" && "hover:border-line", ICON_SIZES[size], className);
   const body = <Icon name={icon} size={ICON_PX[size]} />;
   if (href !== undefined && !rest.disabled) {
     return (

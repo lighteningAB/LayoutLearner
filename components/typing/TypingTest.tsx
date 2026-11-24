@@ -1,7 +1,9 @@
 "use client";
-// The typing test (route "/"): config bar, live counters, words, keyboard guide, results.
+// The typing test (route "/"), composed as a drawing sheet: settings line, the text, the plate
+// (3D hands and / or 2D board) at the centre, notes in the left margin, timer, next-key detail,
+// live readouts and a title block in the right margin; then the results sheet.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Icon, Kbd, SegmentedControl, Tooltip, cx, type IconName } from "@/components/ui";
+import { Button, Icon, Kbd, SegmentedControl, Tooltip, cx, type IconName } from "@/components/ui";
 import { useRegisterCommands, type Command } from "@/components/shell";
 import { TIME_AMOUNTS, WORD_AMOUNTS, WORD_LISTS, useSettings } from "@/lib/settings";
 import { typableChars } from "@/lib/layout/keys";
@@ -11,10 +13,11 @@ import { useTypingTest } from "@/lib/typing/useTypingTest";
 import { useKeyboardInput, type KeyboardAction, type KeyboardActionEvent } from "@/lib/typing/useKeyboardInput";
 import { playErrorSound } from "@/lib/typing/sound";
 import { createWordStream, generateText, type GenerateConfig, type WordListName, type WordStream } from "@/lib/typing/words";
+import { useLearnPrefs } from "@/components/learn/prefs";
 import { GuideViewSwitch, HandsPanel, useGuidePress, useGuideView } from "./HandsPanel";
 import { EmulationHint, useEmulationHint } from "./EmulationHint";
 import { MobileNotice, WelcomeHint } from "./Hints";
-import { KeyboardGuide } from "./KeyboardGuide";
+import { KeyboardGuide, NextKeyDetail } from "./KeyboardGuide";
 import { ResultsView } from "./ResultsView";
 import { WordsDisplay } from "./WordsDisplay";
 import { generatePracticeWords } from "./practice";
@@ -67,9 +70,9 @@ function ConfigToggle({
       title={title}
       onClick={onClick}
       className={cx(
-        "inline-flex h-7 items-center gap-1.5 rounded-ui-sm px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150",
-        "disabled:cursor-not-allowed disabled:opacity-35",
-        active ? "text-main" : "text-sub hover:text-text",
+        "inline-flex h-7 items-center gap-1.5 px-2.5 text-[14px] font-medium whitespace-nowrap underline-offset-[7px] transition-colors duration-150",
+        "disabled:cursor-not-allowed disabled:line-through disabled:decoration-1",
+        active ? "text-main underline decoration-2" : "text-sub hover:text-text",
       )}
     >
       <Icon name={icon} size={14} />
@@ -78,7 +81,37 @@ function ConfigToggle({
   );
 }
 
-const Divider = () => <span aria-hidden className="mx-1.5 hidden h-4 w-px shrink-0 bg-border sm:block" />;
+const Divider = () => <span aria-hidden className="mx-2 hidden h-4 w-px shrink-0 bg-border sm:block" />;
+
+/** 15 -> "15", 14.25 -> "14.25": board sizes in key units without trailing zeros. */
+const LEGEND_ROWS = ["pinky", "ring", "middle", "index", "thumb"] as const;
+
+/** Which colour is which finger: every swatch is named, the colour only repeats it. */
+function FingerLegend() {
+  return (
+    <section className="tt-legend" aria-labelledby="tt-legend-heading" data-testid="finger-legend">
+      <h2 id="tt-legend-heading" className="ll-lettering-sm text-text">
+        Finger colours
+      </h2>
+      <div className="mt-2 grid grid-cols-2 gap-x-3 text-[13px] leading-none text-sub">
+        {(["Left", "Right"] as const).map((hand, h) => (
+          <dl key={hand}>
+            <dt className="ll-lettering-sm mb-1.5 border-b border-hairline pb-1.5 text-sub">{hand}</dt>
+            {LEGEND_ROWS.map((name, i) => (
+              <dd key={name} className="flex items-center gap-2 py-[3px]">
+                {/* --finger-0…4 run left pinky to thumb, 5…9 right thumb to pinky */}
+                <span aria-hidden className="size-2.5 shrink-0 border border-line" style={{ backgroundColor: `var(--finger-${h === 0 ? i : 9 - i})` }} />
+                {name}
+              </dd>
+            ))}
+          </dl>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const trimUnits = (n: number) => String(Math.round(n * 100) / 100);
 
 export function TypingTest() {
   const [settings, update] = useSettings();
@@ -199,6 +232,7 @@ export function TypingTest() {
 
   // 3D guide hands: every character keystroke taps its key (same render as the engine update).
   const guideView = useGuideView();
+  const [{ camera }] = useLearnPrefs();
   const [press, notePress] = useGuidePress();
   const expectedRef = useRef(test.nextChar);
   expectedRef.current = test.nextChar;
@@ -346,24 +380,20 @@ export function TypingTest() {
     : `${Math.min(test.state.wordIndex, total)}/${total}`;
   const showCaps = kb.capsLock && !settings.emulateLayout && status !== "finished";
 
-  // Spacing around the guide: the same with the hands and with their reserved box, so switching views does not move the text.
-  const tight = guideView.showHands || !!guideView.reserveBox;
-
   const testLabel = practice ? "weak keys" : `${mode} ${amount}`;
   const testDetail = practice
     ? practice.chars.join(" ")
     : [LIST_LABEL[wordList], punctuation ? "punctuation" : "", numbers ? "numbers" : ""].filter(Boolean).join(" · ");
 
   let bar: ReactNode;
-  if (practice) {
+  if (emulationHint.visible) {
+    // The nudge takes the settings line's place (which is hidden while typing anyway): nothing is covered, nothing moves.
+    bar = <EmulationHint hint={emulationHint} layoutName={active.name} inline />;
+  } else if (practice) {
     bar = (
-      <div
-        className="tt-fade mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-ui bg-bg-alt py-1.5 pr-1.5 pl-3.5 text-[13px] text-sub"
-        data-testid="practice-badge"
-        data-chars={practice.chars.join("")}
-      >
-        <span className="inline-flex items-center gap-2 font-medium text-main">
-          <Icon name="target" size={14} />
+      <div className="tt-fade flex min-h-9 flex-wrap items-center gap-x-4 gap-y-1.5 text-[14px] text-sub" data-testid="practice-badge" data-chars={practice.chars.join("")}>
+        <span className="ll-lettering inline-flex items-center gap-2 text-text">
+          <Icon name="target" size={15} className="text-main" />
           Drilling the keys you missed
         </span>
         <span className="inline-flex flex-wrap items-center gap-1">
@@ -371,26 +401,23 @@ export function TypingTest() {
             <Kbd key={c}>{c}</Kbd>
           ))}
         </span>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="x"
           onClick={exitPractice}
           data-testid="practice-dismiss"
           aria-label="Stop drilling and go back to the normal test"
           title="Back to the normal test"
-          className="inline-flex size-7 items-center justify-center rounded-ui-sm text-sub transition-colors duration-150 hover:bg-text/[0.07] hover:text-text"
+          className="ml-auto"
         >
-          <Icon name="x" size={14} />
-        </button>
+          Normal test
+        </Button>
       </div>
     );
   } else {
     bar = (
-      <div
-        className="tt-fade mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-y-0.5 rounded-ui bg-bg-alt px-2 py-1.5"
-        data-testid="config-bar"
-        role="group"
-        aria-label="Test settings"
-      >
+      <div className="tt-fade flex min-h-9 flex-wrap items-center gap-y-0.5 max-md:justify-center" data-testid="config-bar" role="group" aria-label="Test settings">
         <ConfigToggle
           testId="config-punctuation"
           icon="at"
@@ -418,8 +445,8 @@ export function TypingTest() {
           value={mode}
           onChange={(m) => m !== mode && update({ testMode: m, testAmount: DEFAULT_AMOUNT[m] })}
           options={[
-            { value: "time", label: "time", icon: "clock" },
-            { value: "words", label: "words", icon: "type" },
+            { value: "time", label: "time" },
+            { value: "words", label: "words" },
           ]}
         />
         <Divider />
@@ -469,121 +496,168 @@ export function TypingTest() {
           update({ emulateLayout: !settings.emulateLayout });
           e.currentTarget.blur();
         }}
-        className="tt-fade inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 rounded-full px-2.5 text-xs whitespace-nowrap text-sub transition-colors duration-150 hover:bg-text/[0.06] hover:text-text"
+        className="tt-fade ll-lettering-sm group/emu inline-flex h-7 max-w-full min-w-0 items-center gap-2 whitespace-nowrap text-sub transition-colors duration-150 hover:text-text"
       >
-        <Icon name="layers" size={13} className={cx("shrink-0", settings.emulateLayout && "text-main")} />
-        {settings.emulateLayout ? (
-          <span className="truncate">
-            emulating {active.name}
-            {/* the view switch shares this line: keep the label short when it is shown */}
-            <span className={guideView.handsSupported ? "hidden" : "hidden md:inline"}> on a QWERTY OS</span>
-          </span>
-        ) : (
-          <span>using OS layout</span>
-        )}
+        <span aria-hidden className={cx("size-2.5 shrink-0 border border-line", settings.emulateLayout && "bg-main")} />
+        <span className="truncate underline-offset-[5px] group-hover/emu:underline">{settings.emulateLayout ? `Emulating ${active.name}` : "Using OS layout"}</span>
       </button>
     </Tooltip>
   );
 
+  const nextChar = plan ? test.nextChar : null;
+  const boardSize = `${layout.keys.length} keys, ${trimUnits(layout.width)} × ${trimUnits(layout.height)} u`;
+  const viewNote = guideView.showHands ? `${guideView.showKeyboard ? "hands and keys" : "hands"}, ${camera}` : guideView.showKeyboard ? "keys, flat" : "text only";
+  const titleRows: [string, string][] = [
+    ["Layout", active.name],
+    ["Board", boardSize],
+    ["View", viewNote],
+    ["Mode", practice ? `weak keys, ${practice.chars.length} ${practice.chars.length === 1 ? "key" : "keys"}` : `${mode} ${amount}, ${LIST_LABEL[wordList]}`],
+  ];
+  const readouts: [string, string, string][] = [
+    ["WPM", String(Math.round(test.live.wpm)), "live-wpm"],
+    ["RAW", String(Math.round(test.live.raw)), "live-raw"],
+    ["ACC", `${Math.floor(test.live.accuracy)}%`, "live-acc"],
+    ["ERR", String(test.state.keystrokes.incorrect), "live-err"],
+  ];
+
   return (
-    <div className="flex min-h-[calc(100dvh-15.5rem)] flex-col" data-testid="typing-test" data-status={status} data-layout={active.id}>
+    <div className="tt-stage" data-testid="typing-test" data-status={status} data-layout={active.id} data-finished={status === "finished" ? "true" : "false"}>
       <h1 className="sr-only">Typing test</h1>
       <MobileNotice />
-      <EmulationHint hint={emulationHint} layoutName={active.name} />
-      <WelcomeHint suppressed={status !== "idle" || emulationHint.visible} />
       <span className="sr-only" data-testid="test-status" aria-live="polite">
         {status}
       </span>
 
       {status === "finished" && test.result ? (
-        <div className="flex flex-1 flex-col justify-center py-2 sm:py-6">
-          <ResultsView
-            result={test.result}
-            layout={layout}
-            layoutName={active.name}
-            testLabel={testLabel}
-            testDetail={testDetail}
-            onNext={newTest}
-            onRepeat={repeatTest}
-            onPracticeKeys={startPractice}
-          />
-        </div>
+        <ResultsView
+          result={test.result}
+          layout={layout}
+          layoutName={active.name}
+          testLabel={testLabel}
+          testDetail={testDetail}
+          onNext={newTest}
+          onRepeat={repeatTest}
+          onPracticeKeys={startPractice}
+        />
       ) : (
         <>
-          {bar}
-          <div className={cx("flex flex-1 flex-col justify-center pb-2", tight ? "pt-6 sm:pt-7" : "pt-8 sm:pt-10")}>
-            <div className="mb-2 flex h-9 items-end justify-between gap-4">
-              <div className="flex items-baseline gap-5 font-mono tabular-nums">
-                <span className="text-2xl leading-none font-medium text-main" data-testid="counter" aria-label={isTime ? "Seconds left" : "Words done"}>
-                  {plan ? counter : ""}
-                </span>
-                <span className="tt-live text-sm text-sub">
-                  <span className="text-base text-text" data-testid="live-wpm">
-                    {Math.round(test.live.wpm)}
-                  </span>{" "}
-                  wpm
-                </span>
-                <span className="tt-live text-sm text-sub">
-                  <span className="text-base text-text" data-testid="live-acc">
-                    {Math.floor(test.live.accuracy)}%
-                  </span>{" "}
-                  acc
-                </span>
-              </div>
-              {showCaps && (
-                <span
-                  role="alert"
-                  data-testid="caps-warning"
-                  className="inline-flex h-7 items-center gap-1.5 rounded-full bg-error/[0.14] px-3 text-xs font-medium text-error"
+          <div className="tt-bar border-b border-hairline pb-2">{bar}</div>
+
+          <div className="tt-sheet">
+            <div className="tt-text">
+              <WordsDisplay words={test.words} caret={test.caret} status={status} />
+            </div>
+
+            <div className="tt-plate-cell">
+              <KeyboardGuide
+                fill
+                layout={layout}
+                nextChar={nextChar}
+                nextAction={nextAction}
+                actionCount={test.correction.count}
+                pressedKeyIds={kb.pressedKeyIds}
+                errorKeyIds={kb.errorKeyIds}
+                showKeyboard={guideView.showKeyboard}
+                maxUnit={guideView.showHands ? guideView.keyboardUnit : 56}
+                footer={
+                  <>
+                    <GuideViewSwitch className="tt-fade" />
+                    {emulationToggle}
+                  </>
+                }
+                handsSlot={
+                  guideView.showHands ? <HandsPanel fill layout={layout} nextChar={nextChar} nextAction={nextAction} press={press} compact={guideView.showKeyboard} /> : null
+                }
+              />
+            </div>
+
+            <div className="tt-rail">
+              <div className="tt-timer">
+                <div className="flex min-h-7 items-center md:justify-end">
+                  {showCaps ? (
+                    <span role="alert" data-testid="caps-warning" className="ll-lettering-sm inline-flex h-7 items-center gap-1.5 bg-error px-2 text-bg">
+                      <Icon name="alert" size={14} />
+                      Caps Lock is on
+                    </span>
+                  ) : (
+                    <span className="ll-lettering-sm text-sub">{isTime ? "Seconds left" : "Words done"}</span>
+                  )}
+                </div>
+                <div
+                  className={cx("ll-numeral text-text md:text-right", isTime ? "text-[56px] md:text-[96px]" : "text-[40px] md:text-[60px]")}
+                  data-testid="counter"
+                  aria-label={isTime ? "Seconds left" : "Words done"}
                 >
-                  <Icon name="alert" size={13} />
-                  Caps Lock is on
-                </span>
-              )}
+                  {plan ? counter : " "}
+                </div>
+              </div>
+
+              <NextKeyDetail className="tt-detail" layout={layout} nextChar={nextChar} nextAction={nextAction} actionCount={test.correction.count} />
+
+              <dl className="tt-stats" aria-label="Live results">
+                {readouts.map(([label, value, id]) => (
+                  <div key={label} className="flex items-baseline justify-between gap-3 border-b border-dashed border-border py-1.5" data-optional={id === "live-raw" ? "true" : undefined}>
+                    <dt className="ll-lettering-sm text-sub">{label}</dt>
+                    <dd className="ll-readout text-[17px] leading-none font-medium text-text" data-testid={id}>
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+
+              <dl className="tt-title border border-line" data-testid="title-block">
+                {titleRows.map(([label, value]) => (
+                  <div key={label} className="grid grid-cols-[76px_minmax(0,1fr)] border-b border-border last:border-b-0">
+                    <dt className="ll-lettering-sm border-r border-border px-2 py-1.5 text-sub">{label}</dt>
+                    <dd className="truncate px-2 py-1.5 text-[13px] leading-tight text-text" title={value}>
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </div>
 
-            <WordsDisplay words={test.words} caret={test.caret} status={status} />
-
-            <div className="mt-5 flex justify-center">
-              <button
-                ref={restartRef}
-                type="button"
-                data-testid="restart"
-                aria-label="Restart test with new words"
-                title="Restart (tab, then enter)"
-                onClick={(e) => {
-                  newTest();
-                  e.currentTarget.blur();
-                }}
-                className="inline-flex h-9 w-14 items-center justify-center rounded-ui text-sub transition-colors duration-150 hover:text-text focus-visible:bg-text/[0.07] focus-visible:text-text"
-              >
-                <Icon name="restart" size={18} />
-              </button>
+            <div className="tt-notes">
+              {/* fades with the other notes while typing (it keeps its place, so nothing below it moves) */}
+              <div className="tt-fade empty:hidden">
+                <WelcomeHint suppressed={emulationHint.visible} />
+              </div>
+              <section className="tt-notes-list tt-fade" aria-labelledby="tt-notes-heading">
+                <h2 id="tt-notes-heading" className="ll-lettering-sm text-text">
+                  Notes
+                </h2>
+                <ol className="mt-2 space-y-2 text-[13px] leading-snug text-sub">
+                  <li>{settings.fingerColors ? "The filled key is next. Its colour and the label name the finger that owns it." : "The filled key is next. The label names the finger that owns it."}</li>
+                  <li>{settings.emulateLayout ? `Keys are read by position, as ${active.name}.` : "Characters come from your system layout."}</li>
+                </ol>
+              </section>
+              {settings.fingerColors && <FingerLegend />}
+              <div className="tt-notes-end">
+                <div className="border-t border-hairline pt-3">
+                  <button
+                    ref={restartRef}
+                    type="button"
+                    data-testid="restart"
+                    aria-label="Restart test with new words"
+                    title="Restart (tab, then enter)"
+                    onClick={(e) => {
+                      newTest();
+                      e.currentTarget.blur();
+                    }}
+                    className="group/restart -mx-1 inline-flex min-h-8 items-center gap-1.5 px-1 text-[13px] text-sub transition-colors duration-150 hover:text-text"
+                  >
+                    <Kbd>tab</Kbd>
+                    <span aria-hidden>+</span>
+                    <Kbd>enter</Kbd>
+                    <span className="ml-1 underline-offset-4 group-hover/restart:underline">restart test</span>
+                  </button>
+                  <p className="tt-fade mt-1.5 flex items-center gap-1.5 text-[13px] text-sub">
+                    <Kbd>esc</Kbd>
+                    <span className="ml-1">{status === "running" ? "new text" : "command palette"}</span>
+                  </p>
+                </div>
+              </div>
             </div>
-
-            <KeyboardGuide
-              className={tight ? "mt-4 sm:mt-5" : "mt-6 sm:mt-8"}
-              layout={layout}
-              nextChar={plan ? test.nextChar : null}
-              nextAction={nextAction}
-              actionCount={test.correction.count}
-              pressedKeyIds={kb.pressedKeyIds}
-              errorKeyIds={kb.errorKeyIds}
-              showKeyboard={guideView.showKeyboard}
-              maxUnit={guideView.keyboardUnit}
-              reserveBox={guideView.reserveBox}
-              hintEnd={
-                <>
-                  <GuideViewSwitch className="tt-fade" />
-                  {emulationToggle}
-                </>
-              }
-              handsSlot={
-                guideView.showHands ? (
-                  <HandsPanel layout={layout} nextChar={plan ? test.nextChar : null} nextAction={nextAction} press={press} compact={guideView.showKeyboard} />
-                ) : null
-              }
-            />
           </div>
         </>
       )}

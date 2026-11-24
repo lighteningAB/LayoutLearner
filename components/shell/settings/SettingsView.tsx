@@ -3,7 +3,6 @@
 import { useState, type ReactNode } from "react";
 import {
   Button,
-  Card,
   ConfirmDialog,
   SegmentedControl,
   Select,
@@ -26,33 +25,18 @@ import {
 } from "@/lib/settings";
 import { AccountSection } from "@/components/account/AccountSection";
 import { useAccount } from "@/lib/auth/client";
+import { DestructiveTag, SheetRows, SheetSection } from "./SettingsSheet";
 import { ThemePicker } from "./ThemePicker";
 
 function Section({ id, title, description, children }: { id: string; title: string; description: string; children: ReactNode }) {
   return (
-    <section
-      aria-labelledby={`settings-${id}`}
-      data-testid={`settings-section-${id}`}
-      className="grid gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 md:grid-cols-[200px_minmax(0,1fr)]"
-    >
-      <div>
-        <h2 id={`settings-${id}`} className="text-[15px] font-semibold tracking-tight text-text">
-          {title}
-        </h2>
-        <p className="mt-1 text-[13px] leading-snug text-sub">{description}</p>
-      </div>
-      <div className="min-w-0">{children}</div>
-    </section>
+    <SheetSection headingId={`settings-${id}`} data-testid={`settings-section-${id}`} title={title} description={description}>
+      {children}
+    </SheetSection>
   );
 }
 
-function Rows({ children }: { children: ReactNode }) {
-  return (
-    <Card padding="none" className="divide-y divide-border/70 px-5">
-      {children}
-    </Card>
-  );
-}
+const Rows = SheetRows;
 
 type BooleanKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
 
@@ -79,8 +63,12 @@ export function SettingsView() {
     <div data-testid="settings-view">
       <Section id="appearance" title="Appearance" description="Pick a theme. The typing text size only affects the test and lessons.">
         <ThemePicker value={settings.theme} onChange={(theme) => update({ theme })} />
-        <Rows>
-          <SettingRow label="Typing text size" description="Size of the words you type." labelId="setting-fontSize-label" className="mt-3">
+        <p className="mt-3 max-w-[75ch] text-[14px] leading-snug text-sub" data-testid="theme-follow-note">
+          A browser that has saved no settings yet opens on the sheet that matches your system: Blueprint in dark mode, Whiteprint in light mode. The first
+          setting you change, here or anywhere else, saves the sheet marked Current with it, and it stays until you pick the other one.
+        </p>
+        <Rows className="mt-6">
+          <SettingRow label="Typing text size" description="Size of the words you type." labelId="setting-fontSize-label">
             <Slider
               aria-labelledby="setting-fontSize-label"
               data-testid="setting-fontSize"
@@ -91,14 +79,22 @@ export function SettingsView() {
               valueText={`${settings.fontSize} pixels`}
               onChange={(fontSize) => update({ fontSize })}
             />
-            <span className="w-10 text-right font-mono text-sm text-main tabular-nums" data-testid="setting-fontSize-value">
+            <span className="ll-readout w-12 text-right text-[15px] text-text" data-testid="setting-fontSize-value">
               {settings.fontSize}px
             </span>
           </SettingRow>
-          <div className="flex h-20 items-center overflow-hidden" aria-hidden>
+          {/* Preview, set like the test text: typed characters in line colour, a mistake underlined, the caret, the rest still to type. */}
+          <div className="-mx-4 flex h-[92px] items-center gap-4 overflow-hidden px-4 sm:-mx-5 sm:px-5" aria-hidden>
+            <span className="flex shrink-0 flex-col items-center self-stretch py-3 text-sub">
+              <span className="h-px w-2.5 bg-border" />
+              <span className="w-px flex-1 bg-border" />
+              <span className="h-px w-2.5 bg-border" />
+            </span>
             <p className="truncate font-mono leading-none" style={{ fontSize: settings.fontSize }}>
-              <span className="text-text">the quick br</span>
-              <span className="mx-px inline-block h-[1.15em] w-[2px] rounded-full bg-caret align-[-0.2em]" />
+              <span className="text-text">the qu</span>
+              <span className="text-error underline decoration-1 underline-offset-[0.2em]">o</span>
+              <span className="text-text">ck br</span>
+              <span className="mx-px inline-block h-[1.15em] w-[2px] bg-caret align-[-0.2em]" />
               <span className="text-sub">own fox jumps over the lazy dog</span>
             </p>
           </div>
@@ -155,7 +151,7 @@ export function SettingsView() {
           <SettingRow
             label="Current layout"
             description={
-              <span className="font-mono text-main" data-testid="setting-layoutId">
+              <span className="font-mono text-text" data-testid="setting-layoutId">
                 {customLayout?.name ?? settings.layoutId}
               </span>
             }
@@ -206,7 +202,15 @@ export function SettingsView() {
               Reset
             </Button>
           </SettingRow>
-          <SettingRow label="Clear all data" description="Delete everything LayoutLearner has stored in this browser.">
+          <SettingRow
+            label={
+              <>
+                Clear all data
+                <DestructiveTag />
+              </>
+            }
+            description="Delete everything LayoutLearner has stored in this browser."
+          >
             <Button size="sm" variant="danger" icon="trash" data-testid="settings-clear" onClick={() => setConfirmClear(true)}>
               Clear data
             </Button>

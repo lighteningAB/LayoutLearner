@@ -2,40 +2,30 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Button, Card, ConfirmDialog, SettingRow, cx, toast } from "@/components/ui";
+import { Button, ConfirmDialog, SettingRow, cx, toast } from "@/components/ui";
+import { DestructiveTag, SheetRows, SheetSection } from "@/components/shell/settings/SettingsSheet";
 import { signOutAccount, useAccount } from "@/lib/auth/client";
 import { deleteAccountData, exportSyncedData, syncNow, useSyncStatus } from "@/lib/sync/engine";
 import { TONE_TEXT } from "./AccountControl";
 import { openSignIn } from "./signin-store";
 import { describeSync, useNow } from "./sync-text";
 
-/** Same markup as the local Section/Rows in SettingsView (those are not exported). */
+/** The same ruled section as the rest of the settings sheet. */
 function Section({ children }: { children: React.ReactNode }) {
   return (
-    <section
-      id="account"
-      aria-labelledby="settings-account-title"
+    <SheetSection
+      anchor="account"
+      headingId="settings-account-title"
       data-testid="settings-account"
-      className="grid scroll-mt-6 gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 md:grid-cols-[200px_minmax(0,1fr)]"
+      title={<>Account &amp; sync</>}
+      description="Keep your progress and settings with you across devices."
     >
-      <div>
-        <h2 id="settings-account-title" className="text-[15px] font-semibold tracking-tight text-text">
-          Account &amp; sync
-        </h2>
-        <p className="mt-1 text-[13px] leading-snug text-sub">Keep your progress and settings with you across devices.</p>
-      </div>
-      <div className="min-w-0">{children}</div>
-    </section>
+      {children}
+    </SheetSection>
   );
 }
 
-function Rows({ children }: { children: React.ReactNode }) {
-  return (
-    <Card padding="none" className="divide-y divide-border/70 px-5">
-      {children}
-    </Card>
-  );
-}
+const Rows = SheetRows;
 
 /** Settings → "Account & sync". Renders nothing while the feature is off. */
 export function AccountSection() {
@@ -102,7 +92,7 @@ function SignedIn({ name }: { name: string }) {
         <SettingRow
           label={
             <>
-              Signed in as <span className="text-main">{name}</span>
+              Signed in as <span className="font-semibold underline decoration-main decoration-2 underline-offset-4">{name}</span>
             </>
           }
           description={
@@ -126,11 +116,11 @@ function SignedIn({ name }: { name: string }) {
         </SettingRow>
 
         <div className="py-4" data-testid="account-what-syncs">
-          <h3 className="text-sm font-medium text-text">What syncs</h3>
-          <p className="mt-0.5 text-[13px] leading-snug text-sub">
+          <h3 className="text-[16px] font-medium text-text">What syncs</h3>
+          <p className="mt-0.5 max-w-[62ch] text-[14px] leading-snug text-sub">
             Lesson progress, settings (theme, layout, test preferences…) and custom layouts follow your account.
           </p>
-          <p className="mt-1.5 text-[13px] leading-snug text-sub" data-testid="account-local-only">
+          <p className="mt-1.5 max-w-[62ch] text-[14px] leading-snug text-sub" data-testid="account-local-only">
             <span className="font-medium text-text">Stays on this device:</span> Emulate layout (it depends on this
             device&rsquo;s keyboard), Show 3D hands (graphics power varies) and text size (screens differ).
           </p>
@@ -143,12 +133,17 @@ function SignedIn({ name }: { name: string }) {
         </SettingRow>
 
         <SettingRow
-          label="Delete account data"
+          label={
+            <>
+              Delete account data
+              <DestructiveTag />
+            </>
+          }
           description={
             <>
               Erases the synced data stored for your account on the server and signs this device out. Data on your
               devices is kept; a device that signs in again uploads its copy.{" "}
-              <Link href="/privacy" className="text-main underline-offset-2 hover:underline">
+              <Link href="/privacy" className="text-text underline decoration-main decoration-2 underline-offset-4 hover:text-main">
                 Privacy
               </Link>
             </>

@@ -30,8 +30,9 @@ export const TONE_TEXT: Record<SyncTone, string> = {
 };
 
 const ITEM =
-  "flex h-9 w-full items-center gap-2.5 rounded-ui-sm px-2.5 text-left text-sm whitespace-nowrap text-text outline-none " +
-  "transition-colors duration-100 hover:bg-text/[0.09] focus:bg-text/[0.09] aria-disabled:cursor-default aria-disabled:text-sub/60 aria-disabled:hover:bg-transparent";
+  "flex h-9 w-full items-center gap-2.5 px-2.5 text-left text-[15px] whitespace-nowrap text-text outline-none " +
+  "transition-colors duration-100 hover:bg-text hover:text-bg focus:bg-text focus:text-bg " +
+  "aria-disabled:cursor-default aria-disabled:bg-transparent aria-disabled:text-sub aria-disabled:line-through aria-disabled:decoration-1";
 
 /** The account control in the nav. Renders nothing while the feature is off. */
 export function AccountControl() {
@@ -44,7 +45,7 @@ export function AccountControl() {
   if (account.status === "loading") {
     return (
       <div className={SLOT} data-testid="account-control" data-state="loading" data-sync={phase} aria-busy="true">
-        <span aria-hidden className="size-8 rounded-full bg-text/[0.07] motion-safe:animate-pulse" />
+        <span aria-hidden className="ll-hatch size-8 border border-dashed border-border motion-safe:animate-shimmer" />
       </div>
     );
   }
@@ -56,10 +57,10 @@ export function AccountControl() {
         aria-label="Sign in"
         title="Sign in"
         onClick={() => openSignIn()}
-        className="inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-ui bg-text/[0.07] text-[13px] font-medium text-text transition-colors duration-150 hover:bg-text/[0.13] sm:w-[72px]"
+        className="ll-lettering-sm inline-flex h-8 w-8 items-center justify-center gap-1.5 border border-line whitespace-nowrap text-text transition-colors duration-150 hover:bg-text hover:text-bg sm:w-[72px]"
       >
         <Icon name="log-in" size={16} className="sm:hidden" />
-        <span className="hidden sm:inline">Sign in</span>
+        <span className="ll-trim hidden sm:inline">Sign in</span>
       </button>
     </div>
   );
@@ -149,7 +150,7 @@ function SignedIn({ name, image }: { name: string; image: string | null }) {
             setOpen(true);
           }
         }}
-        className="relative inline-flex size-8 items-center justify-center rounded-full transition-[filter] duration-150 hover:brightness-125"
+        className="relative inline-flex size-8 items-center justify-center"
       >
         <Avatar name={name} image={image} />
         {dot && (
@@ -157,7 +158,7 @@ function SignedIn({ name, image }: { name: string; image: string | null }) {
             aria-hidden
             data-testid="account-dot"
             data-tone={dot.tone}
-            className={cx("absolute -right-px -bottom-px size-2.5 rounded-full ring-2 ring-bg", DOT_TONE[dot.tone])}
+            className={cx("absolute -right-1 -bottom-1 size-2.5 border border-bg", DOT_TONE[dot.tone])}
           />
         )}
       </button>
@@ -169,21 +170,21 @@ function SignedIn({ name, image }: { name: string; image: string | null }) {
           aria-label="Account"
           data-testid="account-menu"
           onKeyDown={onMenuKeyDown}
-          className="absolute top-full right-0 z-40 mt-1.5 w-64 max-w-[calc(100vw-2rem)] animate-pop-in rounded-ui border border-border bg-bg-alt p-1 shadow-pop"
+          className="absolute top-full right-0 z-40 mt-1.5 w-64 max-w-[calc(100vw-2rem)] animate-pop-in border border-line bg-bg p-1"
         >
           <div role="none" className="px-2.5 pt-2 pb-2.5">
-            <div className="truncate text-sm font-medium text-text" data-testid="account-menu-name">
+            <div className="ll-lettering truncate text-text" data-testid="account-menu-name">
               {name}
             </div>
             <div
               aria-live="polite"
               data-testid="account-menu-status"
-              className={cx("mt-0.5 text-xs leading-snug", TONE_TEXT[summary.tone])}
+              className={cx("mt-1 text-[13px] leading-snug", TONE_TEXT[summary.tone])}
             >
               {summary.text}
             </div>
           </div>
-          <div role="separator" className="mx-1 mb-1 h-px bg-border" />
+          <div role="separator" className="mb-1 h-px bg-border" />
           <MenuButton
             icon="restart"
             testid="account-menu-sync"
@@ -200,10 +201,10 @@ function SignedIn({ name, image }: { name: string; image: string | null }) {
             className={ITEM}
             onClick={() => close(false)}
           >
-            <Icon name="sliders" size={16} className="text-sub" />
+            <Icon name="sliders" size={16} />
             Account &amp; sync
           </Link>
-          <div role="separator" className="mx-1 my-1 h-px bg-border" />
+          <div role="separator" className="my-1 h-px bg-border" />
           <MenuButton
             icon="log-out"
             testid="account-menu-signout"
@@ -245,7 +246,7 @@ function MenuButton({
         if (!disabled) onClick();
       }}
     >
-      <Icon name={icon} size={16} className="text-sub" />
+      <Icon name={icon} size={16} />
       {children}
     </button>
   );

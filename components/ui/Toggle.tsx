@@ -18,7 +18,7 @@ export interface ToggleProps {
   "data-testid"?: string;
 }
 
-/** Accessible on/off switch (role="switch"). Space/Enter toggle. */
+/** Accessible on/off switch (role="switch"), drawn square: an outlined slot with a block that slides. Space/Enter toggle. */
 export function Toggle({ checked, onChange, label, disabled, size = "md", id, className, ...aria }: ToggleProps) {
   const sm = size === "sm";
   const control = (
@@ -31,10 +31,10 @@ export function Toggle({ checked, onChange, label, disabled, size = "md", id, cl
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cx(
-        "relative inline-flex shrink-0 items-center rounded-full transition-colors duration-150",
-        "disabled:cursor-not-allowed disabled:opacity-40",
-        sm ? "h-5 w-8" : "h-6 w-10",
-        checked ? "bg-main" : "bg-text/[0.16] hover:bg-text/[0.24]",
+        "group/tg relative inline-flex shrink-0 items-center border transition-colors duration-150",
+        "disabled:cursor-not-allowed disabled:border-dashed disabled:border-border disabled:bg-transparent",
+        sm ? "h-5 w-9" : "h-6 w-11",
+        checked ? "border-line bg-main" : "border-line bg-transparent hover:bg-fill-strong",
         !label && className,
       )}
       {...aria}
@@ -42,17 +42,17 @@ export function Toggle({ checked, onChange, label, disabled, size = "md", id, cl
       <span
         aria-hidden
         className={cx(
-          "absolute left-[3px] rounded-full transition-transform duration-150 ease-out",
+          "absolute left-[2px] transition-transform duration-200 ease-out group-disabled/tg:bg-border",
           sm ? "size-3.5" : "size-[18px]",
           checked ? "bg-main-fg" : "bg-text",
-          checked && (sm ? "translate-x-3" : "translate-x-4"),
+          checked && (sm ? "translate-x-4" : "translate-x-5"),
         )}
       />
     </button>
   );
   if (!label) return control;
   return (
-    <label className={cx("inline-flex items-center gap-3 text-sm text-text", disabled && "opacity-60", className)}>
+    <label className={cx("inline-flex items-center gap-3 text-[15px] text-text", disabled && "text-sub", className)}>
       {control}
       <span>{label}</span>
     </label>

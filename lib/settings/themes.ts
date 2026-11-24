@@ -11,41 +11,57 @@ export interface ThemeMeta {
 }
 
 export const THEMES = [
-  { id: "tide", name: "Tide", scheme: "dark", description: "Deep slate with a sea-glass accent" },
-  { id: "paper", name: "Paper", scheme: "light", description: "Warm paper and fountain-pen blue" },
-  { id: "dusk", name: "Dusk", scheme: "dark", description: "Violet night with a pink caret" },
-  { id: "moss", name: "Moss", scheme: "dark", description: "Forest floor and lichen green" },
-  { id: "ember", name: "Ember", scheme: "dark", description: "Charcoal warmed by orange coals" },
-  { id: "glacier", name: "Glacier", scheme: "light", description: "Cool daylight and deep teal" },
+  { id: "blueprint", name: "Blueprint", scheme: "dark", description: "Cyanotype sheet, chalk linework, safety-yellow action" },
+  { id: "whiteprint", name: "Whiteprint", scheme: "light", description: "Drafting paper, blue ink, red-pencil action" },
 ] as const satisfies readonly ThemeMeta[];
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
-export const DEFAULT_THEME: ThemeId = "tide";
+/** The dark sheet: the default, and the theme when the OS prefers dark. */
+export const DEFAULT_THEME: ThemeId = "blueprint";
+/** The light sheet: the theme when the OS prefers light. */
+export const LIGHT_DEFAULT_THEME: ThemeId = "whiteprint";
 
 export const THEME_IDS: readonly ThemeId[] = THEMES.map((t) => t.id);
+
+/**
+ * Ids of themes that no longer exist, and the theme each one becomes. A browser (or a synced
+ * account) that still holds one of these is moved over silently, keeping its light / dark choice.
+ */
+export const LEGACY_THEME_IDS: Readonly<Record<string, ThemeId>> = {
+  tide: "blueprint",
+  dusk: "blueprint",
+  moss: "blueprint",
+  ember: "blueprint",
+  paper: "whiteprint",
+  glacier: "whiteprint",
+};
 
 export function isThemeId(value: unknown): value is ThemeId {
   return typeof value === "string" && (THEME_IDS as readonly string[]).includes(value);
 }
 
+/** A current theme id for `value`: itself, the successor of a retired id, or null when it is neither. */
+export function normalizeThemeId(value: unknown): ThemeId | null {
+  if (isThemeId(value)) return value;
+  if (typeof value === "string" && Object.prototype.hasOwnProperty.call(LEGACY_THEME_IDS, value)) {
+    return LEGACY_THEME_IDS[value];
+  }
+  return null;
+}
+
 export function getTheme(id: string): (typeof THEMES)[number] {
-  return THEMES.find((t) => t.id === id) ?? THEMES[0];
+  const current = normalizeThemeId(id);
+  return THEMES.find((t) => t.id === current) ?? THEMES[0];
 }
 
 export const SETTINGS_KEY = "ll:v1:settings";
 export const STORAGE_PREFIX = "ll:v1:";
 
 /**
- * Inline <head> script: applies the persisted theme to <html data-theme> before
- * first paint, so there is no flash of the default theme on reload.
- */
-export const LIGHT_DEFAULT_THEME: ThemeId = "paper";
-
-/**
  * Theme for a visitor who has not picked one: follows the OS light/dark
- * setting (Paper or Tide). On the server, and where matchMedia is missing,
- * it is DEFAULT_THEME.
+ * setting (Whiteprint or Blueprint). On the server, and where matchMedia is
+ * missing, it is DEFAULT_THEME.
  */
 export function systemDefaultTheme(): ThemeId {
   try {
@@ -58,10 +74,17 @@ export function systemDefaultTheme(): ThemeId {
   return DEFAULT_THEME;
 }
 
+/**
+ * Inline <head> script: applies the persisted theme to <html data-theme> before
+ * first paint, so there is no flash of the default theme on reload. Retired ids
+ * are mapped to their successor; anything else falls back to the OS default.
+ */
 export const themeInitScript = `(function(){var d=document.documentElement,t=${JSON.stringify(
   DEFAULT_THEME,
 )};try{if(window.matchMedia("(prefers-color-scheme: light)").matches)t=${JSON.stringify(
   LIGHT_DEFAULT_THEME,
 )}}catch(e){}try{var s=JSON.parse(localStorage.getItem(${JSON.stringify(
   SETTINGS_KEY,
-)})||"{}");if(s&&${JSON.stringify(THEME_IDS)}.indexOf(s.theme)>-1)t=s.theme}catch(e){}d.setAttribute("data-theme",t)})();`;
+)})||"{}"),v=s&&s.theme,m=${JSON.stringify(LEGACY_THEME_IDS)};if(typeof v==="string"){if(${JSON.stringify(
+  THEME_IDS,
+)}.indexOf(v)>-1)t=v;else if(Object.prototype.hasOwnProperty.call(m,v))t=m[v]}}catch(e){}d.setAttribute("data-theme",t)})();`;

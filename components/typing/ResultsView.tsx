@@ -1,7 +1,8 @@
 "use client";
-// What you see when a test (or lesson drill) ends: the two numbers that matter, the supporting
-// stats, a per-second chart, the keys that tripped you up and what to do next.
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+// What you see when a test (or lesson drill) ends, drawn as a results sheet: the two numbers that
+// matter as large numerals, a drafted per-second graph, the supporting stats as a ruled table,
+// the keys that tripped you up and what to do next.
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { HistoryPoint, TestResult } from "@/lib/typing/engine";
 import type { ParsedLayout } from "@/lib/types";
 import { useSettings } from "@/lib/settings";
@@ -59,19 +60,6 @@ function niceStep(max: number, ticks: number): number {
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * pow;
 }
 
-/** Smooth, monotone-in-x path through the points. */
-function curve(points: { x: number; y: number }[]): string {
-  if (points.length === 0) return "";
-  let d = `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`;
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1];
-    const b = points[i];
-    const mx = ((a.x + b.x) / 2).toFixed(1);
-    d += ` C${mx},${a.y.toFixed(1)} ${mx},${b.y.toFixed(1)} ${b.x.toFixed(1)},${b.y.toFixed(1)}`;
-  }
-  return d;
-}
-
 export interface ResultChartProps {
   history: readonly HistoryPoint[];
   height?: number;
@@ -83,7 +71,6 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
   const boxRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [hover, setHover] = useState<number | null>(null);
-  const gradId = useId().replace(/:/g, "");
 
   useEffect(() => {
     const el = boxRef.current;
@@ -97,7 +84,7 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
     return () => ro.disconnect();
   }, []);
 
-  const m = { l: 36, r: 10, t: 28, b: 24 };
+  const m = { l: 40, r: 12, t: 30, b: 26 };
   const w = Math.max(width, 120);
   const pw = w - m.l - m.r;
   const ph = height - m.t - m.b;
@@ -136,9 +123,7 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
   const { pts, x, y, yTicks, xTicks } = model;
   const wpmPts = pts.map((p) => ({ x: x(p.t), y: y(p.wpm) }));
   const rawPts = pts.map((p) => ({ x: x(p.t), y: y(p.raw) }));
-  const wpmPath = curve(wpmPts);
   const baseY = m.t + ph;
-  const areaPath = wpmPts.length > 1 ? `${wpmPath} L${wpmPts[wpmPts.length - 1].x.toFixed(1)},${baseY} L${wpmPts[0].x.toFixed(1)},${baseY} Z` : "";
   const single = pts.length === 1;
 
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -158,25 +143,30 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
 
   const hp = hover != null ? pts[hover] : null;
   const hx = hover != null ? wpmPts[hover].x : 0;
-  const tipLeft = Math.min(Math.max(hx, 70), w - 70);
+  const tipLeft = Math.min(Math.max(hx, 76), w - 76);
+  const polyline = (ps: { x: number; y: number }[]) => ps.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const errorTotal = pts.reduce((n, p) => n + p.errors, 0);
 
   return (
     <div className={cx("tt-chart", className)} data-testid="result-chart">
-      <div className="mb-1 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 pr-2 text-xs text-sub">
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="h-[3px] w-4 rounded-full bg-main" />
-          wpm
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="h-[2px] w-4 rounded-full bg-sub" />
-          raw
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <svg aria-hidden width="9" height="9" viewBox="-4.5 -4.5 9 9">
-            <path d="M-3,-3 L3,3 M-3,3 L3,-3" stroke="var(--error)" strokeWidth="1.75" strokeLinecap="round" />
-          </svg>
-          errors
-        </span>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-5 gap-y-1">
+        <h3 className="ll-lettering text-text">Speed per second</h3>
+        <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-sub" aria-label="Legend">
+          <li className="inline-flex items-center gap-2">
+            <span aria-hidden className="h-0.5 w-5 bg-text" />
+            wpm
+          </li>
+          <li className="inline-flex items-center gap-2">
+            <span aria-hidden className="w-5 border-t border-dashed border-sub" />
+            raw
+          </li>
+          <li className="inline-flex items-center gap-2">
+            <svg aria-hidden width="9" height="9" viewBox="-4.5 -4.5 9 9">
+              <path d="M-3.5,-3.5 L3.5,3.5 M-3.5,3.5 L3.5,-3.5" stroke="var(--error)" strokeWidth="1.5" />
+            </svg>
+            errors ({errorTotal})
+          </li>
+        </ul>
       </div>
       <div ref={boxRef} className="relative w-full" style={{ height }}>
         {width > 0 && (
@@ -191,45 +181,45 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
             onPointerDown={onMove}
             onPointerLeave={() => setHover(null)}
           >
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--main)" stopOpacity="0.2" />
-                <stop offset="100%" stopColor="var(--main)" stopOpacity="0" />
-              </linearGradient>
-            </defs>
+            {/* construction lines */}
+            {yTicks.map((v) =>
+              v === 0 ? null : <line key={v} x1={m.l} x2={w - m.r} y1={y(v)} y2={y(v)} stroke="var(--hairline)" strokeWidth="1" strokeDasharray="1 5" />,
+            )}
+            {/* axes with ticks */}
+            <path d={`M${m.l},${m.t - 8} V${baseY} H${w - m.r}`} fill="none" stroke="var(--line)" strokeWidth="1" />
             {yTicks.map((v) => (
               <g key={v}>
-                <line x1={m.l} x2={w - m.r} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeWidth="1" strokeDasharray={v === 0 ? undefined : "2 4"} />
+                <line x1={m.l - 4} x2={m.l} y1={y(v)} y2={y(v)} stroke="var(--line)" strokeWidth="1" />
                 <text x={m.l - 8} y={y(v)} textAnchor="end" dominantBaseline="middle">
                   {v}
                 </text>
               </g>
             ))}
             {xTicks.map((t) => (
-              <text key={t} x={x(t)} y={height - 6} textAnchor="middle">
-                {t}
-                {t === xTicks[xTicks.length - 1] ? "s" : ""}
-              </text>
+              <g key={t}>
+                <line x1={x(t)} x2={x(t)} y1={baseY} y2={baseY + 4} stroke="var(--line)" strokeWidth="1" />
+                <text x={x(t)} y={baseY + 17} textAnchor="middle">
+                  {t}
+                  {t === xTicks[xTicks.length - 1] ? "s" : ""}
+                </text>
+              </g>
             ))}
+            <text className="tt-chart-title" x={m.l + 8} y={m.t - 12}>
+              wpm
+            </text>
 
-            {areaPath && <path d={areaPath} fill={`url(#${gradId})`} />}
-            {!single && <path d={curve(rawPts)} fill="none" stroke="var(--sub)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />}
-            {!single && (
-              <path className="tt-draw" pathLength={1} d={wpmPath} fill="none" stroke="var(--main)" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
-            )}
-            {single && (
-              <>
-                <circle cx={rawPts[0].x} cy={rawPts[0].y} r="4" fill="var(--sub)" stroke="var(--bg)" strokeWidth="2" />
-                <circle cx={wpmPts[0].x} cy={wpmPts[0].y} r="4.5" fill="var(--main)" stroke="var(--bg)" strokeWidth="2" />
-              </>
-            )}
+            {!single && <polyline points={polyline(rawPts)} fill="none" stroke="var(--sub)" strokeWidth="1" strokeDasharray="4 3" />}
+            {!single && <polyline className="tt-draw" pathLength={1} points={polyline(wpmPts)} fill="none" stroke="var(--text)" strokeWidth="2" strokeLinejoin="miter" />}
+            {wpmPts.length <= 40 &&
+              wpmPts.map((p, i) => <rect key={i} x={p.x - 2.5} y={p.y - 2.5} width="5" height="5" fill="var(--bg)" stroke="var(--text)" strokeWidth="1" />)}
+            {single && <rect x={rawPts[0].x - 3} y={rawPts[0].y - 3} width="6" height="6" fill="var(--bg)" stroke="var(--sub)" strokeWidth="1" />}
 
             {pts.map((p, i) =>
               p.errors > 0 ? (
-                <g key={i} transform={`translate(${Math.max(wpmPts[i].x, m.l + 5).toFixed(1)},${m.t - 16})`} data-testid="chart-error">
+                <g key={i} transform={`translate(${Math.max(wpmPts[i].x, m.l + 6).toFixed(1)},${(wpmPts[i].y - 13).toFixed(1)})`} data-testid="chart-error">
                   {(() => {
-                    const s = p.errors > 2 ? 3.6 : 2.8;
-                    return <path d={`M${-s},${-s} L${s},${s} M${-s},${s} L${s},${-s}`} stroke="var(--error)" strokeWidth={p.errors > 2 ? 2 : 1.6} strokeLinecap="round" />;
+                    const s = p.errors > 2 ? 4.5 : 3.5;
+                    return <path d={`M${-s},${-s} L${s},${s} M${-s},${s} L${s},${-s}`} stroke="var(--error)" strokeWidth={p.errors > 2 ? 2 : 1.5} />;
                   })()}
                 </g>
               ) : null,
@@ -237,9 +227,9 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
 
             {hp && (
               <g pointerEvents="none">
-                <line x1={hx} x2={hx} y1={m.t - 2} y2={baseY} stroke="var(--sub)" strokeWidth="1" opacity="0.6" />
-                <circle cx={hx} cy={rawPts[hover as number].y} r="4" fill="var(--sub)" stroke="var(--bg)" strokeWidth="2" />
-                <circle cx={hx} cy={wpmPts[hover as number].y} r="4.5" fill="var(--main)" stroke="var(--bg)" strokeWidth="2" />
+                <line x1={hx} x2={hx} y1={m.t - 8} y2={baseY} stroke="var(--line)" strokeWidth="1" strokeDasharray="3 3" />
+                <rect x={hx - 3.5} y={rawPts[hover as number].y - 3.5} width="7" height="7" fill="var(--bg)" stroke="var(--sub)" strokeWidth="1.5" />
+                <rect x={hx - 3.5} y={wpmPts[hover as number].y - 3.5} width="7" height="7" fill="var(--text)" />
               </g>
             )}
           </svg>
@@ -248,30 +238,21 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
           <div
             role="status"
             data-testid="chart-tooltip"
-            className="pointer-events-none absolute top-0 z-10 w-[132px] -translate-x-1/2 rounded-ui-sm border border-border bg-bg-alt px-2.5 py-2 font-mono text-[11px] leading-[1.5] text-sub shadow-pop"
-            style={{ left: tipLeft, top: Math.max(0, Math.min(wpmPts[hover as number].y, rawPts[hover as number].y) - 84) }}
+            className="pointer-events-none absolute top-0 z-10 w-[144px] -translate-x-1/2 border border-line bg-bg px-2.5 py-2 font-mono text-[12px] leading-[1.5] text-sub"
+            style={{ left: tipLeft, top: Math.max(0, Math.min(wpmPts[hover as number].y, rawPts[hover as number].y) - 96) }}
           >
-            <div className="mb-0.5 text-text">{Number.isInteger(hp.t) ? hp.t : hp.t.toFixed(1)}s</div>
+            <div className="mb-0.5 border-b border-hairline pb-0.5 text-text">{Number.isInteger(hp.t) ? hp.t : hp.t.toFixed(1)}s</div>
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-main" />
-                wpm
-              </span>
+              <span>wpm</span>
               <span className="text-text tabular-nums">{fmt(hp.wpm)}</span>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-sub" />
-                raw
-              </span>
+              <span>raw</span>
               <span className="text-text tabular-nums">{fmt(hp.raw)}</span>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="text-error">×</span>
-                errors
-              </span>
-              <span className="text-text tabular-nums">{hp.errors}</span>
+              <span>errors</span>
+              <span className={cx("tabular-nums", hp.errors > 0 ? "text-error" : "text-text")}>{hp.errors}</span>
             </div>
           </div>
         )}
@@ -303,14 +284,32 @@ export function ResultChart({ history, height = 200, className }: ResultChartPro
 
 // ────────────────────────────────────────────────────────────────────────── view
 
-function Small({ label, value, sub, title, i, testId, dense }: { label: string; value: ReactNode; sub?: ReactNode; title?: string; i: number; testId?: string; dense?: boolean }) {
+/**
+ * Height for the graph so that the results fill the sheet on a tall window instead of leaving its
+ * lower part blank: what the viewport has left under the numerals and above the actions, within
+ * 240..480 px. 240 until mounted (and on short windows, where the page scrolls as before).
+ */
+function useChartHeight(enabled: boolean): number {
+  const [h, setH] = useState(240);
+  useEffect(() => {
+    if (!enabled) return;
+    const sync = () => setH(Math.round(Math.min(480, Math.max(240, window.innerHeight - 566))));
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
+  }, [enabled]);
+  return enabled ? h : 240;
+}
+
+/** One ruled row of the results table. */
+function Row({ label, value, sub, title, i, testId }: { label: string; value: ReactNode; sub?: ReactNode; title?: string; i: number; testId?: string }) {
   return (
-    <div className="tt-rise min-w-0" style={{ "--i": i } as CSSProperties} title={title} data-testid={testId}>
-      <div className="text-xs text-sub lowercase">{label}</div>
-      <div className={cx("mt-1 flex h-8 items-center truncate font-mono leading-tight font-medium text-text tabular-nums", dense ? "text-lg tracking-tight sm:text-xl" : "text-xl sm:text-2xl")}>
-        <span className="truncate">{value}</span>
-      </div>
-      {sub && <div className="mt-0.5 text-xs whitespace-nowrap text-sub">{sub}</div>}
+    <div className="tt-rise grid grid-cols-[128px_minmax(0,1fr)] border-b border-border last:border-b-0" style={{ "--i": i } as CSSProperties} title={title} data-testid={testId}>
+      <dt className="ll-lettering-sm border-r border-border px-3 py-2.5 text-sub">{label}</dt>
+      <dd className="min-w-0 px-3 py-2">
+        <span className="ll-readout block truncate text-[17px] leading-tight font-medium text-text">{value}</span>
+        {sub && <span className="mt-0.5 block truncate text-[13px] leading-tight text-sub">{sub}</span>}
+      </dd>
     </div>
   );
 }
@@ -339,6 +338,9 @@ export function ResultsView({
   const onNextRef = useRef(onNext);
   onNextRef.current = onNext;
 
+  // With extra content between the stats and the actions (lessons) the sheet is already full.
+  const roomy = children == null || children === false;
+  const chartHeight = useChartHeight(roomy);
   const weak = useMemo(() => weakCharsOfResult(result, 6), [result]);
   const weakChars = useMemo(() => weak.map((k) => k.char), [weak]);
 
@@ -368,123 +370,118 @@ export function ResultsView({
 
   const { chars } = result;
   const label = testLabel ?? `${result.mode} ${result.modeValue}`;
+  const headline = "ll-numeral text-[72px] text-text sm:text-[104px]";
 
   return (
-    <section
-      ref={rootRef}
-      className={cx("mx-auto w-full max-w-[980px]", className)}
-      data-testid="results"
-      data-wpm={result.wpm}
-      data-accuracy={result.accuracy}
-      aria-label="Test result"
-    >
-      <div className="grid items-center gap-x-10 gap-y-6 md:grid-cols-[auto_minmax(0,1fr)]">
-        <div className="flex items-end gap-10 md:flex-col md:items-start md:gap-6">
-          <div className="tt-rise" style={{ "--i": 0 } as CSSProperties}>
-            <div className="flex h-6 items-center text-sm text-sub">wpm</div>
-            <div
-              className="mt-1 font-mono text-[64px] leading-none font-medium tracking-tight text-main tabular-nums sm:text-[80px]"
-              data-testid="result-wpm"
-              title={`${result.wpm.toFixed(2)} wpm`}
-            >
-              {fmt(result.wpm)}
+    <section ref={rootRef} className={cx("w-full", className)} data-testid="results" data-wpm={result.wpm} data-accuracy={result.accuracy} aria-label="Test result">
+      <div className="grid gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-end gap-x-12 gap-y-4 border-b border-hairline pb-5">
+            <div className="tt-rise" style={{ "--i": 0 } as CSSProperties}>
+              <div className={headline} data-testid="result-wpm" title={`${result.wpm.toFixed(2)} wpm`}>
+                {fmt(result.wpm)}
+              </div>
+              <div className="ll-lettering mt-2 text-sub">Words per minute</div>
+            </div>
+            <div className="tt-rise" style={{ "--i": 1 } as CSSProperties}>
+              <div
+                className={headline}
+                data-testid="result-acc"
+                title={`${result.accuracy.toFixed(2)}% (${result.keystrokes.correct} correct, ${result.keystrokes.incorrect} incorrect keystrokes)`}
+              >
+                {Math.floor(result.accuracy)}
+                <span className="ml-1 text-[0.4em] text-sub">%</span>
+              </div>
+              <div className="ll-lettering mt-2 text-sub">Accuracy</div>
             </div>
           </div>
-          <div className="tt-rise" style={{ "--i": 1 } as CSSProperties}>
-            <div className="flex h-6 items-center text-sm text-sub">accuracy</div>
-            <div
-              className="mt-1 font-mono text-[64px] leading-none font-medium tracking-tight text-main tabular-nums sm:text-[80px]"
-              data-testid="result-acc"
-              title={`${result.accuracy.toFixed(2)}% (${result.keystrokes.correct} correct, ${result.keystrokes.incorrect} incorrect keystrokes)`}
-            >
-              {Math.floor(result.accuracy)}
-              <span className="ml-0.5 text-[0.45em] font-normal text-sub">%</span>
-            </div>
+          <div className="tt-rise mt-6 min-w-0" style={{ "--i": 2 } as CSSProperties}>
+            <ResultChart history={result.history} height={chartHeight} />
           </div>
         </div>
-        <div className="tt-rise min-w-0" style={{ "--i": 2 } as CSSProperties}>
-          <ResultChart history={result.history} />
+
+        <div className="min-w-0">
+          <dl className="border border-line">
+            <Row i={3} label="Raw" value={`${fmt(result.raw)} wpm`} sub="every keystroke counted" title={`${result.raw.toFixed(2)} wpm counting every keystroke`} testId="result-raw" />
+            <Row i={4} label="Consistency" value={`${fmt(result.consistency)}%`} sub="steadiness, second to second" title="How steady your speed was from second to second" testId="result-consistency" />
+            <Row
+              i={5}
+              label="Characters"
+              testId="result-chars"
+              title="correct / incorrect / extra / missed"
+              value={
+                <>
+                  {chars.correct}
+                  <span className="text-sub">/</span>
+                  <span className={chars.incorrect ? "text-error" : undefined}>{chars.incorrect}</span>
+                  <span className="text-sub">/</span>
+                  {chars.extra}
+                  <span className="text-sub">/</span>
+                  {chars.missed}
+                </>
+              }
+              sub="right / wrong / extra / missed"
+            />
+            <Row i={6} label="Time" value={formatDuration(result.durationMs)} sub={`${result.wordsTyped} ${result.wordsTyped === 1 ? "word" : "words"}`} testId="result-time" />
+            <Row i={7} label="Test" value={label} sub={testDetail} testId="result-type" />
+            <Row i={8} label="Layout" value={layoutName} testId="result-layout" />
+          </dl>
+
+          <div className="tt-rise mt-6" style={{ "--i": 9 } as CSSProperties} data-testid="result-weak-keys">
+            <h3 className="ll-lettering text-text">Keys to work on</h3>
+            {weak.length === 0 ? (
+              <p className="mt-2 text-[15px] text-sub">None this time: a clean, even run.</p>
+            ) : (
+              <ul className="tt-weak mt-3 grid gap-1.5" data-roomy={roomy ? "true" : "false"}>
+                {weak.map((k) => {
+                  const g = guideForChar(layout, k.char);
+                  const hasFinger = !!g && g.fingerIndex >= 0;
+                  const why = k.misses > 0 ? `${Math.round(k.accuracy)}%` : k.avgMs != null ? `${k.avgMs}ms` : "";
+                  // what went wrong, in words: the readout beside it only gives the number
+                  const typedAs = k.mostMistypedAs ? (k.mostMistypedAs === " " ? "space" : k.mostMistypedAs) : "";
+                  const detail = k.misses > 0 ? `${k.misses} of ${k.hits + k.misses} missed${typedAs ? `, typed ${typedAs}` : ""}` : k.avgMs != null ? "slow, no misses" : "";
+                  return (
+                    <li
+                      key={k.char}
+                      data-testid="weak-key"
+                      data-char={k.char}
+                      title={
+                        `${k.char}: ${k.misses} ${k.misses === 1 ? "miss" : "misses"} in ${k.hits + k.misses}` +
+                        (k.mostMistypedAs ? `, usually typed as ${k.mostMistypedAs === " " ? "space" : k.mostMistypedAs}` : "") +
+                        (k.avgMs != null ? `, ${k.avgMs} ms on average` : "") +
+                        (g?.fingerName ? ` (${g.fingerName})` : "")
+                      }
+                      className="flex min-w-0 items-center gap-2 border border-border pr-2"
+                    >
+                      <span
+                        className="inline-flex size-8 shrink-0 items-center justify-center border-r border-border font-mono text-[15px] font-semibold"
+                        style={colors && hasFinger ? { backgroundColor: `var(--finger-${g.fingerIndex})`, color: "var(--finger-fg)" } : undefined}
+                      >
+                        {k.char}
+                      </span>
+                      <span className="tt-weak-name min-w-0 truncate text-[13px] text-text">{g?.fingerName || "any finger"}</span>
+                      <span className="tt-weak-detail min-w-0 flex-1 truncate text-[13px] text-sub" data-testid="weak-key-detail">
+                        {detail}
+                      </span>
+                      <span className={cx("ll-readout text-[13px]", k.misses > 0 ? "text-error" : "text-text")}>{why}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
-      </div>
-
-      <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
-        <Small i={3} label="raw" value={fmt(result.raw)} title={`${result.raw.toFixed(2)} wpm counting every keystroke`} testId="result-raw" />
-        <Small i={4} label="consistency" value={`${fmt(result.consistency)}%`} title="How steady your speed was from second to second" testId="result-consistency" />
-        <Small
-          i={5}
-          label="characters"
-          dense
-          testId="result-chars"
-          title="correct / incorrect / extra / missed"
-          value={
-            <>
-              {chars.correct}
-              <span className="text-sub">/</span>
-              <span className={chars.incorrect ? "text-error" : undefined}>{chars.incorrect}</span>
-              <span className="text-sub">/</span>
-              {chars.extra}
-              <span className="text-sub">/</span>
-              {chars.missed}
-            </>
-          }
-          sub="right/wrong/extra/missed"
-        />
-        <Small i={6} label="time" value={formatDuration(result.durationMs)} sub={`${result.wordsTyped} ${result.wordsTyped === 1 ? "word" : "words"}`} testId="result-time" />
-        <Small i={7} label="test" value={label} sub={testDetail} testId="result-type" />
-        <Small i={8} label="layout" value={layoutName} testId="result-layout" />
-      </div>
-
-      <div className="tt-rise mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-border pt-6" style={{ "--i": 9 } as CSSProperties} data-testid="result-weak-keys">
-        <div className="text-sm text-sub">Keys to work on</div>
-        {weak.length === 0 ? (
-          <div className="text-sm text-text">None this time: a clean, even run.</div>
-        ) : (
-          <ul className="flex flex-wrap items-center gap-2">
-            {weak.map((k) => {
-              const g = guideForChar(layout, k.char);
-              const fc = colors && g && g.fingerIndex >= 0 ? `var(--finger-${g.fingerIndex})` : "var(--key-border)";
-              const why = k.misses > 0 ? `${Math.round(k.accuracy)}%` : k.avgMs != null ? `${k.avgMs}ms` : "";
-              return (
-                <li
-                  key={k.char}
-                  data-testid="weak-key"
-                  data-char={k.char}
-                  title={
-                    `${k.char}: ${k.misses} ${k.misses === 1 ? "miss" : "misses"} in ${k.hits + k.misses}` +
-                    (k.mostMistypedAs ? `, usually typed as ${k.mostMistypedAs === " " ? "space" : k.mostMistypedAs}` : "") +
-                    (k.avgMs != null ? `, ${k.avgMs} ms on average` : "") +
-                    (g?.fingerName ? ` (${g.fingerName})` : "")
-                  }
-                  className="flex items-center gap-1.5 rounded-ui-sm bg-text/[0.05] py-1 pr-2 pl-1"
-                >
-                  <span
-                    className="inline-flex size-7 items-center justify-center rounded-[6px] border border-b-[3px] border-key-border bg-key-bg font-mono text-sm font-medium text-text"
-                    style={{ borderBottomColor: fc }}
-                  >
-                    {k.char}
-                  </span>
-                  <span className={cx("font-mono text-xs tabular-nums", k.misses > 0 ? "text-error" : "text-sub")}>{why}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
       </div>
 
       {children}
 
-      <div className="tt-rise mt-8 flex flex-wrap items-center justify-center gap-2" style={{ "--i": 10 } as CSSProperties}>
+      <div className="tt-rise mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-5" style={{ "--i": 10 } as CSSProperties}>
         <Button ref={nextRef} variant="primary" iconRight="chevron-right" onClick={onNext} data-testid="result-next">
           {nextLabel}
         </Button>
-        {onRepeat && (
-          <Button variant="ghost" icon="restart" onClick={onRepeat} data-testid="result-repeat">
-            Repeat
-          </Button>
-        )}
         {onPracticeKeys && (
           <Button
-            variant="ghost"
+            variant="subtle"
             icon="target"
             disabled={weakChars.length === 0}
             title={weakChars.length === 0 ? "No weak keys in this result" : `A drill built from ${weakChars.join(" ")}`}
@@ -494,19 +491,24 @@ export function ResultsView({
             Practice weak keys
           </Button>
         )}
+        {onRepeat && (
+          <Button variant="ghost" icon="restart" onClick={onRepeat} data-testid="result-repeat">
+            Repeat
+          </Button>
+        )}
         {lessonsHref && (
           <Button variant="ghost" icon="graduation" href={lessonsHref} data-testid="result-lessons">
             Lessons
           </Button>
         )}
         {actions}
+        {hotkeys && (
+          <p className="ml-auto hidden items-center gap-2 text-[13px] text-sub sm:flex">
+            <Kbd size="sm">enter</Kbd>
+            <span>{nextLabel.toLowerCase()}</span>
+          </p>
+        )}
       </div>
-      {hotkeys && (
-        <p className="tt-rise mt-4 hidden items-center justify-center gap-1.5 text-xs text-sub sm:flex" style={{ "--i": 11 } as CSSProperties}>
-          <Kbd size="sm">enter</Kbd>
-          <span className="mr-2">{nextLabel.toLowerCase()}</span>
-        </p>
-      )}
     </section>
   );
 }

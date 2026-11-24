@@ -12,14 +12,18 @@ export interface HandsTheme {
   main: THREE.Color;
   mainFg: THREE.Color;
   error: THREE.Color;
+  /** --error-alt (the error colour for fills), else --error. */
+  errorAlt: THREE.Color;
   success: THREE.Color;
   keyBg: THREE.Color;
   keyBorder: THREE.Color;
   keyText: THREE.Color;
   /** --finger-0 … --finger-9, left pinky → right pinky. */
   fingers: THREE.Color[];
-  /** Resolved font-family for legends. */
+  /** Resolved UI font-family (--font-sans). */
   font: string;
+  /** Resolved font-family for key legends (--font-mono, else the UI font). */
+  legendFont: string;
   /** Relative luminance of the page background, 0..1. */
   bgLuma: number;
   /** Changes whenever any token value changes. */
@@ -91,6 +95,8 @@ export function readTheme(): HandsTheme {
   const bg = get("--bg");
   const fontRaw = cs.getPropertyValue("--font-sans").trim();
   sig.push(fontRaw);
+  const monoRaw = cs.getPropertyValue("--font-mono").trim();
+  sig.push(monoRaw);
   const hsl = { h: 0, s: 0, l: 0 };
   bg.getHSL(hsl, THREE.SRGBColorSpace);
   const theme: HandsTheme = {
@@ -102,12 +108,14 @@ export function readTheme(): HandsTheme {
     main: get("--main"),
     mainFg: get("--main-fg"),
     error: get("--error"),
+    errorAlt: get("--error-alt", "--error"),
     success: get("--success"),
     keyBg: get("--key-bg", "--bg-alt"),
     keyBorder: get("--key-border", "--border"),
     keyText: get("--key-text", "--text"),
     fingers: Array.from({ length: 10 }, (_, i) => get(`--finger-${i}`)),
     font: fontRaw || 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+    legendFont: monoRaw || fontRaw || "ui-monospace, SFMono-Regular, Menlo, monospace",
     bgLuma: hsl.l,
     signature: "",
   };

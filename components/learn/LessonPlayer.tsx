@@ -10,7 +10,7 @@ import { EmulationHint, useEmulationHint } from "@/components/typing/EmulationHi
 import { KeyboardGuide, guideForChar, type KeyGuide } from "@/components/typing/KeyboardGuide";
 import { WordsDisplay } from "@/components/typing/WordsDisplay";
 import "@/components/typing/typing.css";
-import { Button, Card, ConfirmDialog, Icon, Kbd, Skeleton, cx } from "@/components/ui";
+import { Badge, Button, Card, ConfirmDialog, Icon, IconButton, Kbd, Skeleton, cx } from "@/components/ui";
 import type { ActiveLayout } from "@/lib/layout/useActiveLayout";
 import { gradeLesson } from "@/lib/lessons/curriculum";
 import { useSettings } from "@/lib/settings";
@@ -19,7 +19,7 @@ import type { TestConfig, TestInput, TestResult } from "@/lib/typing/engine";
 import { playErrorSound } from "@/lib/typing/sound";
 import { useKeyboardInput, type KeyboardAction, type KeyboardActionEvent } from "@/lib/typing/useKeyboardInput";
 import { useTypingTest } from "@/lib/typing/useTypingTest";
-import { KeyChip, charLabel } from "./bits";
+import { DetailNumber, KeyChip, charLabel } from "./bits";
 import { STAGE_NAME, aggregateResults, dimKeyIdsFor, lessonHref, useCourse, type Course, type CourseLesson } from "./course";
 import { LearnCommands } from "./LearnCommands";
 import { LessonSummary, type LessonOutcome } from "./LessonSummary";
@@ -32,36 +32,52 @@ type StepKind = "intro" | "drill" | "summary";
 
 // ────────────────────────────────────────────────────────────────────────── small pieces
 
+/** The lesson as a drafted sequence: one numbered box per step, done ones filled, a scale under them. */
 function StepProgress({ step, steps, kind, hasIntro, fraction }: { step: number; steps: number; kind: StepKind; hasIntro: boolean; fraction: number }) {
   const done = kind === "summary";
   const label = done ? "complete" : `step ${step + 1} of ${steps}`;
+  const overall = done ? steps : step + Math.min(1, Math.max(0, fraction));
   return (
     <div
-      className="flex shrink-0 items-center gap-3"
+      className="flex shrink-0 items-center gap-4"
       data-testid="step-progress"
       data-step={done ? steps : step + 1}
       data-steps={steps}
       role="group"
       aria-label={done ? "Lesson complete" : `Step ${step + 1} of ${steps}`}
     >
-      <span className="hidden font-mono text-xs whitespace-nowrap text-sub tabular-nums sm:inline">
+      <span className="ll-lettering hidden whitespace-nowrap text-text md:inline">
         {label}
-        {!done && <span className="text-sub/60"> · {kind === "intro" ? "new keys" : `drill ${step + 1 - (hasIntro ? 1 : 0)}`}</span>}
+        {!done && <span className="text-sub"> · {kind === "intro" ? "new keys" : `drill ${step + 1 - (hasIntro ? 1 : 0)}`}</span>}
       </span>
-      <span className="flex items-center gap-1" aria-hidden>
-        {Array.from({ length: steps }, (_, i) => {
-          const state = done || i < step ? "done" : i === step ? "current" : "todo";
-          return (
-            <span key={i} data-state={state} className="relative h-1.5 w-5 overflow-hidden rounded-full bg-text/[0.12] sm:w-7">
-              <span
-                className="absolute inset-y-0 left-0 rounded-full bg-main transition-[width] duration-200 ease-out"
-                style={{ width: state === "done" ? "100%" : state === "current" ? `${Math.max(12, Math.round(fraction * 100))}%` : "0%" }}
-              />
-            </span>
-          );
-        })}
+      <span className="hidden flex-col gap-1.5 sm:flex" aria-hidden>
+        <span className="flex items-center">
+          {Array.from({ length: steps }, (_, i) => {
+            const state = done || i < step ? "done" : i === step ? "current" : "todo";
+            return (
+              <span key={i} className="flex items-center">
+                {i > 0 && <span className={cx("h-px w-3", state === "todo" ? "bg-border" : "bg-line")} />}
+                <span
+                  data-state={state}
+                  className={cx(
+                    "ll-readout inline-flex size-7 items-center justify-center border text-[13px] leading-none font-medium",
+                    state === "done" && "border-line bg-text text-bg",
+                    state === "current" && "border-main bg-main text-main-fg",
+                    state === "todo" && "border-dashed border-border text-sub",
+                  )}
+                >
+                  {state === "done" ? <Icon name="check" size={14} strokeWidth={2.2} /> : i + 1}
+                </span>
+              </span>
+            );
+          })}
+        </span>
+        <span className="relative block h-[3px] border-x border-line">
+          <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border" />
+          <span className="absolute inset-y-0 left-0 bg-main transition-[width] duration-200 ease-out" style={{ width: `${(overall / Math.max(1, steps)) * 100}%` }} />
+        </span>
       </span>
-      <span className="font-mono text-xs whitespace-nowrap text-sub tabular-nums sm:hidden">{done ? "done" : `${step + 1}/${steps}`}</span>
+      <span className="ll-readout text-[13px] whitespace-nowrap text-text sm:hidden">{done ? "done" : `step ${step + 1}/${steps}`}</span>
     </div>
   );
 }
@@ -84,7 +100,10 @@ function EmulationToggle({ layoutName }: { layoutName: string }) {
         update({ emulateLayout: !on });
         e.currentTarget.blur();
       }}
-      className="tt-fade inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 rounded-full px-2.5 text-xs whitespace-nowrap text-sub transition-colors duration-150 hover:bg-text/[0.06] hover:text-text"
+      className={cx(
+        "tt-fade inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 px-1.5 text-[13px] whitespace-nowrap underline-offset-[5px] transition-colors duration-150 hover:text-text hover:underline",
+        on ? "text-text" : "text-sub",
+      )}
     >
       <Icon name="layers" size={13} className={cx("shrink-0", on && "text-main")} />
       <span className="truncate">{on ? `emulating ${layoutName}` : "using OS layout"}</span>
@@ -96,10 +115,30 @@ function Notice({ title, children, actions }: { title: string; children: ReactNo
   return (
     <div className="flex min-h-[calc(100dvh-15.5rem)] items-center justify-center" data-testid="lesson-notice">
       <Card className="flex max-w-md flex-col items-start gap-3" padding="lg">
-        <h1 className="text-lg font-semibold tracking-tight text-text">{title}</h1>
-        <p className="text-sm leading-relaxed text-sub">{children}</p>
+        <h1 className="ll-heading text-text">{title}</h1>
+        <p className="text-[15px] leading-relaxed text-sub">{children}</p>
         <div className="mt-2 flex flex-wrap gap-2">{actions}</div>
       </Card>
+    </div>
+  );
+}
+
+/** A finger named in running text: a swatch of its colour plus the name, so colour never stands alone. */
+function FingerText({ name, index, colors }: { name: string; index: number; colors: boolean }) {
+  return (
+    <span className="font-semibold whitespace-nowrap text-text">
+      {colors && index >= 0 && <span aria-hidden className="mr-1.5 inline-block size-2.5 border border-line align-baseline" style={{ backgroundColor: `var(--finger-${index})` }} />}
+      {name}
+    </span>
+  );
+}
+
+/** One cell of the drill readout strip. */
+function Readout({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+  return (
+    <div className={cx("flex flex-col justify-center px-4 py-2 first:pl-0", className)}>
+      <div className="ll-lettering-sm whitespace-nowrap text-sub">{label}</div>
+      <div className="ll-readout mt-1 text-[20px] leading-none whitespace-nowrap text-text">{children}</div>
     </div>
   );
 }
@@ -112,6 +151,7 @@ function IntroStep({
   count,
   presses,
   needed,
+  miss,
   fingerColors,
   layout,
   onSkip,
@@ -121,18 +161,32 @@ function IntroStep({
   count: number;
   presses: number;
   needed: number;
+  /** The wrong character that was just pressed, until the right key lands. */
+  miss: string | null;
   fingerColors: boolean;
   layout: ActiveLayout["layout"];
   onSkip: () => void;
 }) {
-  const color = fingerColors && guide.fingerIndex >= 0 ? `var(--finger-${guide.fingerIndex})` : "var(--main)";
   const shiftFinger = guide.shiftKey?.finger ? `${guide.shiftKey.finger.hand === "L" ? "left" : "right"} ${guide.shiftKey.finger.finger}` : "";
   const layerFinger = guide.layerKey?.finger ? `${guide.layerKey.finger.hand === "L" ? "left" : "right"} ${guide.layerKey.finger.finger}` : "";
   const isHome = !!guide.key?.isHome && !guide.shiftKey && !guide.layerKey;
+  const got = presses >= needed;
+  const finger = <FingerText name={guide.fingerName || "other hand"} index={guide.fingerIndex} colors={fingerColors} />;
   return (
-    <div className="flex flex-col items-center text-center">
+    <div className="flex flex-col border border-line bg-bg-alt">
+      <div className="flex h-10 items-center justify-between gap-3 border-b border-line px-4">
+        <span className="ll-lettering text-text">
+          new key {index + 1} of {count}
+        </span>
+        <span className="ll-lettering-sm text-sub">
+          pressed{" "}
+          <span className="ll-readout text-[13px] tracking-normal text-text">
+            {Math.min(presses, needed)}/{needed}
+          </span>
+        </span>
+      </div>
       <div
-        className="flex flex-col items-center"
+        className="p-5"
         data-testid="intro-key"
         data-char={guide.char}
         data-key-id={guide.key?.id ?? ""}
@@ -141,75 +195,111 @@ function IntroStep({
         data-count={count}
         data-presses={presses}
         data-needed={needed}
+        data-miss={miss ?? ""}
       >
-        <div className="font-mono text-xs text-sub">
-          new key {index + 1} of {count}
-        </div>
-        <div className="mt-4 flex items-center gap-5 text-left">
-          <KeyChip key={guide.char} char={guide.char} layout={layout} fingerColors={fingerColors} size="xl" className="learn-key-in" />
+        <div className="flex items-center gap-5">
+          <KeyChip
+            key={guide.char}
+            char={guide.char}
+            layout={layout}
+            fingerColors={fingerColors}
+            size="xl"
+            className="learn-key-in max-sm:h-[84px] max-sm:min-w-[84px] max-sm:text-[42px]"
+          />
           <div className="min-w-0">
-            <div className="text-2xl font-semibold tracking-tight text-text">
+            <h2 className="font-display text-[26px] leading-[1.1] font-light tracking-[0.08em] text-text uppercase">
               This is {guide.shiftKey && guide.char.toLowerCase() !== guide.char ? "capital " : ""}
-              <span style={{ color }}>{charLabel(guide.char)}</span>
-            </div>
-            <div className="mt-1 text-[15px] leading-snug text-sub">
-              {guide.shiftKey || guide.layerKey ? (
-                <>
-                  {guide.layerKey && guide.layer && (
-                    <>
-                      Hold <Kbd className="px-1.5">{guide.layer.name}</Kbd>
-                      {layerFinger ? ` with your ${layerFinger}` : ""}
-                      {guide.shiftKey ? " and " : ", "}
-                    </>
-                  )}
-                  {guide.shiftKey && (
-                    <>
-                      {guide.layerKey ? "" : "Hold "}
-                      <Kbd className="px-1.5">shift</Kbd>
-                      {shiftFinger ? ` with your ${shiftFinger}` : ""}
-                      {", "}
-                    </>
-                  )}
-                  then press it with your <span style={{ color }}>{guide.fingerName || "other hand"}</span>
-                  {guide.fingerName && guide.fingerName !== "thumb" ? " finger" : ""}.
-                </>
-              ) : guide.fingerName ? (
-                <>
-                  Press it with your <span style={{ color }}>{guide.fingerName}</span>
-                  {guide.fingerName !== "thumb" ? " finger" : ""}
-                  {isHome ? ". That finger rests on it." : ", then come back to the home row."}
-                </>
-              ) : (
-                "Find it on the keyboard below and press it."
-              )}
-            </div>
+              <span className="font-semibold">{charLabel(guide.char)}</span>
+            </h2>
+            {guide.fingerName && (
+              <div className="ll-lettering-lg mt-3 flex items-center gap-2 text-text" data-testid="intro-finger">
+                <Icon name="hand" size={16} className="shrink-0" />
+                {guide.fingerName}
+              </div>
+            )}
           </div>
         </div>
-        <div className="mt-6 flex items-center gap-3 text-sm text-sub" aria-live="polite">
-          <span className="flex items-center gap-1.5" aria-hidden>
-            {Array.from({ length: needed }, (_, i) => (
-              <span
-                key={`${guide.char}-${i}`}
-                data-on={i < presses ? "true" : "false"}
-                className="learn-dot size-2.5 rounded-full transition-colors duration-150"
-                style={{ backgroundColor: i < presses ? color : "color-mix(in srgb, var(--text) 14%, transparent)" }}
-              />
-            ))}
-          </span>
-          <span>
-            {presses >= needed ? "Got it" : `Press it ${needed - presses === 1 ? (needed === 1 ? "once" : "once more") : `${needed - presses} times`}`}
-          </span>
+
+        <p className="mt-5 max-w-[46ch] text-[17px] leading-[1.45] text-sub">
+          {guide.shiftKey || guide.layerKey ? (
+            <>
+              {guide.layerKey && guide.layer && (
+                <>
+                  Hold <Kbd className="px-1.5">{guide.layer.name}</Kbd>
+                  {layerFinger ? ` with your ${layerFinger}` : ""}
+                  {guide.shiftKey ? " and " : ", "}
+                </>
+              )}
+              {guide.shiftKey && (
+                <>
+                  {guide.layerKey ? "" : "Hold "}
+                  <Kbd className="px-1.5">shift</Kbd>
+                  {shiftFinger ? ` with your ${shiftFinger}` : ""}
+                  {", "}
+                </>
+              )}
+              then press it with your {finger}
+              {guide.fingerName && guide.fingerName !== "thumb" ? " finger" : ""}.
+            </>
+          ) : guide.fingerName ? (
+            <>
+              Press it with your {finger}
+              {guide.fingerName !== "thumb" ? " finger" : ""}
+              {isHome ? ". That finger rests on it." : ", then come back to the home row."}
+            </>
+          ) : (
+            "Find it on the keyboard and press it."
+          )}
+        </p>
+
+        <div className="mt-6 border-t border-border pt-4" aria-live="polite">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5" aria-hidden>
+              {Array.from({ length: needed }, (_, i) => {
+                const on = i < presses;
+                return (
+                  <span
+                    key={`${guide.char}-${i}`}
+                    data-on={on ? "true" : "false"}
+                    className={cx(
+                      "learn-press ll-readout inline-flex size-8 items-center justify-center border text-[13px] leading-none font-medium",
+                      on ? "border-line bg-text text-bg" : "border-dashed border-border text-sub",
+                    )}
+                  >
+                    {on ? <Icon name="check" size={16} strokeWidth={2.2} /> : i + 1}
+                  </span>
+                );
+              })}
+            </span>
+            <span className={cx("text-[17px] text-text", got && "font-semibold")}>
+              {got ? "Got it" : `Press it ${needed - presses === 1 ? (needed === 1 ? "once" : "once more") : `${needed - presses} times`}`}
+            </span>
+          </div>
+          <div className="mt-3 flex min-h-[26px] items-center">
+            {miss != null && !got && (
+              <span key={miss} className="learn-miss inline-flex items-center gap-2 text-[15px] text-error" data-testid="intro-miss">
+                <span className="inline-flex size-[22px] shrink-0 items-center justify-center border border-dashed border-error">
+                  <Icon name="x" size={14} strokeWidth={2.2} />
+                </span>
+                <span>
+                  That was <span className="font-mono font-medium">{charLabel(miss)}</span>. Look for <span className="font-mono font-medium">{charLabel(guide.char)}</span>.
+                </span>
+              </span>
+            )}
+          </div>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onSkip}
-        data-testid="intro-skip"
-        className="mt-5 inline-flex h-8 items-center gap-2 rounded-ui px-3 text-[13px] text-sub transition-colors duration-150 hover:bg-text/[0.07] hover:text-text"
-      >
-        Skip intro
-        <Kbd size="sm">enter</Kbd>
-      </button>
+      <div className="flex items-center justify-end border-t border-border px-4 py-2">
+        <button
+          type="button"
+          onClick={onSkip}
+          data-testid="intro-skip"
+          className="ll-lettering inline-flex h-8 items-center gap-2 px-1 text-sub underline-offset-[5px] transition-colors duration-150 hover:text-text hover:underline"
+        >
+          Skip intro
+          <Kbd size="sm">enter</Kbd>
+        </button>
+      </div>
     </div>
   );
 }
@@ -254,6 +344,8 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
     introRef.current = next;
     setIntroState(next);
   };
+  // Intro only: the wrong character just pressed, shown as a text note until the right key lands.
+  const [miss, setMiss] = useState<string | null>(null);
   const introTimer = useRef<number | null>(null);
   useEffect(
     () => () => {
@@ -335,6 +427,7 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
         if (input.type !== "char" || st.done || s.expected == null) return;
         const ok = input.char === s.expected;
         notePress(input.keyId, ok);
+        setMiss(ok ? null : input.char);
         if (!ok) return;
         const presses = st.presses + 1;
         if (presses < needed) setIntro({ ...st, presses });
@@ -423,11 +516,12 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
   const lastResult = drillDone && drillIndex >= 0 ? results.current[drillIndex] : null;
   const lastGrade = lastResult ? gradeLesson(lastResult, lesson) : null;
   const showCaps = kb.capsLock && !settings.emulateLayout && kind !== "summary";
+  const lowAcc = test.live.accuracy < lesson.goal.accuracy;
 
   const guide =
     kind === "summary" ? null : (
       <KeyboardGuide
-        className={kind === "intro" ? "mt-6" : "mt-5 sm:mt-6"}
+        className={kind === "intro" ? undefined : "mt-3 sm:mt-4"}
         layout={layout}
         nextChar={nextChar}
         nextAction={nextAction}
@@ -474,32 +568,31 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
       <LearnCommands />
       <MobileNotice />
       <EmulationHint hint={emulationHint} layoutName={active.name} />
-      <header className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
+      <header className="flex items-center justify-between gap-4 border-b border-border pb-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <IconButton
+            icon="arrow-left"
+            label="Back to the course"
+            title="Back to the course (esc)"
             onClick={requestLeave}
             data-testid="lesson-leave"
-            aria-label="Back to the course"
-            title="Back to the course (esc)"
-            className="-ml-2 inline-flex size-9 shrink-0 items-center justify-center rounded-ui text-sub transition-colors duration-150 hover:bg-text/[0.07] hover:text-text"
-          >
-            <Icon name="arrow-left" size={18} />
-          </button>
-          <div className="min-w-0">
-            <div className="font-mono text-[11px] leading-tight text-main">
-              lesson {item.number} · {STAGE_NAME[lesson.stage].toLowerCase()}
-            </div>
-            <h1 className="truncate text-[15px] leading-snug font-semibold tracking-tight text-text" data-testid="lesson-title">
+            className="-ml-1 tt-fade"
+          />
+          <DetailNumber n={item.number} size="lg" className="max-sm:hidden" />
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
+            <h1 className="ll-heading min-w-0 truncate text-text max-sm:text-[15px]" data-testid="lesson-title">
               {lesson.title}
             </h1>
+            <span className="ll-lettering-sm whitespace-nowrap text-sub max-md:hidden">
+              lesson {item.number} · {STAGE_NAME[lesson.stage].toLowerCase()}
+            </span>
           </div>
         </div>
         <StepProgress step={Math.min(step, steps)} steps={steps} kind={kind} hasIntro={hasIntro} fraction={fraction} />
       </header>
 
       {kind === "summary" && outcome ? (
-        <div className="flex flex-1 flex-col justify-center py-6">
+        <div className="flex flex-1 flex-col justify-center py-8">
           <LessonSummary
             lesson={lesson}
             outcome={outcome}
@@ -512,101 +605,116 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
           />
         </div>
       ) : kind === "intro" && introGuide ? (
-        <div className="flex flex-1 flex-col justify-center pt-6 pb-2">
+        <div className="grid flex-1 items-center gap-x-10 gap-y-6 pt-6 pb-2 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
           <IntroStep
             guide={introGuide}
             index={Math.min(intro.index, introKeys.length - 1)}
             count={introKeys.length}
             presses={intro.presses}
             needed={needed}
+            miss={miss}
             fingerColors={fingerColors}
             layout={layout}
             onSkip={() => goStep(1)}
           />
-          {guide}
+          <div className="learn-plate learn-plate--side min-w-0">{guide}</div>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col justify-center pt-6 pb-2">
-          <div className="mb-2 flex h-9 items-end justify-between gap-4">
-            <div className="flex items-baseline gap-5 font-mono tabular-nums">
-              <span className="text-2xl leading-none font-medium text-main" data-testid="counter" aria-label="Words done">
-                {wordsDone}/{totalWords}
-              </span>
-              <span className="text-sm whitespace-nowrap text-sub">
-                <span className={cx("text-base", test.live.accuracy < lesson.goal.accuracy ? "text-error" : "text-text")} data-testid="live-acc">
-                  {Math.floor(test.live.accuracy)}%
-                </span>{" "}
-                acc
-              </span>
-              <span className="tt-live text-sm whitespace-nowrap text-sub">
-                <span className="text-base text-text" data-testid="live-wpm">
-                  {Math.round(test.live.wpm)}
-                </span>{" "}
-                wpm
-              </span>
+        <div className="flex flex-1 flex-col justify-center pt-5 pb-2">
+          <div className="mb-3 flex min-h-[52px] flex-wrap items-stretch justify-between gap-x-4 gap-y-2">
+            <div className="flex items-stretch divide-x divide-border">
+              <Readout label="words">
+                <span data-testid="counter" aria-label="Words done">
+                  {wordsDone}/{totalWords}
+                </span>
+              </Readout>
+              <Readout label="accuracy">
+                <span className={cx("inline-flex items-center gap-1.5", lowAcc && "text-error")} title={lowAcc ? `Under the ${lesson.goal.accuracy}% goal` : undefined}>
+                  <span data-testid="live-acc">{Math.floor(test.live.accuracy)}%</span>
+                  {lowAcc && (
+                    <>
+                      <Icon name="arrow-down" size={14} strokeWidth={2.2} />
+                      <span className="sr-only">under the goal</span>
+                    </>
+                  )}
+                </span>
+              </Readout>
+              <Readout label="speed" className="tt-live">
+                <span data-testid="live-wpm">{Math.round(test.live.wpm)}</span>
+                <span className="text-[13px] text-sub"> wpm</span>
+              </Readout>
             </div>
-            {showCaps ? (
-              <span role="alert" data-testid="caps-warning" className="inline-flex h-7 items-center gap-1.5 rounded-full bg-error/[0.14] px-3 text-xs font-medium text-error">
-                <Icon name="alert" size={13} />
-                Caps Lock is on
-              </span>
-            ) : (
-              <span className="tt-fade font-mono text-xs whitespace-nowrap text-sub" data-testid="lesson-goal">
-                goal {lesson.goal.accuracy}% · {lesson.goal.wpm} wpm
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {drillDone && lastResult ? (
+                <div
+                  className="animate-rise-in flex flex-wrap items-stretch justify-center border border-line bg-bg-alt"
+                  data-testid="drill-done"
+                  data-accuracy={lastResult.accuracy}
+                  data-wpm={lastResult.wpm}
+                >
+                  <span className="ll-lettering inline-flex items-center gap-2 border-r border-border px-3 text-text">
+                    <Icon name={lastGrade?.passed ? "check" : "x"} size={15} strokeWidth={2.2} />
+                    drill {drillIndex + 1} {lastGrade?.passed ? "on goal" : "under goal"}
+                  </span>
+                  <span className="ll-readout inline-flex items-center gap-3 border-r border-border px-3 text-[15px]">
+                    <span className={lastResult.accuracy >= lesson.goal.accuracy ? "text-text" : "text-error"}>{Math.floor(lastResult.accuracy)}%</span>
+                    <span className={lastResult.wpm >= lesson.goal.wpm ? "text-text" : "text-error"}>{Math.round(lastResult.wpm)} wpm</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 p-1.5">
+                    <Button variant="primary" size="sm" onClick={nextStep} data-testid="drill-next">
+                      <span className="ll-trim">Next drill</span>
+                      <Kbd size="sm" className="border-main-fg bg-main-fg text-main group-hover/btn:border-bg group-hover/btn:bg-bg group-hover/btn:text-text">
+                        enter
+                      </Kbd>
+                    </Button>
+                    <IconButton
+                      ref={restartRef}
+                      icon="restart"
+                      size="sm"
+                      label="Redo this drill"
+                      title="Redo this drill (tab, then enter)"
+                      data-testid="restart"
+                      onClick={(e) => {
+                        restartDrill();
+                        e.currentTarget.blur();
+                      }}
+                    />
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {showCaps ? (
+                    <Badge tone="error" icon="alert" role="alert" data-testid="caps-warning">
+                      Caps Lock is on
+                    </Badge>
+                  ) : (
+                    <span className="tt-fade ll-lettering-sm whitespace-nowrap text-sub" data-testid="lesson-goal">
+                      goal{" "}
+                      <span className="ll-readout text-[13px] tracking-normal text-text normal-case">
+                        {lesson.goal.accuracy}% · {lesson.goal.wpm} wpm
+                      </span>
+                    </span>
+                  )}
+                  <IconButton
+                    ref={restartRef}
+                    icon="restart"
+                    size="sm"
+                    label="Restart this drill"
+                    title="Restart drill (tab, then enter)"
+                    data-testid="restart"
+                    onClick={(e) => {
+                      restartDrill();
+                      e.currentTarget.blur();
+                    }}
+                  />
+                </>
+              )}
+            </div>
           </div>
 
           <WordsDisplay words={test.words} caret={test.caret} status={status} lines={narrow ? 3 : 2} aria-label={`Drill ${drillIndex + 1} of ${drillCount}`} />
 
-          <div className="mt-4 flex h-10 items-center justify-center gap-2">
-            {drillDone && lastResult ? (
-              <div className="animate-rise-in flex flex-wrap items-center justify-center gap-x-4 gap-y-2" data-testid="drill-done" data-accuracy={lastResult.accuracy} data-wpm={lastResult.wpm}>
-                <span className="inline-flex items-center gap-2 font-mono text-sm tabular-nums">
-                  <Icon name="check" size={15} strokeWidth={2.2} className={lastGrade?.passed ? "text-success" : "text-sub"} />
-                  <span className={lastResult.accuracy >= lesson.goal.accuracy ? "text-text" : "text-error"}>{Math.floor(lastResult.accuracy)}%</span>
-                  <span className="text-sub">{Math.round(lastResult.wpm)} wpm</span>
-                </span>
-                <Button variant="primary" size="sm" onClick={nextStep} data-testid="drill-next">
-                  Next drill
-                  <Kbd size="sm" className="border-main-fg/30 bg-transparent text-main-fg">
-                    enter
-                  </Kbd>
-                </Button>
-                <button
-                  ref={restartRef}
-                  type="button"
-                  data-testid="restart"
-                  aria-label="Redo this drill"
-                  title="Redo this drill (tab, then enter)"
-                  onClick={(e) => {
-                    restartDrill();
-                    e.currentTarget.blur();
-                  }}
-                  className="inline-flex size-8 items-center justify-center rounded-ui text-sub transition-colors duration-150 hover:text-text focus-visible:bg-text/[0.07] focus-visible:text-text"
-                >
-                  <Icon name="restart" size={16} />
-                </button>
-              </div>
-            ) : (
-              <button
-                ref={restartRef}
-                type="button"
-                data-testid="restart"
-                aria-label="Restart this drill"
-                title="Restart drill (tab, then enter)"
-                onClick={(e) => {
-                  restartDrill();
-                  e.currentTarget.blur();
-                }}
-                className="inline-flex h-9 w-14 items-center justify-center rounded-ui text-sub transition-colors duration-150 hover:text-text focus-visible:bg-text/[0.07] focus-visible:text-text"
-              >
-                <Icon name="restart" size={18} />
-              </button>
-            )}
-          </div>
-
-          {guide}
+          <div className="learn-plate min-w-0">{guide}</div>
         </div>
       )}
 
@@ -630,12 +738,13 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
 function PlayerSkeleton() {
   return (
     <div className="flex min-h-[calc(100dvh-15.5rem)] flex-col" aria-hidden data-testid="lesson-skeleton">
-      <Skeleton animate className="h-9 w-64" />
+      <div className="border-b border-border pb-4">
+        <Skeleton animate className="h-11 w-72" />
+      </div>
       <div className="flex flex-1 flex-col justify-center gap-3">
         <Skeleton animate className="h-8 w-full" />
-        <Skeleton animate className="h-8 w-11/12" />
         <Skeleton animate className="h-8 w-4/5" />
-        <Skeleton animate className="mx-auto mt-10 h-56 w-full max-w-[640px] rounded-ui-lg" />
+        <Skeleton animate className="mx-auto mt-10 h-72 w-full max-w-[860px]" />
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ export interface TooltipProps {
   className?: string;
 }
 
-/** Hover/focus tooltip. Pure CSS show/hide; wires aria-describedby onto the child. */
+/** Hover/focus annotation box. Pure CSS show/hide; wires aria-describedby onto the child. */
 export function Tooltip({ content, side = "top", align = "center", children, className }: TooltipProps) {
   const id = useId();
   const child = isValidElement(children)
@@ -25,7 +25,7 @@ export function Tooltip({ content, side = "top", align = "center", children, cla
         id={id}
         role="tooltip"
         className={cx(
-          "pointer-events-none absolute z-50 rounded-ui-sm bg-text px-2 py-1 text-xs font-medium whitespace-nowrap text-bg",
+          "pointer-events-none absolute z-50 border border-line bg-text px-2 py-1 text-[13px] leading-tight font-medium whitespace-nowrap text-bg",
           "opacity-0 transition-opacity duration-100 group-focus-within/tt:opacity-100 group-hover/tt:opacity-100 group-hover/tt:delay-300",
           side === "top" ? "bottom-full mb-2" : "top-full mt-2",
           align === "center" ? "left-1/2 -translate-x-1/2" : align === "start" ? "left-0" : "right-0",

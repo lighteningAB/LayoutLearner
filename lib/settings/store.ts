@@ -3,7 +3,7 @@ import {
   DEFAULT_THEME,
   SETTINGS_KEY,
   STORAGE_PREFIX,
-  isThemeId,
+  normalizeThemeId,
   systemDefaultTheme,
   type ThemeId,
 } from "./themes";
@@ -108,7 +108,9 @@ function sanitize(raw: unknown): Settings {
           });
       }
     } else if (key === "theme") {
-      if (isThemeId(v)) out.theme = v;
+      // Retired ids (from an older version, or from another device through sync) become their successor.
+      const theme = normalizeThemeId(v);
+      if (theme) out.theme = theme;
     } else if (key === "testMode") {
       if (v === "time" || v === "words") out.testMode = v;
     } else if (typeof v === typeof DEFAULT_SETTINGS[key]) {

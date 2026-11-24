@@ -3,7 +3,7 @@
 /* ── focus mode: <html data-typing="true"> while a test is running ───────────────────────── */
 [data-testid="nav"],
 [data-testid="footer"] {
-  transition: opacity 320ms ease;
+  transition: opacity 280ms var(--ease-out);
 }
 html[data-typing="true"] [data-testid="nav"],
 html[data-typing="true"] [data-testid="footer"] {
@@ -14,7 +14,7 @@ html[data-typing="true"] [data-testid="footer"]:hover {
   opacity: 1;
 }
 .tt-fade {
-  transition: opacity 220ms ease;
+  transition: opacity 200ms var(--ease-out);
 }
 html[data-typing="true"] .tt-fade {
   opacity: 0;
@@ -22,13 +22,190 @@ html[data-typing="true"] .tt-fade {
 }
 .tt-live {
   opacity: 0;
-  transition: opacity 220ms ease;
+  transition: opacity 200ms var(--ease-out);
 }
 html[data-typing="true"] .tt-live {
   opacity: 1;
 }
 
-/* ── words ──────────────────────────────────────────────────────────────────────────────── */
+/* ── the sheet: settings line, then text / plate / margins ─────────────────────────────────
+   Phones: one column. md: text and plate with the right margin beside them. From 1100px wide the
+   stage takes exactly the viewport height the shell leaves, so the first viewport never scrolls
+   and the plate gets every pixel the text does not use. */
+.tt-stage {
+  display: flex;
+  flex-direction: column;
+}
+.tt-bar {
+  margin-bottom: 16px;
+}
+.tt-sheet {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "timer stats"
+    "text text"
+    "plate plate"
+    "notes notes"
+    "title title";
+  gap: 16px 20px;
+  align-items: start;
+}
+.tt-text {
+  grid-area: text;
+  min-width: 0;
+}
+.tt-plate-cell {
+  grid-area: plate;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tt-rail {
+  display: contents;
+}
+.tt-timer {
+  grid-area: timer;
+}
+.tt-stats {
+  grid-area: stats;
+  align-self: end;
+  justify-self: end;
+  width: min(100%, 220px);
+}
+.tt-title {
+  grid-area: title;
+}
+.tt-detail {
+  display: none;
+}
+.tt-notes {
+  grid-area: notes;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+/* the finger legend needs the tall left margin: it is drawn from 1100px wide and 821px tall */
+.tt-legend {
+  display: none;
+}
+@media (min-width: 768px) {
+  .tt-sheet {
+    grid-template-columns: minmax(0, 1fr) 208px;
+    grid-template-areas:
+      "text rail"
+      "plate rail"
+      "notes notes";
+    column-gap: 28px;
+    align-items: stretch;
+  }
+  .tt-plate-cell {
+    height: clamp(300px, 52dvh, 560px);
+  }
+  .tt-rail {
+    grid-area: rail;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+  .tt-detail {
+    display: block;
+  }
+  .tt-stats {
+    align-self: stretch;
+    width: auto;
+  }
+  .tt-title {
+    margin-top: auto;
+  }
+}
+@media (min-width: 1100px) {
+  .tt-stage:not([data-finished="true"]) {
+    /* everything the shell draws above and below <main>'s content, less the padding the stage reclaims */
+    height: calc(100dvh - 224px);
+    min-height: 440px;
+    margin-top: -16px;
+    margin-bottom: -24px;
+  }
+  .tt-sheet {
+    flex: 1 1 0;
+    min-height: 0;
+    grid-template-columns: 176px minmax(0, 1fr) 216px;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "notes text rail"
+      "notes plate rail";
+    column-gap: 32px;
+  }
+  .tt-plate-cell {
+    height: auto;
+    min-height: 0;
+  }
+  .tt-notes {
+    gap: 20px;
+  }
+  .tt-notes-end {
+    margin-top: auto;
+  }
+  /* The readouts take the height the rail has left, as evenly ruled lines: no empty band above the title block. */
+  .tt-stats {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    max-height: 208px;
+  }
+  .tt-stats > div {
+    flex: 1 1 0;
+    align-items: flex-end;
+    min-height: 30px;
+  }
+}
+@media (min-width: 1100px) and (min-height: 821px) {
+  .tt-legend {
+    display: block;
+  }
+}
+/* Short windows: the title block is the first thing to go, then the notes. */
+@media (min-width: 1100px) and (max-height: 899px) {
+  /* the fourth readout only where the rail has the height for it */
+  .tt-stats > [data-optional="true"] {
+    display: none;
+  }
+}
+@media (min-width: 1100px) and (max-height: 875px) {
+  .tt-title {
+    display: none;
+  }
+  .tt-rail {
+    gap: 12px;
+  }
+}
+@media (min-width: 1100px) and (max-height: 740px) {
+  /* hand / finger / hold repeat the lettering above them: the first rows to go when the rail runs out */
+  .tt-detail dl {
+    display: none;
+  }
+}
+@media (min-width: 1100px) and (max-height: 700px) {
+  .tt-notes-list {
+    display: none;
+  }
+}
+
+/* The sheet's left margin already carries the key hints on this page: the bottom strip does not repeat them
+   (only while the margin shows them: on short windows the strip keeps its copy). */
+@media (min-width: 1100px) and (min-height: 701px) {
+  body:has(.tt-stage:not([data-finished="true"])) [data-testid="footer"] > div > div:first-child {
+    visibility: hidden;
+  }
+}
+
+/* ── words ────────────────────────────────────────────────────────────────────────────────
+   Not yet typed: secondary ink, regular weight. Typed: full ink, heavier (IBM Plex Mono keeps its
+   advance width across weights, so nothing moves). Wrong: inverted block in the error colour, so
+   the state never rests on hue alone. */
 .tt-words {
   --tt-lh: 1.7em;
   position: relative;
@@ -47,9 +224,7 @@ html[data-typing="true"] .tt-live {
   cursor: default;
 }
 .tt-slide {
-  transition:
-    filter 200ms ease,
-    opacity 200ms ease;
+  transition: opacity 180ms var(--ease-out);
 }
 .tt-inner {
   position: relative;
@@ -65,54 +240,58 @@ html[data-typing="true"] .tt-live {
   color: var(--sub);
 }
 .tt-word[data-state="incorrect"] {
-  background: linear-gradient(var(--error), var(--error)) 0 calc(100% - 0.2em) / 100% 2px no-repeat;
+  background: linear-gradient(var(--error), var(--error)) 0 calc(100% - 0.16em) / 100% 1px no-repeat;
 }
 .tt-letter[data-state="correct"] {
   color: var(--text);
+  font-weight: 600;
 }
 .tt-letter[data-state="incorrect"] {
-  color: var(--error);
+  color: var(--bg);
+  background: linear-gradient(var(--error), var(--error)) 0 55% / 100% 1.24em no-repeat;
+  font-weight: 600;
 }
 .tt-letter[data-state="extra"] {
-  color: var(--error-alt);
+  color: var(--error);
+  font-weight: 600;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
 }
 
 .tt-caret {
   position: absolute;
   left: 0;
   top: 0;
-  width: max(2px, 0.11em);
-  height: 1.16em;
-  margin: 0.27em 0 0 -0.1em;
-  border-radius: 999px;
+  width: max(2px, 0.1em);
+  height: 1.24em;
+  margin: 0.23em 0 0 -0.08em;
   background: var(--caret);
   pointer-events: none;
   will-change: transform;
 }
 .tt-caret[data-smooth="true"] {
-  transition: transform 95ms cubic-bezier(0.22, 0.7, 0.3, 1);
+  transition: transform 95ms var(--ease-out);
 }
 .tt-caret[data-blink="true"] {
-  animation: tt-blink 1.1s ease-in-out infinite;
+  animation: tt-blink 1.1s steps(1, end) infinite;
 }
 .tt-caret[data-hidden="true"] {
   display: none;
 }
 @keyframes tt-blink {
   0%,
-  45%,
-  100% {
+  55% {
     opacity: 1;
   }
-  60%,
-  85% {
+  56%,
+  100% {
     opacity: 0;
   }
 }
 
+/* Window lost focus: the text is drawn as a hidden line (faint) under a lettered note. */
 .tt-words[data-focused="false"] .tt-slide {
-  filter: blur(5px);
-  opacity: 0.45;
+  opacity: 0.22;
 }
 .tt-focus-hint {
   position: absolute;
@@ -120,15 +299,18 @@ html[data-typing="true"] .tt-live {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  font-family: var(--font-sans);
-  font-size: 14px;
+  gap: 0.6rem;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   line-height: 1.4;
   color: var(--text);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 200ms ease;
+  transition: opacity 180ms var(--ease-out);
 }
 .tt-words[data-focused="false"] .tt-focus-hint {
   opacity: 1;
@@ -138,25 +320,160 @@ html[data-typing="true"] .tt-live {
 /* ── keyboard guide: the next key lights up in its finger colour (Keyboard2D uses --main) ──── */
 .tt-guide[data-finger-colors="true"] [data-key-id][data-finger][data-state="highlight"] > div {
   --kb-main: var(--fc);
-  --kb-main-fg: var(--bg);
+  --kb-main-fg: var(--finger-fg);
 }
 
-/* ── results chart ──────────────────────────────────────────────────────────────────────── */
+/* ── the self-sized hands box (HandsPanel without `fill`, and the room KeyboardGuide reserves for it).
+   Aspect ratio and height cap are inline (handsBoxStyle) and read --hands-aspect / --hands-max-height;
+   a definite height comes from --hands-height. Callers resize the plate by setting those properties. */
+.tt-hands-box {
+  height: var(--hands-height, auto);
+}
+
+/* ── leader: the hands plate names the finger itself, on a strip above the canvas, joined to the key ──
+   (HandsPanel writes the positions). The guide's own hint line then leaves the page visually but
+   stays in the accessibility tree; a hint row with nothing else in it gives up its height. */
+.tt-leader-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  white-space: nowrap;
+}
+.tt-leader-label[data-on="false"] {
+  visibility: hidden;
+}
+.tt-leader-inline {
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+.tt-leader-label[data-hold-inline="true"] .tt-leader-inline {
+  display: inline-flex;
+}
+.tt-leader-label[data-tight="true"] .tt-leader-extra {
+  display: none;
+}
+.tt-leader-line {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.tt-leader-line--hold {
+  stroke-dasharray: 4 3;
+}
+.tt-leader-dot {
+  fill: var(--line);
+}
+.tt-guide:has([data-testid="hands-panel"][data-leader="true"]) [data-testid="key-hint"],
+.tt-guide:has([data-testid="hands-panel"][data-leader="true"]) .tt-hint-row[data-end="false"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── the plate: guide that fills the height its parent gives it (typing test, md and up) ──── */
+.tt-guide[data-fill="true"] {
+  max-width: none;
+}
+/* phones: tall enough that the letter block, framed on its own, is drawn at a readable size */
+.tt-guide[data-fill="true"] [data-slot="hands"] {
+  display: grid;
+  aspect-ratio: 5 / 4;
+  max-height: 64dvh;
+}
+.tt-guide[data-fill="true"] .tt-keys {
+  width: 100%;
+}
+@media (min-width: 768px) {
+  .tt-guide[data-fill="true"] {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+  .tt-guide[data-fill="true"] .tt-plate {
+    flex: 1 1 0;
+    min-height: 0;
+    container-type: size;
+  }
+  .tt-guide[data-fill="true"] [data-slot="hands"] {
+    flex: 1 1 0;
+    min-height: 0;
+    aspect-ratio: auto;
+    max-height: none;
+  }
+  /* 2D board alone: as large as the plate allows, never taller than it. */
+  .tt-guide[data-fill="true"] .tt-keys[data-alone="true"] {
+    flex: 1 1 0;
+    min-height: 0;
+    display: grid;
+    align-items: center;
+    justify-items: center;
+  }
+  .tt-guide[data-fill="true"] .tt-keys[data-alone="true"] > div {
+    width: min(100%, calc(100cqh * var(--tt-board-ratio, 3)));
+  }
+  /* 2D board under the hands: at most two fifths of the plate. */
+  .tt-guide[data-fill="true"] .tt-keys[data-alone="false"] {
+    flex: none;
+    align-self: center;
+    width: min(100%, calc(40cqh * var(--tt-board-ratio, 3)));
+  }
+}
+
+/* ── results: keys to work on. Two compact columns; on a tall window with the sheet to itself, one
+   column of full rows that also say what went wrong. */
+.tt-weak {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.tt-weak-name {
+  flex: 1 1 0;
+}
+.tt-weak-detail {
+  display: none;
+}
+@media (min-height: 860px) {
+  .tt-weak[data-roomy="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tt-weak[data-roomy="true"] .tt-weak-name {
+    flex: none;
+  }
+  .tt-weak[data-roomy="true"] .tt-weak-detail {
+    display: block;
+  }
+}
+
+/* ── results chart: a drafted graph ─────────────────────────────────────────────────────── */
 .tt-chart text {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
   fill: var(--sub);
 }
+.tt-chart text.tt-chart-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
 
-/* ── staggered entrance for results ─────────────────────────────────────────────────────── */
+/* ── entrances ──────────────────────────────────────────────────────────────────────────── */
 .tt-rise {
-  animation: tt-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 55ms);
+  animation: tt-rise 320ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
 @keyframes tt-rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(6px);
   }
 }
 @keyframes tt-draw {
@@ -169,10 +486,23 @@ html[data-typing="true"] .tt-live {
 }
 .tt-draw {
   stroke-dasharray: 1;
-  animation: tt-draw 700ms cubic-bezier(0.3, 0.7, 0.2, 1) 120ms both;
+  animation: tt-draw 700ms var(--ease-out) 120ms both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .tt-caret[data-blink="true"] {
+  .tt-caret[data-blink="true"],
+  .tt-rise,
+  .tt-draw {
     animation: none !important;
+  }
+  .tt-draw {
+    stroke-dasharray: none;
+  }
+  .tt-caret[data-smooth="true"],
+  .tt-fade,
+  .tt-live,
+  .tt-slide,
+  [data-testid="nav"],
+  [data-testid="footer"] {
+    transition: none !important;
   }
 }

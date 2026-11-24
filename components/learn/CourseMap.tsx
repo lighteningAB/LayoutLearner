@@ -1,26 +1,38 @@
 "use client";
-// Route /learn: the course of the active layout as a path of lesson tiles, with a preview panel.
+// Route /learn: the course of the active layout as a drawing sheet: ruled lesson cells per section,
+// a drafted progress scale, and a DETAIL box for the selected lesson.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Keyboard2D } from "@/components/keyboard/Keyboard2D";
-import { PageHeader } from "@/components/shell";
 import { fingerName, guideForChar } from "@/components/typing/KeyboardGuide";
 import "@/components/typing/typing.css";
-import { Badge, Button, Card, Icon, ProgressBar, Skeleton, cx } from "@/components/ui";
+import { Badge, Button, Card, Icon, Kbd, Skeleton, cx } from "@/components/ui";
 import { PRESETS } from "@/lib/layout/presets";
 import { parsePreset } from "@/lib/layout/layers";
 import { buildCurriculum, validateCurriculum } from "@/lib/lessons/curriculum";
 import { useSettings } from "@/lib/settings";
 import type { ParsedLayout } from "@/lib/types";
-import { KeyChip, KeyChips, Stars } from "./bits";
+import { DetailNumber, KeyChip, KeyChips, ReadoutCell, Stars, charLabel } from "./bits";
 import { dimKeyIdsFor, lessonHref, useCourse, type CourseLesson } from "./course";
 import { LearnCommands } from "./LearnCommands";
 import { useHydrated } from "./useHydrated";
 import "./learn.css";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
+const attempted = (item: CourseLesson) => !!item.entry && item.entry.attempts > 0;
 
-// ────────────────────────────────────────────────────────────────────────── tile
+/** Shared column grid of the lesson cells (and of their placeholder). */
+const CELL_GRID = "grid grid-cols-1 border-t border-l border-border sm:grid-cols-2 xl:grid-cols-3";
+
+// ────────────────────────────────────────────────────────────────────────── cell
+
+/** DONE / NEXT / RETRY: the lettered state of a lesson (never colour alone). */
+function StateTag({ item }: { item: CourseLesson }) {
+  if (item.state === "completed") return <Badge icon="check">Done</Badge>;
+  if (item.state === "current") return <Badge tone="main">Next</Badge>;
+  if (attempted(item)) return <Badge className="border-dashed">Retry</Badge>;
+  return null;
+}
 
 function LessonTile({
   item,
@@ -36,6 +48,7 @@ function LessonTile({
   onSelect: (item: CourseLesson) => void;
 }) {
   const { lesson, state, entry } = item;
+  const review = lesson.kind === "review";
   return (
     <button
       type="button"
@@ -47,55 +60,45 @@ function LessonTile({
       aria-pressed={selected}
       aria-label={`Lesson ${item.number}: ${lesson.title} (${state}${item.passed ? `, ${item.stars} of 3 stars` : ""})`}
       onClick={() => onSelect(item)}
-      className={cx(
-        "learn-tile relative flex min-h-[112px] min-w-0 flex-col rounded-ui-lg border p-3 text-left",
-        "bg-bg-alt",
-        state === "current" ? "border-main/70" : "border-transparent",
-        selected && "outline-2 outline-offset-2 outline-main",
-      )}
+      className="learn-cell relative grid min-h-[136px] min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 border-r border-b border-border p-4 text-left"
     >
-      <span className="flex items-center justify-between gap-2">
-        <span className={cx("font-mono text-[11px] tabular-nums", state === "current" ? "text-main" : "text-sub")}>{pad2(item.number)}</span>
-        {state === "completed" && (
-          <span className="inline-flex size-[18px] items-center justify-center rounded-full bg-success/[0.16] text-success">
-            <Icon name="check" size={12} strokeWidth={2.4} />
-          </span>
-        )}
-        {state === "current" && (
-          <span className="inline-flex h-[18px] items-center gap-1 rounded-full bg-main/[0.14] px-1.5 text-[10px] font-semibold tracking-wide text-main uppercase">
-            next
-          </span>
-        )}
+      <span className="flex flex-col items-center">
+        <DetailNumber n={item.number} tone={state === "current" ? "main" : state === "completed" ? "line" : "quiet"} dashed={review && state !== "completed"} />
+        <span aria-hidden className={cx("mt-1.5 w-px flex-1", state === "current" ? "bg-main" : "bg-border")} />
       </span>
 
-      <span className={"mt-1.5 truncate text-sm font-medium text-text"}>{item.shortTitle}</span>
+      <span className="flex min-w-0 flex-col">
+        <span className="flex min-h-9 items-center justify-between gap-2">
+          <span className="truncate text-[18px] leading-tight font-semibold text-text">{item.shortTitle}</span>
+          <StateTag item={item} />
+        </span>
 
-      <span className="mt-2 flex h-[22px] items-center">
-        {lesson.newChars.length > 0 ? (
-          <KeyChips chars={lesson.newChars} layout={layout} fingerColors={fingerColors} max={6} />
-        ) : (
-          <span className={"inline-flex items-center gap-1 text-xs text-sub"}>
-            <Icon name="restart" size={12} />
-            review
-          </span>
-        )}
-      </span>
+        <span className="mt-1.5 flex h-[22px] items-center gap-1.5">
+          {lesson.stage === "layer" && <Icon name="layers" size={14} className="shrink-0 text-sub" />}
+          {lesson.newChars.length > 0 ? (
+            <KeyChips chars={lesson.newChars} layout={layout} fingerColors={fingerColors} max={7} />
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-[14px] text-sub">
+              <Icon name="restart" size={13} />
+              {lesson.chars.length} keys so far
+            </span>
+          )}
+        </span>
 
-      <span className="mt-auto flex items-end justify-between gap-2 pt-2.5">
-        <Stars value={item.stars} size={13} />
-        {entry && entry.attempts > 0 && (
-          <span className="truncate font-mono text-[11px] text-sub tabular-nums" title="Best speed and accuracy">
-            {Math.round(entry.bestWpm)}
-            <span className="opacity-60"> wpm · </span>
-            {Math.floor(entry.bestAccuracy)}%
-          </span>
-        )}
+        <span className="mt-auto flex items-end justify-between gap-2 pt-3">
+          <Stars value={item.stars} size={15} />
+          {entry && entry.attempts > 0 && (
+            <span className="ll-readout truncate text-[12px] text-sub" title="Best speed and accuracy">
+              {Math.round(entry.bestWpm)} wpm · {Math.floor(entry.bestAccuracy)}%
+            </span>
+          )}
+        </span>
       </span>
     </button>
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────── preview
+// ────────────────────────────────────────────────────────────────────────── detail box
 
 function LessonPreview({
   item,
@@ -111,73 +114,85 @@ function LessonPreview({
   const { lesson, entry } = item;
   const dim = useMemo(() => dimKeyIdsFor(layout, lesson), [layout, lesson]);
   const highlight = lesson.kind === "new" ? lesson.focusKeyIds : NONE;
-  const fingers = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const c of lesson.newChars) {
-      const g = guideForChar(layout, c);
-      if (g?.finger) seen.set(fingerName(g.finger), `var(--finger-${g.fingerIndex})`);
-    }
-    return Array.from(seen.entries());
-  }, [layout, lesson]);
+  const newKeys = useMemo(
+    () =>
+      lesson.newChars.map((c) => {
+        const g = guideForChar(layout, c);
+        return { char: c, finger: g?.finger ? fingerName(g.finger) : "", layer: g?.layer?.name ?? "", shift: !!g?.shiftKey };
+      }),
+    [layout, lesson],
+  );
+  const tried = attempted(item);
 
   return (
-    <Card
-      as="section"
-      padding="none"
-      className="p-5"
+    <section
+      className="border border-line bg-bg-alt"
       data-testid="lesson-preview"
       data-lesson-id={lesson.id}
       data-state={item.state}
       aria-label={`Lesson ${item.number}: ${lesson.title}`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-xs text-main">
-          lesson {item.number} · {lesson.kind === "new" ? "new keys" : "review"}
+      <div className="flex h-10 items-center justify-between gap-3 border-b border-line px-4">
+        <span className="ll-lettering min-w-0 truncate text-text">
+          Lesson <span className="ll-readout ml-1 text-[13px] tracking-normal">{pad2(item.number)}</span>
         </span>
-        {item.state === "completed" && <Stars value={item.stars} size={15} />}
-        {item.state === "current" && <Badge tone="main">next up</Badge>}
-      </div>
-      <h2 className="mt-2 text-lg leading-snug font-semibold tracking-tight text-text">{lesson.title}</h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-sub">{lesson.description}</p>
-
-      <div className="tt-guide mt-4 rounded-ui bg-bg p-3" data-finger-colors={fingerColors ? "true" : "false"}>
-        <Keyboard2D layout={layout} highlightKeyIds={highlight} dimUnused={dim} fingerColors={fingerColors} maxUnit={26} />
+        <span className="ll-lettering-sm truncate text-sub">{lesson.kind === "new" ? "new keys" : "review"}</span>
       </div>
 
-      {lesson.newChars.length > 0 && (
-        <div className="mt-4">
-          <div className="text-xs text-sub">New keys</div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            {lesson.newChars.map((c) => (
-              <KeyChip key={c} char={c} layout={layout} fingerColors={fingerColors} size="md" />
-            ))}
-          </div>
-          {fingers.length > 0 && fingers.length <= 4 && (
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-sub">
-              {fingers.map(([name, color]) => (
-                <span key={name} className="inline-flex items-center gap-1.5">
-                  <span aria-hidden className="size-1.5 rounded-full" style={{ backgroundColor: fingerColors ? color : "var(--sub)" }} />
-                  {name}
-                </span>
-              ))}
-            </div>
-          )}
+      <div className="tt-guide learn-minikb ll-grid border-b border-line bg-bg px-3 py-5" data-finger-colors={fingerColors ? "true" : "false"}>
+        <Keyboard2D layout={layout} highlightKeyIds={highlight} dimUnused={dim} fingerColors={fingerColors} maxUnit={30} />
+      </div>
+
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="font-display text-[22px] leading-[1.15] font-semibold tracking-[0.1em] text-balance text-text uppercase">{lesson.title}</h2>
+          <span className="flex h-[26px] shrink-0 items-center">
+            {item.state === "completed" ? (
+              <Stars value={item.stars} size={16} />
+            ) : item.state === "current" ? (
+              <Badge tone="main">next up</Badge>
+            ) : tried ? (
+              <Badge className="border-dashed">Retry</Badge>
+            ) : null}
+          </span>
         </div>
-      )}
+        <p className="mt-2.5 text-[15px] leading-normal text-sub">{lesson.description}</p>
 
-      <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4">
-        <div>
-          <dt className="text-xs text-sub">goal</dt>
-          <dd className="mt-1 font-mono text-sm text-text tabular-nums" data-testid="lesson-goal">
+        {newKeys.length > 0 && (
+          <div className="mt-5">
+            <div className="ll-lettering-sm text-sub">New keys</div>
+            {newKeys.length <= 4 ? (
+              <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
+                {newKeys.map((k) => (
+                  <li key={k.char} className="flex min-w-0 items-center gap-2.5">
+                    <KeyChip char={k.char} layout={layout} fingerColors={fingerColors} size="md" />
+                    <span className="min-w-0 truncate text-[14px] leading-tight text-text" title={k.finger || undefined}>
+                      {k.finger || "any finger"}
+                      {k.layer ? `, ${k.layer}` : k.shift ? ", shift" : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-2 flex flex-wrap items-center gap-1">
+                {newKeys.map((k) => (
+                  <span key={k.char} className="inline-flex" title={k.finger ? `${charLabel(k.char)}: ${k.finger}` : undefined}>
+                    <KeyChip char={k.char} layout={layout} fingerColors={fingerColors} size="md" />
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <dl className="mt-5 grid grid-cols-3 divide-x divide-border border border-border">
+          <ReadoutCell label="goal" data-testid="lesson-goal">
             {lesson.goal.accuracy}%<span className="text-sub"> · </span>
             {lesson.goal.wpm}
             <span className="text-sub"> wpm</span>
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-sub">best</dt>
-          <dd className="mt-1 font-mono text-sm text-text tabular-nums">
-            {entry && entry.attempts > 0 ? (
+          </ReadoutCell>
+          <ReadoutCell label="best">
+            {tried && entry ? (
               <>
                 {Math.floor(entry.bestAccuracy)}%<span className="text-sub"> · </span>
                 {Math.round(entry.bestWpm)}
@@ -186,56 +201,99 @@ function LessonPreview({
             ) : (
               <span className="text-sub">not yet</span>
             )}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-sub">length</dt>
-          <dd className="mt-1 font-mono text-sm text-text tabular-nums">
+          </ReadoutCell>
+          <ReadoutCell label="length">
             {lesson.drills.length}
             <span className="text-sub"> drills</span>
-          </dd>
-        </div>
-      </dl>
+          </ReadoutCell>
+        </dl>
 
-      <div className="mt-5">
-        <Button variant="primary" fullWidth iconRight="arrow-right" onClick={onStart} data-testid="lesson-start" data-lesson-id={lesson.id}>
-          {item.passed ? "Practise again" : entry && entry.attempts > 0 ? "Try again" : "Start lesson"}
-        </Button>
+        <div className="mt-5">
+          <Button variant="primary" size="lg" fullWidth onClick={onStart} data-testid="lesson-start" data-lesson-id={lesson.id} className="justify-between px-5">
+            <span className="ll-trim">{item.passed ? "Practise again" : tried ? "Try again" : "Start lesson"}</span>
+            <span className="flex items-center gap-2.5">
+              <Kbd
+                size="sm"
+                title="Enter starts the selected lesson"
+                className="hidden border-main-fg bg-main-fg text-main group-hover/btn:border-bg group-hover/btn:bg-bg group-hover/btn:text-text lg:inline-flex"
+              >
+                enter
+              </Kbd>
+              <Icon name="arrow-right" size={20} />
+            </span>
+          </Button>
+        </div>
       </div>
-    </Card>
+    </section>
   );
 }
 
 const NONE: string[] = [];
 
+// ────────────────────────────────────────────────────────────────────────── progress scale
+
+/**
+ * The course as one dimension line: a ticked scale with one tick per lesson (passed ones drawn
+ * heavy in the action colour), the lesson and star counts set as annotations at its ends.
+ */
+function ProgressScale({ completed, total, stars, maxStars }: { completed: number; total: number; stars: number; maxStars: number }) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-4 whitespace-nowrap">
+        <span className="ll-lettering-sm text-sub">
+          lessons <span className="ll-readout text-[15px] tracking-normal text-text">{completed}/{total}</span>
+        </span>
+        <span className="ll-lettering-sm text-sub">
+          stars <span className="ll-readout text-[15px] tracking-normal text-text">{stars}/{maxStars}</span>
+        </span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label="Course progress"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={completed}
+        aria-valuetext={`${completed} of ${total} lessons passed`}
+        className="relative mt-2 flex h-4 items-end border-x border-line"
+      >
+        <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-line" />
+        {Array.from({ length: total }, (_, i) => (
+          <span key={i} aria-hidden className={cx("relative flex-1 border-l", i === 0 && "border-l-0", i < completed ? "h-4 border-main" : "h-2 border-border")} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ────────────────────────────────────────────────────────────────────────── page
 
 /**
- * Placeholder shown until storage-backed state is read. It mirrors the real page (progress card,
- * one block per stage, same tile grid and heights) using the stage sizes of the course known at that
- * point (the default layout's), so the page is already its final height and the footer does not
- * jump when the real list replaces it.
+ * Placeholder shown until storage-backed state is read. It mirrors the real page (progress scale,
+ * one block per stage, same cell grid and heights, the detail box) using the stage sizes of the
+ * course known at that point (the default layout's), so the page is already close to its final
+ * height and the footer does not jump when the real list replaces it.
  */
 function CourseSkeleton({ stages }: { stages: { stage: string; items: unknown[] }[] }) {
   return (
-    <div aria-hidden data-testid="course-skeleton">
-      <Skeleton animate className="h-[72px] w-full rounded-ui-lg" />
-      <div className="mt-8 grid items-start gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="min-w-0 space-y-8">
+    <>
+      <div aria-hidden data-testid="course-skeleton" className="lg:col-start-1 lg:row-start-2">
+        <div className="space-y-10">
           {stages.map((stage, si) => (
             <div key={`${stage.stage}-${si}`}>
-              <Skeleton animate className="mb-3 h-[23px] w-40 rounded-ui" />
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <Skeleton animate className="mb-4 h-[23px] w-48" />
+              <div className={CELL_GRID}>
                 {stage.items.map((_, i) => (
-                  <Skeleton key={i} animate className="h-[123px] rounded-ui-lg" />
+                  <div key={i} className="h-[136px] border-r border-b border-border p-4">
+                    <Skeleton animate className="size-9 rounded-full" />
+                  </div>
                 ))}
               </div>
             </div>
           ))}
         </div>
-        <Skeleton animate className="order-first h-[515px] rounded-ui-lg lg:order-none" />
       </div>
-    </div>
+      <Skeleton aria-hidden animate className="h-[560px] lg:col-start-2 lg:row-span-2 lg:row-start-1" />
+    </>
   );
 }
 
@@ -287,11 +345,11 @@ export function CourseMap() {
   const onSelect = useCallback(
     (item: CourseLesson) => {
       if (selected && item.lesson.id === selected.lesson.id && selectedId != null) {
-        start(item); // second click on the selected tile starts it
+        start(item); // second click on the selected cell starts it
         return;
       }
       setSelectedId(item.lesson.id);
-      // Stacked layout: the preview sits above the list, bring it into view.
+      // Stacked layout: the detail box sits above the list, bring it into view.
       if (window.matchMedia("(max-width: 1023px)").matches) {
         window.requestAnimationFrame(() => previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
       }
@@ -316,39 +374,83 @@ export function CourseMap() {
   }, [start]);
 
   const next = course.next;
-  const pct = course.total > 0 ? Math.round((course.completed / course.total) * 100) : 0;
+  const ready = hydrated && course.total > 0;
 
   return (
-    <div data-testid="course" data-layout={active.id} data-ready={hydrated ? "true" : "false"} data-total={course.total} data-completed={course.completed}>
+    <div
+      className="grid items-start gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,1fr)_400px]"
+      data-testid="course"
+      data-layout={active.id}
+      data-ready={hydrated ? "true" : "false"}
+      data-total={course.total}
+      data-completed={course.completed}
+    >
       <LearnCommands />
-      <PageHeader
-        eyebrow={hydrated ? active.name : " "}
-        title="Learn"
-        description="A few keys at a time, from the home row out. Start anywhere; the highlighted lesson is the suggested next step."
-        actions={
-          hydrated && course.total > 0 ? (
-            next ? (
-              <Button variant="primary" size="lg" iconRight="arrow-right" href={lessonHref(next.lesson.id)} data-testid="course-continue">
-                {course.completed === 0 ? "Start" : "Continue"}
-                <span className="font-normal opacity-75">
-                  lesson {next.number} · {next.shortTitle}
-                </span>
-              </Button>
-            ) : (
-              <Button variant="subtle" size="lg" icon="trophy" href="/" data-testid="course-continue">
-                Course complete: take a test
-              </Button>
-            )
-          ) : undefined
-        }
-      />
+
+      {/* ── heading line, description, primary action; the progress scale beside them ── */}
+      <header className="grid min-w-0 items-end gap-x-10 gap-y-8 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
+            <h1 className="ll-title text-text">Learn</h1>
+            <div className="ll-lettering min-h-[15px] min-w-0 pb-1.5 text-sub sm:pb-2.5">{hydrated ? active.name : " "}</div>
+          </div>
+          <p className="mt-4 max-w-[52ch] text-[17px] leading-[1.45] text-sub">
+            A few keys at a time, from the home row out. Start anywhere; the highlighted lesson is the suggested next step.
+          </p>
+          <div className="mt-6 flex min-h-12 items-center">
+            {ready &&
+              (next ? (
+                <Button variant="primary" size="lg" href={lessonHref(next.lesson.id)} data-testid="course-continue" className="max-w-full gap-3 max-sm:w-full max-sm:px-4">
+                  <span className="ll-trim">
+                    {course.completed === 0 ? "Start" : "Continue"} lesson {next.number}
+                  </span>
+                  <span className="ll-readout min-w-0 truncate bg-main-fg px-2 py-1 text-[13px] leading-none font-medium tracking-normal text-main normal-case group-hover/btn:bg-bg group-hover/btn:text-text">
+                    {next.shortTitle}
+                  </span>
+                  <Icon name="arrow-right" size={20} className="shrink-0" />
+                </Button>
+              ) : (
+                <Button variant="subtle" size="lg" icon="trophy" href="/" data-testid="course-continue">
+                  Course complete: take a test
+                </Button>
+              ))}
+          </div>
+        </div>
+
+        {ready ? (
+          <div
+            className="min-w-0"
+            data-testid="course-progress"
+            data-completed={course.completed}
+            data-total={course.total}
+            data-stars={course.stars}
+            data-max-stars={course.maxStars}
+          >
+            <ProgressScale completed={course.completed} total={course.total} stars={course.stars} maxStars={course.maxStars} />
+            <p className="mt-3 truncate text-[14px] text-sub">
+              {next ? (
+                <>
+                  <span className="ll-lettering-sm mr-2">Next</span>
+                  <span className="text-text">
+                    {next.number}. {next.lesson.title}
+                  </span>
+                </>
+              ) : (
+                "Every lesson passed."
+              )}
+            </p>
+          </div>
+        ) : (
+          !hydrated && <Skeleton aria-hidden animate className="h-[84px] w-full" />
+        )}
+      </header>
 
       {!hydrated ? (
         <CourseSkeleton stages={course.stages} />
       ) : course.total === 0 ? (
         <Card className="flex flex-col items-start gap-3" data-testid="course-empty">
-          <div className="text-[15px] font-semibold text-text">No lessons for {active.name}</div>
-          <p className="max-w-lg text-sm text-sub">
+          <h2 className="ll-lettering-lg text-text">No lessons for {active.name}</h2>
+          <p className="max-w-lg text-[15px] text-sub">
             This layout has no letter keys a course could be built from. Pick another layout, or edit this one so its keys carry letters.
           </p>
           <Button href="/layouts" icon="layers">
@@ -357,67 +459,27 @@ export function CourseMap() {
         </Card>
       ) : (
         <>
-          <Card
-            padding="none"
-            className="flex flex-wrap items-center gap-x-8 gap-y-4 px-5 py-4"
-            data-testid="course-progress"
-            data-completed={course.completed}
-            data-total={course.total}
-            data-stars={course.stars}
-            data-max-stars={course.maxStars}
-          >
-            <div>
-              <div className="text-xs text-sub">lessons</div>
-              <div className="mt-1 font-mono text-xl leading-none font-medium text-text tabular-nums">
-                <span className="text-main">{course.completed}</span>
-                <span className="text-sub">/{course.total}</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-sub">stars</div>
-              <div className="mt-1 flex items-center gap-1.5 font-mono text-xl leading-none font-medium text-text tabular-nums">
-                <span>
-                  <span className="text-main">{course.stars}</span>
-                  <span className="text-sub">/{course.maxStars}</span>
-                </span>
-              </div>
-            </div>
-            <div className="order-last w-full min-w-0 sm:order-none sm:w-auto sm:flex-1">
-              <div className="flex items-baseline justify-between text-xs text-sub">
-                <span>
-                  {next ? (
-                    <>
-                      next: <span className="text-text">{next.lesson.title}</span>
-                    </>
-                  ) : (
-                    "every lesson passed"
-                  )}
-                </span>
-                <span className="font-mono tabular-nums">{pct}%</span>
-              </div>
-              <ProgressBar className="mt-2" size="md" value={course.completed} max={course.total} aria-label="Course progress" />
-            </div>
-          </Card>
+          <div ref={previewRef} className="min-w-0 scroll-mt-4 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+            {selected && <LessonPreview item={selected} layout={layout} fingerColors={fingerColors} onStart={() => start(selected)} />}
+          </div>
 
-          <div className="mt-8 grid items-start gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <div className="min-w-0 space-y-8" data-testid="course-stages">
-              {course.stages.map((stage, si) => (
+          <div className="min-w-0 space-y-10 lg:col-start-1 lg:row-start-2" data-testid="course-stages">
+            {course.stages.map((stage, si) => {
+              const complete = stage.completed === stage.items.length;
+              return (
                 <section key={`${stage.stage}-${si}`} data-testid="course-stage" data-stage={stage.stage} aria-label={stage.name}>
-                  <div className="mb-3 flex items-center gap-3">
-                    <h2 className="text-[15px] font-semibold tracking-tight text-text">{stage.name}</h2>
-                    <span className="font-mono text-xs text-sub tabular-nums">
-                      {stage.completed}/{stage.items.length}
+                  <div className="mb-4 flex items-center gap-4">
+                    <h2 className="ll-heading shrink-0 text-text">{stage.name}</h2>
+                    <span aria-hidden className="h-px min-w-6 flex-1 bg-border" />
+                    <span className="ll-lettering-sm inline-flex shrink-0 items-center gap-1.5 text-sub">
+                      {complete && <Icon name="check" size={13} className="text-text" />}
+                      <span className="ll-readout text-[12px] tracking-normal text-text">
+                        {stage.completed}/{stage.items.length}
+                      </span>
+                      {complete ? "complete" : "passed"}
                     </span>
-                    <ProgressBar
-                      className="max-w-24"
-                      size="xs"
-                      tone={stage.completed === stage.items.length ? "success" : "main"}
-                      value={stage.completed}
-                      max={stage.items.length}
-                      aria-label={`${stage.name} progress`}
-                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className={CELL_GRID}>
                     {stage.items.map((item) => (
                       <LessonTile
                         key={item.lesson.id}
@@ -430,22 +492,8 @@ export function CourseMap() {
                     ))}
                   </div>
                 </section>
-              ))}
-            </div>
-
-            <div ref={previewRef} className="order-first min-w-0 scroll-mt-4 lg:sticky lg:top-6 lg:order-none">
-              {selected && (
-                <>
-                  <LessonPreview item={selected} layout={layout} fingerColors={fingerColors} onStart={() => start(selected)} />
-                  <p className="mt-3 hidden items-center justify-center gap-1.5 text-xs text-sub lg:flex">
-                    <kbd className="inline-flex h-[18px] items-center rounded-[5px] border border-b-2 border-key-border bg-key-bg px-1 font-mono text-[10px] font-medium text-key-text">
-                      enter
-                    </kbd>
-                    start the selected lesson
-                  </p>
-                </>
-              )}
-            </div>
+              );
+            })}
           </div>
         </>
       )}
