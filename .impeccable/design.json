@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-24T12:00:00Z",
+  "title": "Design System: LayoutLearner",
+  "extensions": {
+    "colorMeta": {
+      "sheet": {
+        "role": "neutral",
+        "displayName": "Sheet Blue (Blueprint)",
+        "canonical": "#164b9b",
+        "tonalRamp": [
+          "#091e44",
+          "#0e3170",
+          "#164b9b",
+          "#2765bd",
+          "#5c8ad0",
+          "#93b5ea",
+          "#bdd2f4",
+          "#f2f6ff"
+        ]
+      },
+      "sheet-alt": {
+        "role": "neutral",
+        "displayName": "Sheet Blue Alt",
+        "canonical": "#1b54a8",
+        "tonalRamp": [
+          "#091e44",
+          "#0e3170",
+          "#1b54a8",
+          "#2765bd",
+          "#5c8ad0",
+          "#93b5ea",
+          "#bdd2f4",
+          "#f2f6ff"
+        ]
+      },
+      "key-fill": {
+        "role": "neutral",
+        "displayName": "Key Fill Blue",
+        "canonical": "#2765bd",
+        "tonalRamp": [
+          "#0e3170",
+          "#164b9b",
+          "#2765bd",
+          "#4a80cc",
+          "#5c8ad0",
+          "#93b5ea",
+          "#bdd2f4",
+          "#f2f6ff"
+        ]
+      },
+      "chalk": {
+        "role": "neutral",
+        "displayName": "Chalk",
+        "canonical": "#f2f6ff",
+        "tonalRamp": [
+          "#5c8ad0",
+          "#93b5ea",
+          "#bdd2f4",
+          "#d3e1f8",
+          "#e3ecfb",
+          "#eef3fe",
+          "#f2f6ff",
+          "#ffffff"
+        ]
+      },
+      "safety-yellow": {
+        "role": "primary",
+        "displayName": "Safety Yellow",
+        "canonical": "#ffc61a",
+        "tonalRamp": [
+          "#5c4300",
+          "#8f6a00",
+          "#c79700",
+          "#ffc61a",
+          "#ffd14d",
+          "#ffdc80",
+          "#ffe9b3",
+          "#fff6dd"
+        ]
+      },
+      "whiteprint-red-pencil": {
+        "role": "primary",
+        "displayName": "Red Pencil (Whiteprint)",
+        "canonical": "#c92620",
+        "tonalRamp": [
+          "#4a0f0c",
+          "#7a1813",
+          "#a31f19",
+          "#c92620",
+          "#dd5650",
+          "#e98a85",
+          "#f4bfbc",
+          "#fbe6e5"
+        ]
+      },
+      "whiteprint-paper": {
+        "role": "neutral",
+        "displayName": "Drafting Paper",
+        "canonical": "#f3f6fb",
+        "tonalRamp": [
+          "#123f8c",
+          "#3f5f99",
+          "#5f7fb8",
+          "#b9c9e4",
+          "#e6edf8",
+          "#f3f6fb",
+          "#f9fbfd",
+          "#ffffff"
+        ]
+      },
+      "whiteprint-ink": {
+        "role": "neutral",
+        "displayName": "Blue Ink",
+        "canonical": "#123f8c",
+        "tonalRamp": [
+          "#071c40",
+          "#0c2c64",
+          "#123f8c",
+          "#3f5f99",
+          "#5f7fb8",
+          "#8fa6cf",
+          "#b9c9e4",
+          "#e6edf8"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "One per page; thin tracked caps."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Section headings on the sheet."
+      },
+      "lettering-lg": {
+        "displayName": "Lettering large",
+        "purpose": "Tabs, nav, buttons, card titles."
+      },
+      "readout": {
+        "displayName": "Readout",
+        "purpose": "Typing text, WPM, accuracy; mono tabular."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "Timer and big counts, thin Josefin figures."
+      }
+    },
+    "shadows": [
+      {
+        "name": "none",
+        "value": "0 0 #0000",
+        "purpose": "The world has no shadows; shadow-pop resolves to nothing, and the 3D scene is unlit."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Fade 140ms, pop 180ms, rise 220ms."
+      },
+      {
+        "name": "caret",
+        "value": "1s steps(1, end) infinite",
+        "purpose": "Hard blink for the typing caret."
+      },
+      {
+        "name": "hatch",
+        "value": "700ms linear infinite",
+        "purpose": "Busy hatching running across a button face."
+      },
+      {
+        "name": "leader-draw",
+        "value": "160ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Leader draws from label to key on a new target; skipped with reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ],
+    "themes": [
+      {
+        "id": "blueprint",
+        "scheme": "dark",
+        "default": true
+      },
+      {
+        "id": "whiteprint",
+        "scheme": "light"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Action-coloured, square, lettered caps; inverts to chalk on hover.",
+      "html": "<button class=\"ds-btn-primary\">START LESSON</button>",
+      "css": ".ds-btn-primary{height:40px;padding:0 16px;border:1px solid var(--line,#f2f6ff);background:var(--main,#ffc61a);color:var(--main-fg,#0b2350);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;border-radius:0;transition:background-color .15s,color .15s}.ds-btn-primary:hover{background:var(--text,#f2f6ff);color:var(--bg,#164b9b)}.ds-btn-primary:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:2px}.ds-btn-primary:active{transform:translateY(1px)}"
+    },
+    {
+      "name": "Subtle Button",
+      "kind": "button",
+      "refersTo": "button-subtle",
+      "description": "Outline-only default button.",
+      "html": "<button class=\"ds-btn-subtle\">RESTART</button>",
+      "css": ".ds-btn-subtle{height:40px;padding:0 16px;border:1px solid var(--line,#f2f6ff);background:transparent;color:var(--text,#f2f6ff);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;border-radius:0;transition:background-color .15s,color .15s}.ds-btn-subtle:hover{background:var(--text,#f2f6ff);color:var(--bg,#164b9b)}.ds-btn-subtle:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:2px}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Ruled field with faint fill; border darkens to line weight on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search layouts\">",
+      "css": ".ds-input{height:40px;width:100%;padding:0 12px;border:1px solid var(--border,#93b5ea);background:var(--fill,rgb(242 246 255/.06));color:var(--text,#f2f6ff);font-size:15px;border-radius:0}.ds-input::placeholder{color:var(--sub,#bdd2f4)}.ds-input:hover{border-color:var(--line,#f2f6ff)}.ds-input:focus{border-color:var(--line,#f2f6ff);background:transparent}.ds-input:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:2px}"
+    },
+    {
+      "name": "Nav Tab",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Lettered tab on a ruled strip; active tab gets a 2px action underline.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-tab ds-tab-active\" href=\"#\">01 TEST</a><a class=\"ds-tab\" href=\"#\">02 LEARN</a></nav>",
+      "css": ".ds-nav{display:flex;gap:6px;border-bottom:1px solid var(--border,#93b5ea)}.ds-tab{display:inline-flex;align-items:center;height:44px;padding:0 14px;margin-bottom:-1px;border-bottom:2px solid transparent;color:var(--sub,#bdd2f4);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:14px;letter-spacing:.16em;text-transform:uppercase;text-decoration:none;transition:color .15s,border-color .15s}.ds-tab:hover{color:var(--text,#f2f6ff);border-color:var(--border,#93b5ea)}.ds-tab-active{color:var(--text,#f2f6ff);border-color:var(--main,#ffc61a)}.ds-tab:focus-visible{outline:2px solid var(--main,#ffc61a);outline-offset:-2px}"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge-main",
+      "description": "22px outlined lettering tag; main tone is filled with the action colour.",
+      "html": "<span class=\"ds-badge\">NEW</span> <span class=\"ds-badge ds-badge-main\">ACTIVE</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;height:22px;padding:0 6px;border:1px solid var(--border,#93b5ea);color:var(--sub,#bdd2f4);font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase}.ds-badge-main{border-color:var(--main,#ffc61a);background:var(--main,#ffc61a);color:var(--main-fg,#0b2350)}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-solid",
+      "description": "Ruled plate: line-weight outline over the alt sheet fill, no shadow.",
+      "html": "<section class=\"ds-card\"><h3 class=\"ds-card-title\">HOME ROW</h3><p class=\"ds-card-body\">Eight keys, no reaching.</p></section>",
+      "css": ".ds-card{padding:20px;border:1px solid var(--line,#f2f6ff);background:var(--bg-alt,#1b54a8);color:var(--text,#f2f6ff);border-radius:0}.ds-card-title{margin:0;font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:14px;letter-spacing:.16em;text-transform:uppercase}.ds-card-body{margin:6px 0 0;font-size:15px;line-height:1.35;color:var(--sub,#bdd2f4)}"
+    },
+    {
+      "name": "Key Hint",
+      "kind": "custom",
+      "refersTo": "kbd",
+      "description": "Outlined key cell for shortcut hints.",
+      "html": "<kbd class=\"ds-kbd\">tab</kbd> + <kbd class=\"ds-kbd\">enter</kbd>",
+      "css": ".ds-kbd{display:inline-flex;align-items:center;justify-content:center;height:24px;min-width:24px;padding:0 6px;border:1px solid var(--key-border,#f2f6ff);background:var(--key-bg,#2765bd);color:var(--key-text,#f2f6ff);font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:12px;font-weight:500;line-height:1;border-radius:0}"
+    },
+    {
+      "name": "Finger Key",
+      "kind": "custom",
+      "refersTo": "kbd",
+      "description": "A key tinted with its finger colour; the target key is filled solid with finger text colour.",
+      "html": "<span class=\"ds-fkey\">F</span><span class=\"ds-fkey ds-fkey-target\">T</span>",
+      "css": ".ds-fkey{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;margin-right:4px;border:1px solid var(--key-border,#f2f6ff);background:color-mix(in srgb,var(--finger-3,#3fe0d0) var(--finger-tint,24%),var(--key-tint-base,#164b9b));color:var(--key-text,#f2f6ff);font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:14px}.ds-fkey-target{background:var(--finger-3,#3fe0d0);color:var(--finger-fg,#0b2350)}"
+    },
+    {
+      "name": "Plate Leader Label",
+      "kind": "custom",
+      "refersTo": "kbd",
+      "description": "Annotation label on the strip above the 3D plate: finger swatch, lettered finger name, arrow, key; joined to the key by an elbowed leader.",
+      "html": "<div class=\"ds-leader\"><svg width=\"220\" height=\"90\" overflow=\"visible\"><path d=\"M168 14.5H92L40 80\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\"/><circle cx=\"40\" cy=\"80\" r=\"2.5\" fill=\"currentColor\"/></svg><span class=\"ds-leader-label\"><i class=\"ds-sw\"></i>LEFT INDEX <b>&rarr;</b> T</span></div>",
+      "css": ".ds-leader{position:relative;width:220px;height:90px;color:var(--line,#f2f6ff)}.ds-leader svg{position:absolute;inset:0}.ds-leader-label{position:absolute;left:100px;top:0;display:inline-flex;align-items:center;gap:6px;height:28px;padding-left:6px;font-family:var(--font-display,'Josefin Sans',sans-serif);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}.ds-sw{width:10px;height:10px;border:1px solid var(--line,#f2f6ff);background:var(--finger-3,#3fe0d0)}.ds-leader-label b{color:var(--sub,#bdd2f4);font-weight:600}"
+    },
+    {
+      "name": "2D Keyboard Cell States",
+      "kind": "custom",
+      "refersTo": "kbd",
+      "description": "Idle, finger-tinted home, next-key highlight, pressed and dim caps.",
+      "html": "<span class=\"ds-cap\">a</span><span class=\"ds-cap ds-home\">f</span><span class=\"ds-cap ds-next\">t</span><span class=\"ds-cap ds-press\">e</span><span class=\"ds-cap ds-dim\">z</span>",
+      "css": ".ds-cap{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:40px;height:40px;margin:0 6px 0 0;border:1px solid var(--key-border,#f2f6ff);background:var(--key-bg,#2765bd);color:var(--key-text,#f2f6ff);font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:14px}.ds-home{background:var(--finger-3,#3fe0d0);color:var(--finger-fg,#0b2350)}.ds-next{background:var(--finger-3,#3fe0d0);color:var(--finger-fg,#0b2350);border-color:var(--finger-fg,#0b2350);outline:2px solid var(--main,#ffc61a);outline-offset:2px}.ds-press{background:var(--key-text,#f2f6ff);color:var(--bg,#164b9b)}.ds-dim{background:transparent;border-style:dashed;color:var(--sub,#bdd2f4);opacity:.55}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Living Drawing",
+    "overview": "The app is an engineering drawing of hands on a keyboard. The drawing sheet is the page and the hands are the plate at its centre. It is drafted twice: Blueprint (dark cyanotype, chalk linework, safety-yellow action) and Whiteprint (light drafting paper, blue ink, red-pencil action). Everything is square, ruled and lettered; depth comes from line weight and fill, never shadow.",
+    "keyCharacteristics": [
+      "Square corners everywhere (radius 0); depth comes from line weight and fill, never shadow.",
+      "One action colour per theme.",
+      "Josefin Sans tracked capitals for lettering, Barlow Semi Condensed for UI, IBM Plex Mono for typed text and numbers.",
+      "A 10px drafting grid with a heavier line every 50px on every page.",
+      "Ten finger colours on keys and hands only."
+    ],
+    "rules": [
+      {
+        "name": "The One Action Rule",
+        "body": "One saturated colour per theme carries the action. The finger colours are not actions and never decorate chrome.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fingers-Only Rule",
+        "body": "Finger colours appear only as fills on keys, fingertips, chips and legends.",
+        "section": "colors"
+      },
+      {
+        "name": "The Contrast Floor Rule",
+        "body": "Text and sub are at least 4.5:1 on the sheet and raised fills; --border at least 3:1; --finger-fg at least 4.5:1 on every finger fill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Lettered Caps Rule",
+        "body": "Display type is always uppercase and tracked.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono Is Measurement Rule",
+        "body": "Anything typed, keyed or counted is Plex Mono with tabular figures.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-Shadow Rule",
+        "body": "A surface is separated by a rule or a fill step, never a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Hatch Means Pending Rule",
+        "body": "135-degree hatching means busy or not there yet, and nothing else.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do re-value tokens under [data-theme] for any new colour, in both Blueprint and Whiteprint, and check the contrast floor.",
+      "Do use the type utilities (ll-title, ll-heading, ll-lettering*, ll-readout, ll-numeral, ll-note) instead of ad-hoc sizes.",
+      "Do use ll-trim on single-line caps inside fixed-height controls.",
+      "Do show state with line style: dashed means disabled, hatched means busy or pending, thicker means selected or measured.",
+      "Do use --text rather than --sub for text on --key-bg in Blueprint.",
+      "Do draw legends after the hand passes, with a cap-coloured halo, so hands never cross them."
+    ],
+    "donts": [
+      "Don't add shadows, glows, gradients or rounded corners.",
+      "Don't use finger colours for chrome, status or decoration.",
+      "Don't set display type in lowercase or untracked, or use a system display face.",
+      "Don't hide key legends behind hands or overlays.",
+      "Don't build new surfaces as dark-slate cards with a neon accent.",
+      "Don't light the 3D scene, add shadows, or give the hands an opaque fill."
+    ]
+  }
+}
