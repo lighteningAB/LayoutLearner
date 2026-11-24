@@ -17,7 +17,7 @@ export function Card({ variant = "solid", padding = "md", as = "div", className,
     <Tag
       data-variant={variant}
       className={cx(
-        "border",
+        "rounded-ui border",
         variant === "solid" ? "border-line bg-bg-alt" : "border-border",
         PAD[padding],
         className,

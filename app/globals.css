@@ -4,8 +4,8 @@
    LayoutLearner design tokens: the Blueprint world.
    Two themes, set per [data-theme] (on <html>, or on any subtree for scoped
    previews) and consumed as var(--x):
-     blueprint   cyanotype sheet, chalk linework, safety-yellow action (dark)
-     whiteprint  drafting paper, blue ink, red-pencil action (light)
+     blueprint   deep blueprint sheet, soft chalk linework, warm yellow action (dark)
+     whiteprint  drafting paper, blue ink, brick-red action (light)
    Tokens are mapped into Tailwind below, so `bg-bg`, `bg-bg-alt`, `text-text`,
    `text-sub`, `text-main`, `border-border`, `border-line`, `bg-fill`,
    `bg-finger-3`, `text-finger-fg`, `font-display`, `font-mono` … all work,
@@ -21,70 +21,70 @@
 :root,
 [data-theme="blueprint"] {
   color-scheme: dark;
-  /* sheet and fills */
-  --bg: #164b9b;
-  --bg-alt: #1b54a8;
-  --key-bg: #2765bd;
-  /* linework */
-  --text: #f2f6ff;
-  --sub: #bdd2f4;
-  --line: #f2f6ff;
-  --border: #93b5ea;
-  --hairline: #5c8ad0;
-  --grid: rgb(242 246 255 / 0.04);
-  --grid-strong: rgb(242 246 255 / 0.085);
-  --fill: rgb(242 246 255 / 0.06);
-  --fill-strong: rgb(242 246 255 / 0.12);
-  --scrim: rgb(9 30 68 / 0.74);
+  /* sheet and fills: a deep, low-chroma blueprint blue that sits back */
+  --bg: #243c60;
+  --bg-alt: #2a4369;
+  --key-bg: #33507c;
+  /* linework: soft chalk, never pure white */
+  --text: #e6ecf7;
+  --sub: #adbedc;
+  --line: #d3ddf0;
+  --border: #8299c4;
+  --hairline: #4f6692;
+  --grid: rgb(230 236 247 / 0.022);
+  --grid-strong: rgb(230 236 247 / 0.045);
+  --fill: rgb(230 236 247 / 0.055);
+  --fill-strong: rgb(230 236 247 / 0.11);
+  --scrim: rgb(14 26 46 / 0.72);
   /* action and status */
-  --main: #ffc61a;
-  --main-fg: #0b2350;
-  --caret: #ffc61a;
-  --error: #ffbcc4;
-  --error-alt: #ff808f;
-  --success: #8ff0b6;
+  --main: #f0c252;
+  --main-fg: #16263f;
+  --caret: #f0c252;
+  --error: #f4b6bd;
+  --error-alt: #ee8b97;
+  --success: #a3dfbb;
   /* keys */
-  --key-border: #f2f6ff;
-  --key-text: #f2f6ff;
-  --key-tint-base: #164b9b;
-  --finger-tint: 24%;
-  --finger-fg: #0b2350;
-  --finger-0: #f09ae6;
-  --finger-1: #ffa857;
-  --finger-2: #c8ea60;
-  --finger-3: #3fe0d0;
-  --finger-4: #e9e2ff;
-  --finger-5: #c3acff;
-  --finger-6: #86b6ff;
-  --finger-7: #5fd4ff;
-  --finger-8: #f5ea8c;
-  --finger-9: #74dc86;
-  --radius: 0px;
+  --key-border: #adbedc;
+  --key-text: #e6ecf7;
+  --key-tint-base: #243c60;
+  --finger-tint: 22%;
+  --finger-fg: #16263f;
+  --finger-0: #e0aad9;
+  --finger-1: #dfa977;
+  --finger-2: #bbd07a;
+  --finger-3: #5ec1b7;
+  --finger-4: #ece8f9;
+  --finger-5: #cabcef;
+  --finger-6: #9dbbe8;
+  --finger-7: #7dc6e1;
+  --finger-8: #e1daa0;
+  --finger-9: #88c893;
+  --radius: 3px;
 }
 
 [data-theme="whiteprint"] {
   color-scheme: light;
-  --bg: #f3f6fb;
-  --bg-alt: #e6edf8;
+  --bg: #f4f6fa;
+  --bg-alt: #e9eef6;
   --key-bg: #ffffff;
-  --text: #123f8c;
-  --sub: #3f5f99;
-  --line: #123f8c;
-  --border: #5f7fb8;
-  --hairline: #b9c9e4;
-  --grid: rgb(18 63 140 / 0.045);
-  --grid-strong: rgb(18 63 140 / 0.095);
-  --fill: rgb(18 63 140 / 0.06);
-  --fill-strong: rgb(18 63 140 / 0.12);
-  --scrim: rgb(18 63 140 / 0.42);
-  --main: #c92620;
+  --text: #1f3f77;
+  --sub: #4a6394;
+  --line: #1f3f77;
+  --border: #6a84b3;
+  --hairline: #c7d3e6;
+  --grid: rgb(31 63 119 / 0.028);
+  --grid-strong: rgb(31 63 119 / 0.055);
+  --fill: rgb(31 63 119 / 0.05);
+  --fill-strong: rgb(31 63 119 / 0.1);
+  --scrim: rgb(31 63 119 / 0.38);
+  --main: #b5433a;
   --main-fg: #ffffff;
-  --caret: #c92620;
+  --caret: #b5433a;
   --error: #a3127a;
   --error-alt: #c458a6;
   --success: #17734a;
-  --key-border: #123f8c;
-  --key-text: #123f8c;
+  --key-border: #6a84b3;
+  --key-text: #1f3f77;
   --key-tint-base: #ffffff;
   --finger-tint: 16%;
   --finger-fg: #ffffff;
@@ -98,7 +98,7 @@
   --finger-7: #0878b8;
   --finger-8: #8f7400;
   --finger-9: #9a5a3c;
-  --radius: 0px;
+  --radius: 3px;
 }
 
 :root {
@@ -251,7 +251,7 @@
   font-weight: 300;
   font-size: clamp(2.125rem, 1.4rem + 2.6vw, 3.75rem);
   line-height: 0.95;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   text-wrap: balance;
 }
@@ -261,7 +261,7 @@
   font-weight: 600;
   font-size: var(--fs-xl);
   line-height: 1.15;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   text-wrap: balance;
 }
@@ -271,7 +271,7 @@
   font-weight: 600;
   font-size: var(--fs-md);
   line-height: 1.25;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 @utility ll-lettering {
@@ -279,7 +279,7 @@
   font-weight: 600;
   font-size: var(--fs-xs);
   line-height: 1.25;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 @utility ll-lettering-sm {
@@ -287,7 +287,7 @@
   font-weight: 600;
   font-size: var(--fs-2xs);
   line-height: 1.25;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 /* Numeric readout: mono, tabular, slashed zero. Size it with text-*. */

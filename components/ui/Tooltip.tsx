@@ -25,7 +25,7 @@ export function Tooltip({ content, side = "top", align = "center", children, cla
         id={id}
         role="tooltip"
         className={cx(
-          "pointer-events-none absolute z-50 border border-line bg-text px-2 py-1 text-sm leading-tight font-medium whitespace-nowrap text-bg",
+          "pointer-events-none absolute z-50 rounded-ui border border-line bg-text px-2 py-1 text-sm leading-tight font-medium whitespace-nowrap text-bg",
           "opacity-0 transition-opacity duration-100 group-focus-within/tt:opacity-100 group-hover/tt:opacity-100 group-hover/tt:delay-300",
           side === "top" ? "bottom-full mb-2" : "top-full mt-2",
           align === "center" ? "left-1/2 -translate-x-1/2" : align === "start" ? "left-0" : "right-0",

@@ -70,7 +70,7 @@ export function SegmentedControl<T extends string | number>({
       data-variant={variant}
       className={cx(
         "inline-flex max-w-full flex-wrap items-center",
-        variant === "pill" ? "border border-line" : "gap-x-1 gap-y-0.5",
+        variant === "pill" ? "overflow-hidden rounded-ui border border-line" : "gap-x-1 gap-y-0.5",
         disabled && "pointer-events-none border-dashed border-border",
         className,
       )}

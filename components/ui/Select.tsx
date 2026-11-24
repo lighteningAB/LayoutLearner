@@ -154,7 +154,7 @@ export function Select<T extends string = string>({
         onClick={() => (open ? close() : openList())}
         onKeyDown={onButtonKeyDown}
         className={cx(
-          "inline-flex w-full min-w-36 items-center justify-between gap-3 border border-border bg-fill text-text",
+          "inline-flex w-full min-w-36 items-center justify-between gap-3 rounded-ui border border-border bg-fill text-text",
           "transition-colors duration-150 hover:border-line aria-expanded:border-line",
           "disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-sub disabled:hover:border-border",
           size === "sm" ? "h-8 pr-2 pl-2.5 text-md" : "h-10 pr-2.5 pl-3 text-base",
@@ -182,7 +182,7 @@ export function Select<T extends string = string>({
           aria-labelledby={rest["aria-labelledby"]}
           onKeyDown={onListKeyDown}
           className={cx(
-            "absolute z-40 mt-1 max-h-72 min-w-full overflow-auto border border-line bg-bg p-1",
+            "absolute z-40 mt-1 max-h-72 min-w-full overflow-auto rounded-ui border border-line bg-bg p-1",
             "animate-pop-in outline-none",
             align === "end" ? "right-0 origin-top-right" : "left-0 origin-top-left",
           )}

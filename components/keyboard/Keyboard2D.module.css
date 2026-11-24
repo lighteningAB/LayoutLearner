@@ -11,26 +11,26 @@
      dim             dashed outline, no fill (a hidden line) */
 
 .root {
-  --kb-bg: var(--bg, #164b9b);
-  --kb-key-bg: var(--key-bg, #2765bd);
-  --kb-key-border: var(--key-border, #f2f6ff);
-  --kb-key-text: var(--key-text, #f2f6ff);
-  --kb-sub: var(--sub, #bdd2f4);
-  --kb-main: var(--main, #ffc61a);
-  --kb-main-fg: var(--main-fg, #0b2350);
+  --kb-bg: var(--bg, #243c60);
+  --kb-key-bg: var(--key-bg, #33507c);
+  --kb-key-border: var(--key-border, #e6ecf7);
+  --kb-key-text: var(--key-text, #e6ecf7);
+  --kb-sub: var(--sub, #adbedc);
+  --kb-main: var(--main, #f0c252);
+  --kb-main-fg: var(--main-fg, #16263f);
   --kb-error: var(--error, #ffc0b4);
-  --kb-tint-base: var(--key-tint-base, #164b9b);
+  --kb-tint-base: var(--key-tint-base, #243c60);
   --kb-tint: var(--finger-tint, 24%);
-  --kb-finger-fg: var(--finger-fg, #0b2350);
+  --kb-finger-fg: var(--finger-fg, #16263f);
   --kb-f0: var(--finger-0, #ff9ec4);
-  --kb-f1: var(--finger-1, #ffa857);
+  --kb-f1: var(--finger-1, #dfa977);
   --kb-f2: var(--finger-2, #c4e86a);
   --kb-f3: var(--finger-3, #4fe8c8);
-  --kb-f4: var(--finger-4, #e9e2ff);
+  --kb-f4: var(--finger-4, #ece8f9);
   --kb-f5: var(--finger-5, #d3b3ff);
   --kb-f6: var(--finger-6, #9db4ff);
-  --kb-f7: var(--finger-7, #5fd4ff);
-  --kb-f8: var(--finger-8, #f5ea8c);
+  --kb-f7: var(--finger-7, #7dc6e1);
+  --kb-f8: var(--finger-8, #e1daa0);
   --kb-f9: var(--finger-9, #ff8f7a);
 
   container-type: inline-size;
@@ -73,6 +73,7 @@
   gap: calc(var(--u) * 0.01);
   overflow: hidden;
   border: 1px solid var(--cap-border);
+  border-radius: min(var(--radius, 0px), calc(var(--u) * 0.08));
   background: var(--cap-bg);
   color: var(--cap-fg);
   outline: 0 solid transparent;
