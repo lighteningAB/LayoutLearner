@@ -1,7 +1,7 @@
 "use client";
-// The typing test (route "/"), composed as a drawing sheet: settings line, the text, the plate
-// (3D hands and / or 2D board) at the centre, notes in the left margin, timer, next-key detail,
-// live readouts and a title block in the right margin; then the results sheet.
+// The typing test (route "/"): one quiet centred column. Settings line (fades while typing), a small
+// counter, the text, the plate (3D hands and / or 2D board), a restart control; then the results sheet.
+// Live WPM and accuracy are kept for assistive tech and scripts only: they show on the results sheet.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, Icon, Kbd, SegmentedControl, Tooltip, cx, type IconName } from "@/components/ui";
 import { useRegisterCommands, type Command } from "@/components/shell";
@@ -17,7 +17,7 @@ import { useLearnPrefs } from "@/components/learn/prefs";
 import { GuideViewSwitch, HandsPanel, useGuidePress, useGuideView } from "./HandsPanel";
 import { EmulationHint, useEmulationHint } from "./EmulationHint";
 import { MobileNotice, WelcomeHint } from "./Hints";
-import { KeyboardGuide, NextKeyDetail } from "./KeyboardGuide";
+import { KeyboardGuide } from "./KeyboardGuide";
 import { ResultsView } from "./ResultsView";
 import { WordsDisplay } from "./WordsDisplay";
 import { generatePracticeWords } from "./practice";
@@ -84,33 +84,6 @@ function ConfigToggle({
 const Divider = () => <span aria-hidden className="mx-2 hidden h-4 w-px shrink-0 bg-border sm:block" />;
 
 /** 15 -> "15", 14.25 -> "14.25": board sizes in key units without trailing zeros. */
-const LEGEND_ROWS = ["pinky", "ring", "middle", "index", "thumb"] as const;
-
-/** Which colour is which finger: every swatch is named, the colour only repeats it. */
-function FingerLegend() {
-  return (
-    <section className="tt-legend" aria-labelledby="tt-legend-heading" data-testid="finger-legend">
-      <h2 id="tt-legend-heading" className="ll-lettering-sm text-text">
-        Finger colours
-      </h2>
-      <div className="mt-2 grid grid-cols-2 gap-x-3 text-sm leading-none text-sub">
-        {(["Left", "Right"] as const).map((hand, h) => (
-          <dl key={hand}>
-            <dt className="ll-lettering-sm mb-1.5 border-b border-hairline pb-1.5 text-sub">{hand}</dt>
-            {LEGEND_ROWS.map((name, i) => (
-              <dd key={name} className="flex items-center gap-2 py-[3px]">
-                {/* --finger-0…4 run left pinky to thumb, 5…9 right thumb to pinky */}
-                <span aria-hidden className="size-2.5 shrink-0 border border-line" style={{ backgroundColor: `var(--finger-${h === 0 ? i : 9 - i})` }} />
-                {name}
-              </dd>
-            ))}
-          </dl>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 const trimUnits = (n: number) => String(Math.round(n * 100) / 100);
 
 export function TypingTest() {
@@ -505,14 +478,6 @@ export function TypingTest() {
   );
 
   const nextChar = plan ? test.nextChar : null;
-  const boardSize = `${layout.keys.length} keys, ${trimUnits(layout.width)} × ${trimUnits(layout.height)} u`;
-  const viewNote = guideView.showHands ? `${guideView.showKeyboard ? "hands and keys" : "hands"}, ${camera}` : guideView.showKeyboard ? "keys, flat" : "text only";
-  const titleRows: [string, string][] = [
-    ["Layout", active.name],
-    ["Board", boardSize],
-    ["View", viewNote],
-    ["Mode", practice ? `weak keys, ${practice.chars.length} ${practice.chars.length === 1 ? "key" : "keys"}` : `${mode} ${amount}, ${LIST_LABEL[wordList]}`],
-  ];
   const readouts: [string, string, string][] = [
     ["WPM", String(Math.round(test.live.wpm)), "live-wpm"],
     ["RAW", String(Math.round(test.live.raw)), "live-raw"],
@@ -541,9 +506,21 @@ export function TypingTest() {
         />
       ) : (
         <>
-          <div className="tt-bar border-b border-hairline pb-2">{bar}</div>
+          <div className="tt-bar">{bar}</div>
 
           <div className="tt-sheet">
+            <div className="tt-meta">
+              <div className="ll-numeral text-3xl text-main" data-testid="counter" aria-label={isTime ? "Seconds left" : "Words done"}>
+                {plan ? counter : " "}
+              </div>
+              {showCaps && (
+                <span role="alert" data-testid="caps-warning" className="ll-lettering-sm inline-flex h-7 items-center gap-1.5 rounded-ui bg-error px-2 text-bg">
+                  <Icon name="alert" size={14} />
+                  Caps Lock is on
+                </span>
+              )}
+            </div>
+
             <div className="tt-text">
               <WordsDisplay words={test.words} caret={test.caret} status={status} />
             </div>
@@ -571,92 +548,37 @@ export function TypingTest() {
               />
             </div>
 
-            <div className="tt-rail">
-              <div className="tt-timer">
-                <div className="flex min-h-7 items-center md:justify-end">
-                  {showCaps ? (
-                    <span role="alert" data-testid="caps-warning" className="ll-lettering-sm inline-flex h-7 items-center gap-1.5 bg-error px-2 text-bg">
-                      <Icon name="alert" size={14} />
-                      Caps Lock is on
-                    </span>
-                  ) : (
-                    <span className="ll-lettering-sm text-sub">{isTime ? "Seconds left" : "Words done"}</span>
-                  )}
+            <dl className="sr-only" aria-label="Live results">
+              {readouts.map(([label, value, id]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd data-testid={id}>{value}</dd>
                 </div>
-                <div
-                  className={cx("ll-numeral text-text md:text-right", isTime ? "text-5xl md:text-7xl" : "text-4xl md:text-5xl")}
-                  data-testid="counter"
-                  aria-label={isTime ? "Seconds left" : "Words done"}
-                >
-                  {plan ? counter : " "}
-                </div>
-              </div>
+              ))}
+            </dl>
 
-              <NextKeyDetail className="tt-detail" layout={layout} nextChar={nextChar} nextAction={nextAction} actionCount={test.correction.count} />
-
-              <dl className="tt-stats" aria-label="Live results">
-                {readouts.map(([label, value, id]) => (
-                  <div key={label} className="flex items-baseline justify-between gap-3 border-b border-dashed border-border py-1.5" data-optional={id === "live-raw" ? "true" : undefined}>
-                    <dt className="ll-lettering-sm text-sub">{label}</dt>
-                    <dd className="ll-readout text-lg leading-none font-medium text-text" data-testid={id}>
-                      {value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-
-              <dl className="tt-title border border-line" data-testid="title-block">
-                {titleRows.map(([label, value]) => (
-                  <div key={label} className="grid grid-cols-[76px_minmax(0,1fr)] border-b border-border last:border-b-0">
-                    <dt className="ll-lettering-sm border-r border-border px-2 py-1.5 text-sub">{label}</dt>
-                    <dd className="truncate px-2 py-1.5 text-sm leading-tight text-text" title={value}>
-                      {value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+            <div className="tt-foot">
+              <button
+                ref={restartRef}
+                type="button"
+                data-testid="restart"
+                aria-label="Restart test with new words"
+                title="Restart (tab, then enter)"
+                onClick={(e) => {
+                  newTest();
+                  e.currentTarget.blur();
+                }}
+                className="group/restart inline-flex min-h-8 items-center gap-1.5 px-1 text-sm text-sub transition-colors duration-150 hover:text-text"
+              >
+                <Kbd>tab</Kbd>
+                <span aria-hidden>+</span>
+                <Kbd>enter</Kbd>
+                <span className="ml-1 underline-offset-4 group-hover/restart:underline">restart</span>
+              </button>
             </div>
 
-            <div className="tt-notes">
-              {/* fades with the other notes while typing (it keeps its place, so nothing below it moves) */}
-              <div className="tt-fade empty:hidden">
-                <WelcomeHint suppressed={emulationHint.visible} />
-              </div>
-              <section className="tt-notes-list tt-fade" aria-labelledby="tt-notes-heading">
-                <h2 id="tt-notes-heading" className="ll-lettering-sm text-text">
-                  Notes
-                </h2>
-                <ol className="mt-2 space-y-2 text-sm leading-snug text-sub">
-                  <li>{settings.fingerColors ? "The filled key is next. Its colour and the label name the finger that owns it." : "The filled key is next. The label names the finger that owns it."}</li>
-                  <li>{settings.emulateLayout ? `Keys are read by position, as ${active.name}.` : "Characters come from your system layout."}</li>
-                </ol>
-              </section>
-              {settings.fingerColors && <FingerLegend />}
-              <div className="tt-notes-end">
-                <div className="border-t border-hairline pt-3">
-                  <button
-                    ref={restartRef}
-                    type="button"
-                    data-testid="restart"
-                    aria-label="Restart test with new words"
-                    title="Restart (tab, then enter)"
-                    onClick={(e) => {
-                      newTest();
-                      e.currentTarget.blur();
-                    }}
-                    className="group/restart -mx-1 inline-flex min-h-8 items-center gap-1.5 px-1 text-sm text-sub transition-colors duration-150 hover:text-text"
-                  >
-                    <Kbd>tab</Kbd>
-                    <span aria-hidden>+</span>
-                    <Kbd>enter</Kbd>
-                    <span className="ml-1 underline-offset-4 group-hover/restart:underline">restart test</span>
-                  </button>
-                  <p className="tt-fade mt-1.5 flex items-center gap-1.5 text-sm text-sub">
-                    <Kbd>esc</Kbd>
-                    <span className="ml-1">{status === "running" ? "new text" : "command palette"}</span>
-                  </p>
-                </div>
-              </div>
+            <div className="tt-fade empty:hidden">
+              <WelcomeHint suppressed={emulationHint.visible} />
             </div>
           </div>
         </>

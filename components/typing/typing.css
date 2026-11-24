@@ -28,103 +28,55 @@ html[data-typing="true"] .tt-live {
   opacity: 1;
 }
 
-/* ── the sheet: settings line, then text / plate / margins ─────────────────────────────────
-   Phones: one column. md: text and plate with the right margin beside them. From 1100px wide the
-   stage takes exactly the viewport height the shell leaves, so the first viewport never scrolls
-   and the plate gets every pixel the text does not use. */
+/* ── the sheet: one centred column ───────────────────────────────────────────────────────────
+   Settings line, a small counter, the text, the plate, a restart control. Nothing sits beside the
+   work. From 1100px wide the stage takes exactly the viewport height the shell leaves, so the first
+   viewport never scrolls and the plate gets every pixel the text does not use. */
 .tt-stage {
   display: flex;
   flex-direction: column;
 }
 .tt-bar {
-  margin-bottom: 16px;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto 8px;
 }
 .tt-sheet {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    "timer stats"
-    "text text"
-    "plate plate"
-    "notes notes"
-    "title title";
-  gap: 16px 20px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  min-width: 0;
+}
+.tt-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 36px;
 }
 .tt-text {
-  grid-area: text;
   min-width: 0;
 }
 .tt-plate-cell {
-  grid-area: plate;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-.tt-rail {
-  display: contents;
-}
-.tt-timer {
-  grid-area: timer;
-}
-.tt-stats {
-  grid-area: stats;
-  align-self: end;
-  justify-self: end;
-  width: min(100%, 220px);
-}
-.tt-title {
-  grid-area: title;
-}
-.tt-detail {
-  display: none;
-}
-.tt-notes {
-  grid-area: notes;
+.tt-foot {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-/* the finger legend needs the tall left margin: it is drawn from 1100px wide and 821px tall */
-.tt-legend {
-  display: none;
+  justify-content: center;
 }
 @media (min-width: 768px) {
-  .tt-sheet {
-    grid-template-columns: minmax(0, 1fr) 208px;
-    grid-template-areas:
-      "text rail"
-      "plate rail"
-      "notes notes";
-    column-gap: 28px;
-    align-items: stretch;
-  }
   .tt-plate-cell {
     height: clamp(300px, 52dvh, 560px);
-  }
-  .tt-rail {
-    grid-area: rail;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-width: 0;
-  }
-  .tt-detail {
-    display: block;
-  }
-  .tt-stats {
-    align-self: stretch;
-    width: auto;
-  }
-  .tt-title {
-    margin-top: auto;
   }
 }
 @media (min-width: 1100px) {
   .tt-stage:not([data-finished="true"]) {
     /* everything the shell draws above and below <main>'s content, less the padding the stage reclaims */
-    height: calc(100dvh - 224px);
+    height: calc(100dvh - 196px);
     min-height: 440px;
     margin-top: -16px;
     margin-bottom: -24px;
@@ -132,74 +84,17 @@ html[data-typing="true"] .tt-live {
   .tt-sheet {
     flex: 1 1 0;
     min-height: 0;
-    grid-template-columns: 176px minmax(0, 1fr) 216px;
-    grid-template-rows: auto minmax(0, 1fr);
-    grid-template-areas:
-      "notes text rail"
-      "notes plate rail";
-    column-gap: 32px;
   }
   .tt-plate-cell {
+    flex: 1 1 0;
     height: auto;
     min-height: 0;
   }
-  .tt-notes {
-    gap: 20px;
-  }
-  .tt-notes-end {
-    margin-top: auto;
-  }
-  /* The readouts take the height the rail has left, as evenly ruled lines: no empty band above the title block. */
-  .tt-stats {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    max-height: 208px;
-  }
-  .tt-stats > div {
-    flex: 1 1 0;
-    align-items: flex-end;
-    min-height: 30px;
-  }
-}
-@media (min-width: 1100px) and (min-height: 821px) {
-  .tt-legend {
-    display: block;
-  }
-}
-/* Short windows: the title block is the first thing to go, then the notes. */
-@media (min-width: 1100px) and (max-height: 899px) {
-  /* the fourth readout only where the rail has the height for it */
-  .tt-stats > [data-optional="true"] {
-    display: none;
-  }
-}
-@media (min-width: 1100px) and (max-height: 875px) {
-  .tt-title {
-    display: none;
-  }
-  .tt-rail {
-    gap: 12px;
-  }
-}
-@media (min-width: 1100px) and (max-height: 740px) {
-  /* hand / finger / hold repeat the lettering above them: the first rows to go when the rail runs out */
-  .tt-detail dl {
-    display: none;
-  }
-}
-@media (min-width: 1100px) and (max-height: 700px) {
-  .tt-notes-list {
-    display: none;
-  }
 }
 
-/* The sheet's left margin already carries the key hints on this page: the bottom strip does not repeat them
-   (only while the margin shows them: on short windows the strip keeps its copy). */
-@media (min-width: 1100px) and (min-height: 701px) {
-  body:has(.tt-stage:not([data-finished="true"])) [data-testid="footer"] > div > div:first-child {
-    visibility: hidden;
-  }
+/* The restart control already sits under the plate on this page: the bottom strip does not repeat it. */
+body:has(.tt-stage:not([data-finished="true"])) [data-testid="footer"] > div > div:first-child {
+  visibility: hidden;
 }
 
 /* ── words ────────────────────────────────────────────────────────────────────────────────
