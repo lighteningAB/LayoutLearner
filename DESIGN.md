@@ -209,8 +209,8 @@ Ten fills, `--finger-0` to `--finger-9`, left pinky to right pinky. Blueprint va
 ## Typography
 
 **Display Font:** Josefin Sans (300, 600, 700; fallbacks Century Gothic, Avenir Next)
-**Body Font:** Barlow Semi Condensed (400, 500, 600; fallbacks Arial Narrow, system-ui)
-**Label/Mono Font:** IBM Plex Mono (400, 500, 600)
+**Body Font:** Barlow Semi Condensed (400 and 500; the 500 file also answers 600 and 700; fallbacks Arial Narrow, system-ui)
+**Label/Mono Font:** IBM Plex Mono (400 and 600; the 600 file also answers 500 and 700)
 
 **Character:** Geometric, tracked capitals set against a condensed, workmanlike sans, with monospace for everything measured. It reads like sheet lettering on a drawing.
 

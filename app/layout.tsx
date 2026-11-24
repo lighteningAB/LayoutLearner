@@ -17,8 +17,8 @@ const display = localFont({
 const sans = localFont({
   src: [
     { path: "./fonts/barlow-semi-condensed-400-latin.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/barlow-semi-condensed-500-latin.woff2", weight: "500", style: "normal" },
-    { path: "./fonts/barlow-semi-condensed-600-latin.woff2", weight: "600", style: "normal" },
+    // One emphasis cut: medium also serves semibold and bold requests.
+    { path: "./fonts/barlow-semi-condensed-500-latin.woff2", weight: "500 700", style: "normal" },
   ],
   variable: "--font-barlow",
   display: "swap",
@@ -26,8 +26,8 @@ const sans = localFont({
 const mono = localFont({
   src: [
     { path: "./fonts/ibm-plex-mono-400-latin.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/ibm-plex-mono-500-latin.woff2", weight: "500", style: "normal" },
-    { path: "./fonts/ibm-plex-mono-600-latin.woff2", weight: "600", style: "normal" },
+    // One emphasis cut: semibold (typed letters) also serves medium requests (legends, readouts).
+    { path: "./fonts/ibm-plex-mono-600-latin.woff2", weight: "500 700", style: "normal" },
   ],
   variable: "--font-plex-mono",
   display: "swap",
