@@ -70,7 +70,7 @@ function ConfigToggle({
       title={title}
       onClick={onClick}
       className={cx(
-        "inline-flex h-7 items-center gap-1.5 px-2.5 text-[14px] font-medium whitespace-nowrap underline-offset-[7px] transition-colors duration-150",
+        "inline-flex h-7 items-center gap-1.5 px-2.5 text-md font-medium whitespace-nowrap underline-offset-[7px] transition-colors duration-150",
         "disabled:cursor-not-allowed disabled:line-through disabled:decoration-1",
         active ? "text-main underline decoration-2" : "text-sub hover:text-text",
       )}
@@ -93,7 +93,7 @@ function FingerLegend() {
       <h2 id="tt-legend-heading" className="ll-lettering-sm text-text">
         Finger colours
       </h2>
-      <div className="mt-2 grid grid-cols-2 gap-x-3 text-[13px] leading-none text-sub">
+      <div className="mt-2 grid grid-cols-2 gap-x-3 text-sm leading-none text-sub">
         {(["Left", "Right"] as const).map((hand, h) => (
           <dl key={hand}>
             <dt className="ll-lettering-sm mb-1.5 border-b border-hairline pb-1.5 text-sub">{hand}</dt>
@@ -391,7 +391,7 @@ export function TypingTest() {
     bar = <EmulationHint hint={emulationHint} layoutName={active.name} inline />;
   } else if (practice) {
     bar = (
-      <div className="tt-fade flex min-h-9 flex-wrap items-center gap-x-4 gap-y-1.5 text-[14px] text-sub" data-testid="practice-badge" data-chars={practice.chars.join("")}>
+      <div className="tt-fade flex min-h-9 flex-wrap items-center gap-x-4 gap-y-1.5 text-md text-sub" data-testid="practice-badge" data-chars={practice.chars.join("")}>
         <span className="ll-lettering inline-flex items-center gap-2 text-text">
           <Icon name="target" size={15} className="text-main" />
           Drilling the keys you missed
@@ -584,7 +584,7 @@ export function TypingTest() {
                   )}
                 </div>
                 <div
-                  className={cx("ll-numeral text-text md:text-right", isTime ? "text-[56px] md:text-[96px]" : "text-[40px] md:text-[60px]")}
+                  className={cx("ll-numeral text-text md:text-right", isTime ? "text-5xl md:text-7xl" : "text-4xl md:text-5xl")}
                   data-testid="counter"
                   aria-label={isTime ? "Seconds left" : "Words done"}
                 >
@@ -598,7 +598,7 @@ export function TypingTest() {
                 {readouts.map(([label, value, id]) => (
                   <div key={label} className="flex items-baseline justify-between gap-3 border-b border-dashed border-border py-1.5" data-optional={id === "live-raw" ? "true" : undefined}>
                     <dt className="ll-lettering-sm text-sub">{label}</dt>
-                    <dd className="ll-readout text-[17px] leading-none font-medium text-text" data-testid={id}>
+                    <dd className="ll-readout text-lg leading-none font-medium text-text" data-testid={id}>
                       {value}
                     </dd>
                   </div>
@@ -609,7 +609,7 @@ export function TypingTest() {
                 {titleRows.map(([label, value]) => (
                   <div key={label} className="grid grid-cols-[76px_minmax(0,1fr)] border-b border-border last:border-b-0">
                     <dt className="ll-lettering-sm border-r border-border px-2 py-1.5 text-sub">{label}</dt>
-                    <dd className="truncate px-2 py-1.5 text-[13px] leading-tight text-text" title={value}>
+                    <dd className="truncate px-2 py-1.5 text-sm leading-tight text-text" title={value}>
                       {value}
                     </dd>
                   </div>
@@ -626,7 +626,7 @@ export function TypingTest() {
                 <h2 id="tt-notes-heading" className="ll-lettering-sm text-text">
                   Notes
                 </h2>
-                <ol className="mt-2 space-y-2 text-[13px] leading-snug text-sub">
+                <ol className="mt-2 space-y-2 text-sm leading-snug text-sub">
                   <li>{settings.fingerColors ? "The filled key is next. Its colour and the label name the finger that owns it." : "The filled key is next. The label names the finger that owns it."}</li>
                   <li>{settings.emulateLayout ? `Keys are read by position, as ${active.name}.` : "Characters come from your system layout."}</li>
                 </ol>
@@ -644,14 +644,14 @@ export function TypingTest() {
                       newTest();
                       e.currentTarget.blur();
                     }}
-                    className="group/restart -mx-1 inline-flex min-h-8 items-center gap-1.5 px-1 text-[13px] text-sub transition-colors duration-150 hover:text-text"
+                    className="group/restart -mx-1 inline-flex min-h-8 items-center gap-1.5 px-1 text-sm text-sub transition-colors duration-150 hover:text-text"
                   >
                     <Kbd>tab</Kbd>
                     <span aria-hidden>+</span>
                     <Kbd>enter</Kbd>
                     <span className="ml-1 underline-offset-4 group-hover/restart:underline">restart test</span>
                   </button>
-                  <p className="tt-fade mt-1.5 flex items-center gap-1.5 text-[13px] text-sub">
+                  <p className="tt-fade mt-1.5 flex items-center gap-1.5 text-sm text-sub">
                     <Kbd>esc</Kbd>
                     <span className="ml-1">{status === "running" ? "new text" : "command palette"}</span>
                   </p>

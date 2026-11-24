@@ -60,7 +60,7 @@ function StepProgress({ step, steps, kind, hasIntro, fraction }: { step: number;
                 <span
                   data-state={state}
                   className={cx(
-                    "ll-readout inline-flex size-7 items-center justify-center border text-[13px] leading-none font-medium",
+                    "ll-readout inline-flex size-7 items-center justify-center border text-sm leading-none font-medium",
                     state === "done" && "border-line bg-text text-bg",
                     state === "current" && "border-main bg-main text-main-fg",
                     state === "todo" && "border-dashed border-border text-sub",
@@ -77,7 +77,7 @@ function StepProgress({ step, steps, kind, hasIntro, fraction }: { step: number;
           <span className="absolute inset-y-0 left-0 bg-main transition-[width] duration-200 ease-out" style={{ width: `${(overall / Math.max(1, steps)) * 100}%` }} />
         </span>
       </span>
-      <span className="ll-readout text-[13px] whitespace-nowrap text-text sm:hidden">{done ? "done" : `step ${step + 1}/${steps}`}</span>
+      <span className="ll-readout text-sm whitespace-nowrap text-text sm:hidden">{done ? "done" : `step ${step + 1}/${steps}`}</span>
     </div>
   );
 }
@@ -101,7 +101,7 @@ function EmulationToggle({ layoutName }: { layoutName: string }) {
         e.currentTarget.blur();
       }}
       className={cx(
-        "tt-fade inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 px-1.5 text-[13px] whitespace-nowrap underline-offset-[5px] transition-colors duration-150 hover:text-text hover:underline",
+        "tt-fade inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 px-1.5 text-sm whitespace-nowrap underline-offset-[5px] transition-colors duration-150 hover:text-text hover:underline",
         on ? "text-text" : "text-sub",
       )}
     >
@@ -116,7 +116,7 @@ function Notice({ title, children, actions }: { title: string; children: ReactNo
     <div className="flex min-h-[calc(100dvh-15.5rem)] items-center justify-center" data-testid="lesson-notice">
       <Card className="flex max-w-md flex-col items-start gap-3" padding="lg">
         <h1 className="ll-heading text-text">{title}</h1>
-        <p className="text-[15px] leading-relaxed text-sub">{children}</p>
+        <p className="text-base leading-relaxed text-sub">{children}</p>
         <div className="mt-2 flex flex-wrap gap-2">{actions}</div>
       </Card>
     </div>
@@ -138,7 +138,7 @@ function Readout({ label, children, className }: { label: string; children: Reac
   return (
     <div className={cx("flex flex-col justify-center px-4 py-2 first:pl-0", className)}>
       <div className="ll-lettering-sm whitespace-nowrap text-sub">{label}</div>
-      <div className="ll-readout mt-1 text-[20px] leading-none whitespace-nowrap text-text">{children}</div>
+      <div className="ll-readout mt-1 text-xl leading-none whitespace-nowrap text-text">{children}</div>
     </div>
   );
 }
@@ -180,7 +180,7 @@ function IntroStep({
         </span>
         <span className="ll-lettering-sm text-sub">
           pressed{" "}
-          <span className="ll-readout text-[13px] tracking-normal text-text">
+          <span className="ll-readout text-sm tracking-normal text-text">
             {Math.min(presses, needed)}/{needed}
           </span>
         </span>
@@ -204,10 +204,10 @@ function IntroStep({
             layout={layout}
             fingerColors={fingerColors}
             size="xl"
-            className="learn-key-in max-sm:h-[84px] max-sm:min-w-[84px] max-sm:text-[42px]"
+            className="learn-key-in max-sm:h-[84px] max-sm:min-w-[84px] max-sm:text-4xl"
           />
           <div className="min-w-0">
-            <h2 className="font-display text-[26px] leading-[1.1] font-light tracking-[0.08em] text-text uppercase">
+            <h2 className="font-display text-2xl leading-[1.1] font-light tracking-[0.08em] text-text uppercase">
               This is {guide.shiftKey && guide.char.toLowerCase() !== guide.char ? "capital " : ""}
               <span className="font-semibold">{charLabel(guide.char)}</span>
             </h2>
@@ -220,7 +220,7 @@ function IntroStep({
           </div>
         </div>
 
-        <p className="mt-5 max-w-[46ch] text-[17px] leading-[1.45] text-sub">
+        <p className="mt-5 max-w-[46ch] text-lg leading-[1.45] text-sub">
           {guide.shiftKey || guide.layerKey ? (
             <>
               {guide.layerKey && guide.layer && (
@@ -262,7 +262,7 @@ function IntroStep({
                     key={`${guide.char}-${i}`}
                     data-on={on ? "true" : "false"}
                     className={cx(
-                      "learn-press ll-readout inline-flex size-8 items-center justify-center border text-[13px] leading-none font-medium",
+                      "learn-press ll-readout inline-flex size-8 items-center justify-center border text-sm leading-none font-medium",
                       on ? "border-line bg-text text-bg" : "border-dashed border-border text-sub",
                     )}
                   >
@@ -271,13 +271,13 @@ function IntroStep({
                 );
               })}
             </span>
-            <span className={cx("text-[17px] text-text", got && "font-semibold")}>
+            <span className={cx("text-lg text-text", got && "font-semibold")}>
               {got ? "Got it" : `Press it ${needed - presses === 1 ? (needed === 1 ? "once" : "once more") : `${needed - presses} times`}`}
             </span>
           </div>
           <div className="mt-3 flex min-h-[26px] items-center">
             {miss != null && !got && (
-              <span key={miss} className="learn-miss inline-flex items-center gap-2 text-[15px] text-error" data-testid="intro-miss">
+              <span key={miss} className="learn-miss inline-flex items-center gap-2 text-base text-error" data-testid="intro-miss">
                 <span className="inline-flex size-[22px] shrink-0 items-center justify-center border border-dashed border-error">
                   <Icon name="x" size={14} strokeWidth={2.2} />
                 </span>
@@ -580,7 +580,7 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
           />
           <DetailNumber n={item.number} size="lg" className="max-sm:hidden" />
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
-            <h1 className="ll-heading min-w-0 truncate text-text max-sm:text-[15px]" data-testid="lesson-title">
+            <h1 className="ll-heading min-w-0 truncate text-text max-sm:text-base" data-testid="lesson-title">
               {lesson.title}
             </h1>
             <span className="ll-lettering-sm whitespace-nowrap text-sub max-md:hidden">
@@ -641,7 +641,7 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
               </Readout>
               <Readout label="speed" className="tt-live">
                 <span data-testid="live-wpm">{Math.round(test.live.wpm)}</span>
-                <span className="text-[13px] text-sub"> wpm</span>
+                <span className="text-sm text-sub"> wpm</span>
               </Readout>
             </div>
             <div className="flex items-center gap-3">
@@ -656,7 +656,7 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
                     <Icon name={lastGrade?.passed ? "check" : "x"} size={15} strokeWidth={2.2} />
                     drill {drillIndex + 1} {lastGrade?.passed ? "on goal" : "under goal"}
                   </span>
-                  <span className="ll-readout inline-flex items-center gap-3 border-r border-border px-3 text-[15px]">
+                  <span className="ll-readout inline-flex items-center gap-3 border-r border-border px-3 text-base">
                     <span className={lastResult.accuracy >= lesson.goal.accuracy ? "text-text" : "text-error"}>{Math.floor(lastResult.accuracy)}%</span>
                     <span className={lastResult.wpm >= lesson.goal.wpm ? "text-text" : "text-error"}>{Math.round(lastResult.wpm)} wpm</span>
                   </span>
@@ -690,7 +690,7 @@ function LessonSession({ item, course, active, onRetry }: SessionProps) {
                   ) : (
                     <span className="tt-fade ll-lettering-sm whitespace-nowrap text-sub" data-testid="lesson-goal">
                       goal{" "}
-                      <span className="ll-readout text-[13px] tracking-normal text-text normal-case">
+                      <span className="ll-readout text-sm tracking-normal text-text normal-case">
                         {lesson.goal.accuracy}% · {lesson.goal.wpm} wpm
                       </span>
                     </span>

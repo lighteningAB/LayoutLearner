@@ -134,7 +134,7 @@ export function Modal({
         ) : (
           <div className="p-5">
             {description && (
-              <p id={`${uid}-desc`} className={cx("text-[15px] leading-snug text-sub", children ? "mb-5" : undefined)}>
+              <p id={`${uid}-desc`} className={cx("text-base leading-snug text-sub", children ? "mb-5" : undefined)}>
                 {description}
               </p>
             )}

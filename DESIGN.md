@@ -218,12 +218,35 @@ Ten fills, `--finger-0` to `--finger-9`, left pinky to right pinky. Blueprint va
 - **Title** (300, clamp(2.125rem, 1.4rem + 2.6vw, 3.75rem), 0.95, 0.06em, uppercase): one per page. Class `ll-title`.
 - **Heading** (600, 1.25rem, 1.15, 0.18em, uppercase): section headings on the sheet. Class `ll-heading`.
 - **Lettering lg / md / sm** (600, 0.875 / 0.75 / 0.6875rem, 1.25, 0.16 / 0.16 / 0.14em, uppercase): tabs, nav, buttons, labels, table heads, badges. Classes `ll-lettering-lg`, `ll-lettering`, `ll-lettering-sm`.
-- **Body** (Barlow 400, 16px, 1.5, 0.005em): UI and prose. Secondary lines are about 15px in `--sub`.
+- **Body** (Barlow 400, 16px, 1.5, 0.005em): UI and prose. Secondary lines are 14px in `--sub`.
 - **Readout** (Plex Mono, tabular nums, slashed zero): WPM, accuracy, error counts and the typing text. Class `ll-readout`.
 - **Numeral** (Josefin 300, lining and tabular, 1, -0.02em): the timer and big counts. Class `ll-numeral`.
 - **Note** (Plex Mono, 0.6875rem, 1.4, 0.02em): scale, units and ids in the margin. Class `ll-note`.
 
+### Type ramp
+Every font size is one of thirteen steps, defined as `--fs-*` in `app/globals.css` and exposed as Tailwind `text-*` utilities (the ramp replaces Tailwind's default scale; sizes set no line-height).
+
+| Utility | Size | Typical use |
+|---|---|---|
+| `text-2xs` | 11px | notes, small lettering, chart labels |
+| `text-xs` | 12px | lettering, captions |
+| `text-sm` | 13px | dense mono readouts, compact rows |
+| `text-md` | 14px | secondary copy, controls |
+| `text-base` | 16px | body |
+| `text-lg` | 18px | lead copy, wordmark |
+| `text-xl` | 20px | headings, small numerals |
+| `text-2xl` | 24px | key legends, lesson headings |
+| `text-3xl` | 32px | stat numerals |
+| `text-4xl` | 40px | counters |
+| `text-5xl` | 56px | timer (narrow), key figures |
+| `text-6xl` | 72px | result headline (narrow), 404 |
+| `text-7xl` | 96px | timer and result headline (wide) |
+
+Exceptions: the fluid page title clamps, the user-set typing text size, `em`-relative units beside numerals, and 2D keyboard legends that scale with the key unit.
+
 ### Named Rules
+**The On-Ramp Rule.** No literal font sizes (`text-[14px]`, `font-size: 13px`). Pick a ramp step.
+
 **The Lettered Caps Rule.** Display type is always uppercase and tracked. Lowercase Josefin is not used.
 
 **The Mono Is Measurement Rule.** Anything typed, keyed or counted is Plex Mono with tabular figures. Prose never is.

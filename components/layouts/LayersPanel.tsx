@@ -78,7 +78,7 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
 
   return (
     <div className="flex flex-col" data-testid="layers-panel" data-layer-count={list.length}>
-      <p className="border-b border-hairline px-3 py-3 text-[14px] leading-snug text-sub sm:px-4">
+      <p className="border-b border-hairline px-3 py-3 text-md leading-snug text-sub sm:px-4">
         A layer is a set of characters that appears on the board while you hold its activator key (Lower, Raise, Fn). Layers guide the keyboard view and
         lessons; typed characters are matched exactly as before. Default layers are a suggestion. Edit them to match your firmware.
       </p>
@@ -105,7 +105,7 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
               )}
             >
               <span className="ll-trim truncate">{l.name}</span>
-              <span className={cx("ll-readout text-[12px] font-normal tracking-normal", on ? "text-text" : "text-sub")}>{Object.keys(l.keys).length}</span>
+              <span className={cx("ll-readout text-xs font-normal tracking-normal", on ? "text-text" : "text-sub")}>{Object.keys(l.keys).length}</span>
             </button>
           );
         })}
@@ -118,7 +118,7 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
           </Button>
         </div>
       </div>
-      <p className="px-3 pt-2.5 text-[14px] leading-snug text-sub sm:px-4">
+      <p className="px-3 pt-2.5 text-md leading-snug text-sub sm:px-4">
         {list.length >= MAX_LAYERS && <>Up to {MAX_LAYERS} layers. </>}
         Works with QMK (keymap.json or keymap.c), ZMK (.keymap) and Vial (.vil). Only hold-to-activate layers are imported.
       </p>
@@ -166,12 +166,12 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
               </div>
               <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="layer-activator-list" data-ids={active.activatorIds.join(",")}>
                 {active.activatorIds.length === 0 ? (
-                  <span className="text-[14px] text-sub">No activator yet. Layers without one are not saved.</span>
+                  <span className="text-md text-sub">No activator yet. Layers without one are not saved.</span>
                 ) : (
                   active.activatorIds.map((id) => {
                     const k = byId.get(id);
                     return (
-                      <span key={id} className={cx("inline-flex items-center gap-2 text-[14px]", k ? "text-text" : "text-error")}>
+                      <span key={id} className={cx("inline-flex items-center gap-2 text-md", k ? "text-text" : "text-error")}>
                         {k ? <KeyChip>{keyName(k)}</KeyChip> : "missing key"}
                         {k && fingerText(k) && <span className="text-sub">{fingerText(k)}</span>}
                       </span>
@@ -179,7 +179,7 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
                   })
                 )}
               </div>
-              <p className="mt-2.5 text-[14px] leading-snug text-sub">
+              <p className="mt-2.5 text-md leading-snug text-sub">
                 {settingActivator
                   ? "Click the key (or up to 4 keys) on the board that you hold for this layer. Click it again to remove it."
                   : "The key you hold to reach this layer. Choose Set activator, then click it on the board."}
@@ -203,7 +203,7 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
                   </div>
                   <div className="p-3">
                     {isActivator ? (
-                      <p className="text-[14px] text-sub">This key is the activator of {active.name}, so it types nothing on it.</p>
+                      <p className="text-md text-sub">This key is the activator of {active.name}, so it types nothing on it.</p>
                     ) : (
                       <>
                         <div className="flex flex-wrap items-end gap-3">
@@ -245,7 +245,7 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
                             Clear key
                           </Button>
                         </div>
-                        <p className="mt-3 text-[14px] leading-snug text-sub">
+                        <p className="mt-3 text-md leading-snug text-sub">
                           Type one character. Leave the Shift box empty if the key has none. A character the board already types without a layer is never routed
                           through one.
                         </p>

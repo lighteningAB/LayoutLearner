@@ -224,7 +224,7 @@ export function NextKeyDetail({ layout, nextChar, nextAction = null, actionCount
               <span
                 className={cx(
                   "inline-flex size-12 shrink-0 items-center justify-center border border-line font-mono leading-none font-semibold",
-                  legend.length > 1 ? "text-[13px]" : "text-[26px]",
+                  legend.length > 1 ? "text-sm" : "text-2xl",
                 )}
                 style={{ backgroundColor: fill.bg, color: fill.fg }}
               >
@@ -233,24 +233,24 @@ export function NextKeyDetail({ layout, nextChar, nextAction = null, actionCount
               <span className="min-w-0">
                 {/* two lines reserved: "right middle" wraps, and the box must not change height from key to key */}
                 <span className="ll-lettering-lg flex min-h-[2.5em] items-center text-text">{guide.fingerName || "any finger"}</span>
-                <span className="mt-1 block truncate text-[13px] leading-tight text-sub">{sub}</span>
+                <span className="mt-1 block truncate text-sm leading-tight text-sub">{sub}</span>
               </span>
             </div>
-            <dl className="mt-3 border-t border-hairline text-[13px] leading-tight">
+            <dl className="mt-3 border-t border-hairline text-sm leading-tight">
               {rows.map(([k, v]) => (
                 <div key={k} className="flex items-baseline justify-between gap-3 border-b border-dashed border-hairline py-1.5 last:border-b-0 last:pb-0">
                   <dt className="text-sub">{k}</dt>
-                  <dd className="min-w-0 truncate text-right font-mono text-[12px] text-text">{v}</dd>
+                  <dd className="min-w-0 truncate text-right font-mono text-xs text-text">{v}</dd>
                 </div>
               ))}
             </dl>
           </>
         ) : guide ? (
-          <p className="text-[13px] leading-snug text-text">
+          <p className="text-sm leading-snug text-text">
             <Kbd>{guide.keyLabel}</Kbd> is not on this layout
           </p>
         ) : (
-          <p className="text-[13px] leading-snug text-sub">No key to press.</p>
+          <p className="text-sm leading-snug text-sub">No key to press.</p>
         )}
       </div>
     </section>
@@ -316,7 +316,7 @@ export function KeyboardGuide({
       data-layer-key={guide?.layerKey?.id ?? ""}
     >
       {(showHint || hintEnd) && (
-        <div className="tt-hint-row mb-2 flex min-h-7 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[13px] text-sub" data-end={hintEnd ? "true" : "false"}>
+        <div className="tt-hint-row mb-2 flex min-h-7 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-sub" data-end={hintEnd ? "true" : "false"}>
           <div className="flex min-h-7 min-w-0 items-center gap-2" data-testid="key-hint" aria-live="off">
             {showHint && guide && guide.key && (
               <>

@@ -84,7 +84,7 @@ export function Toaster() {
           <span className={cx("flex w-11 shrink-0 items-center justify-center border-r border-line", TONE[t.variant])}>
             <Icon name={ICON[t.variant]} size={18} />
           </span>
-          <div className="min-w-0 flex-1 px-3 py-2.5 text-[15px] leading-snug">
+          <div className="min-w-0 flex-1 px-3 py-2.5 text-base leading-snug">
             <div className="font-medium text-text">{t.message}</div>
             {t.description && <div className="mt-0.5 text-sub">{t.description}</div>}
           </div>

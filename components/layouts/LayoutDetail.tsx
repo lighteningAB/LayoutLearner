@@ -68,7 +68,7 @@ function Chart({
   return (
     <section className={cx("flex min-w-0 flex-col border-r border-b border-border p-4 sm:p-5", className)} data-testid={testid}>
       <h3 className="ll-lettering-lg text-text">{title}</h3>
-      <p className="mt-1.5 max-w-[60ch] text-[14px] leading-snug text-sub">{explain}</p>
+      <p className="mt-1.5 max-w-[60ch] text-md leading-snug text-sub">{explain}</p>
       <div className="mt-6 flex flex-1 flex-col justify-center">{children}</div>
     </section>
   );
@@ -92,7 +92,7 @@ function RowBar({ name, value, reference, testid, emphasis }: { name: string; va
           />
         )}
       </div>
-      <span className="ll-readout text-right text-[14px] text-text" data-testid={testid} data-value={(value * 100).toFixed(1)}>
+      <span className="ll-readout text-right text-md text-text" data-testid={testid} data-value={(value * 100).toFixed(1)}>
         {pct(value)}
       </span>
     </div>
@@ -128,7 +128,7 @@ function FingerChart({ shares, max }: { shares: number[]; max: number }) {
             <div key={hand} className="flex h-full flex-1 items-end gap-[7%]">
               {indices.map((i) => (
                 <div key={i} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title={`${FINGER_NAME[i]}: ${pct(shares[i], 1)}`}>
-                  <span className="ll-readout text-[12px] leading-none text-text sm:text-[13px]" data-testid={`analysis-finger-${i}`} data-value={(shares[i] * 100).toFixed(1)}>
+                  <span className="ll-readout text-xs leading-none text-text sm:text-sm" data-testid={`analysis-finger-${i}`} data-value={(shares[i] * 100).toFixed(1)}>
                     {pct(shares[i])}
                   </span>
                   <div
@@ -148,7 +148,7 @@ function FingerChart({ shares, max }: { shares: number[]; max: number }) {
           <div key={hand} className="min-w-0 flex-1">
             <div className="flex gap-[7%]">
               {indices.map((i) => (
-                <span key={i} className="min-w-0 flex-1 text-center text-[13px] leading-none text-text">
+                <span key={i} className="min-w-0 flex-1 text-center text-sm leading-none text-text">
                   <span className="sm:hidden">{FINGER_ABBR[FINGER_SHORT[i]] ?? FINGER_SHORT[i]}</span>
                   <span className="hidden sm:inline">{FINGER_SHORT[i]}</span>
                 </span>
@@ -167,7 +167,7 @@ function FingerLegend() {
     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
       <span className="ll-lettering-sm w-full text-sub sm:w-auto sm:min-w-[84px]">{title}</span>
       {indices.map((i) => (
-        <span key={i} className="inline-flex items-center gap-1.5 text-[14px] text-text" data-testid={`finger-legend-${i}`}>
+        <span key={i} className="inline-flex items-center gap-1.5 text-md text-text" data-testid={`finger-legend-${i}`}>
           <FingerSwatch index={i} />
           <span className="sr-only">{FINGER_NAME[i]}</span>
           <span aria-hidden>{FINGER_SHORT[i]}</span>
@@ -192,7 +192,7 @@ function LayerList({ layout, isCustom }: { layout: ParsedLayout; isCustom: boole
     <section className="mt-6 border border-border" data-testid="layout-layers">
       <div className="border-b border-border px-4 py-3 sm:px-5">
         <h3 className="ll-lettering-lg text-text">Layers</h3>
-        <p className="mt-1.5 max-w-[75ch] text-[14px] leading-snug text-sub">
+        <p className="mt-1.5 max-w-[75ch] text-md leading-snug text-sub">
           Hold the activator key and the other keys type these characters instead. {isCustom ? "Edit the layout to change them." : "Default layers are a suggestion. Edit them to match your firmware."}
         </p>
       </div>
@@ -211,11 +211,11 @@ function LayerList({ layout, isCustom }: { layout: ParsedLayout; isCustom: boole
             >
               <div className="text-text">
                 <span className="ll-lettering">{l.name}</span>
-                <span className="mt-1 block text-[14px] leading-snug text-sub">
+                <span className="mt-1 block text-md leading-snug text-sub">
                   hold {l.activatorIds.map((id) => byId.get(id)).filter((k): k is LayoutKey => !!k).map((k) => `${name(k)}${hand(k)}`).join(", ")}
                 </span>
               </div>
-              <p className="font-mono text-[14px] leading-relaxed break-words text-text" data-testid="layout-layer-chars">
+              <p className="font-mono text-md leading-relaxed break-words text-text" data-testid="layout-layer-chars">
                 {chars.length > 0 ? chars.join(" ") : <span className="font-sans text-sub">No characters.</span>}
               </p>
             </li>
@@ -231,7 +231,7 @@ function BlockRow({ name, children }: { name: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[92px_minmax(0,1fr)] items-baseline gap-3 border-t border-hairline px-4 py-2.5 first:border-t-0">
       <dt className="ll-lettering-sm text-sub">{name}</dt>
-      <dd className="min-w-0 text-[15px] leading-snug break-words text-text">{children}</dd>
+      <dd className="min-w-0 text-base leading-snug break-words text-text">{children}</dd>
     </div>
   );
 }
@@ -306,12 +306,12 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
     return (
       <section aria-label={`${entry.name} details`} data-testid="layout-detail" data-layout-id={entry.id} data-broken>
         {header}
-        <p className="mt-3 max-w-[70ch] text-[16px] leading-snug text-sub">{entry.description}</p>
+        <p className="mt-3 max-w-[70ch] text-base leading-snug text-sub">{entry.description}</p>
         <div className="mt-6 flex flex-col items-start gap-4 border border-error p-4 sm:flex-row sm:items-center sm:p-5">
           <Icon name="alert" size={22} className="shrink-0 text-error" />
           <div className="min-w-0 flex-1">
             <p className="ll-lettering text-error">This layout&apos;s data can&apos;t be read any more.</p>
-            <p className="mt-1.5 font-mono text-[14px] break-words text-text" data-testid="layout-detail-error">
+            <p className="mt-1.5 font-mono text-md break-words text-text" data-testid="layout-detail-error">
               {entry.error}
             </p>
           </div>
@@ -338,11 +338,11 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
     caption = analysis.fingerCoverage > 0 || layout.keys.some((k) => k.finger) ? (
       <FingerLegend />
     ) : (
-      <p className="text-center text-[14px] text-sub">Finger assignments could not be worked out for this board.</p>
+      <p className="text-center text-md text-sub">Finger assignments could not be worked out for this board.</p>
     );
   } else if (view === "home") {
     caption = (
-      <p className="text-center text-[14px] text-sub">
+      <p className="text-center text-md text-sub">
         {homeChars.length > 0 ? (
           <>
             Your fingers rest on{" "}
@@ -363,7 +363,7 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
     );
   } else {
     caption = (
-      <p className="text-center text-[14px] text-sub">
+      <p className="text-center text-md text-sub">
         {!diff.comparable ? (
           "This board could not be lined up with QWERTY's key positions."
         ) : (
@@ -386,7 +386,7 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
   return (
     <section aria-label={`${entry.name} details`} data-testid="layout-detail" data-layout-id={entry.id} data-view={view}>
       {header}
-      <p className="mt-3 max-w-[70ch] text-[16px] leading-snug text-sub">{entry.description}</p>
+      <p className="mt-3 max-w-[70ch] text-base leading-snug text-sub">{entry.description}</p>
 
       {/* The plate and its title block share one outlined sheet. */}
       <div className="mt-6 grid border border-line lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -493,7 +493,7 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
                 <RowBar name="Other" value={analysis.rows.other} testid="analysis-row-other" />
               )}
               {base?.rows && (
-                <p className="flex items-center gap-2.5 text-[14px] text-sub">
+                <p className="flex items-center gap-2.5 text-md text-sub">
                   <span aria-hidden className="inline-block h-4 w-0.5 bg-line" />
                   QWERTY for comparison ({pct(base.rows.home)} home row)
                 </p>
@@ -512,10 +512,10 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
           {analysis.sfb !== null ? (
             <div className="grid gap-x-8 gap-y-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-end">
               <div>
-                <div className="ll-numeral text-[56px] text-text" data-testid="analysis-sfb" data-value={(analysis.sfb * 100).toFixed(2)}>
+                <div className="ll-numeral text-5xl text-text" data-testid="analysis-sfb" data-value={(analysis.sfb * 100).toFixed(2)}>
                   {pct(analysis.sfb, 1)}
                 </div>
-                <p className="mt-2 text-[14px] text-sub">
+                <p className="mt-2 text-md text-sub">
                   of letter pairs{base?.sfb != null && <> · QWERTY {pct(base.sfb, 1)}</>}
                 </p>
               </div>
@@ -525,11 +525,11 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
                   <ul className="flex flex-col gap-1.5">
                     {analysis.topSfb.map((s) => (
                       <li key={s.bigram} className="grid grid-cols-[28px_minmax(0,1fr)_52px] items-center gap-2.5" title={`${pct(s.share, 2)} of letter pairs`}>
-                        <span className="font-mono text-[14px] text-text">{s.bigram}</span>
+                        <span className="font-mono text-md text-text">{s.bigram}</span>
                         <span className="h-2.5 border-l border-line">
                           <span className="block h-full border border-l-0 border-line" style={{ width: `${Math.max(2, (s.share / sfbMax) * 100)}%`, ...HATCH }} />
                         </span>
-                        <span className="ll-readout text-right text-[13px] text-text">{pct(s.share, 2)}</span>
+                        <span className="ll-readout text-right text-sm text-text">{pct(s.share, 2)}</span>
                       </li>
                     ))}
                   </ul>
@@ -551,12 +551,12 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
               <div className="flex items-baseline justify-between">
                 <span className="flex items-baseline gap-2.5">
                   <span className="ll-lettering-sm text-sub">Left</span>
-                  <span className="ll-numeral text-[32px] text-text" data-testid="analysis-hand-left" data-value={(analysis.hands.left * 100).toFixed(1)}>
+                  <span className="ll-numeral text-3xl text-text" data-testid="analysis-hand-left" data-value={(analysis.hands.left * 100).toFixed(1)}>
                     {pct(analysis.hands.left)}
                   </span>
                 </span>
                 <span className="flex items-baseline gap-2.5">
-                  <span className="ll-numeral text-[32px] text-text" data-testid="analysis-hand-right" data-value={(analysis.hands.right * 100).toFixed(1)}>
+                  <span className="ll-numeral text-3xl text-text" data-testid="analysis-hand-right" data-value={(analysis.hands.right * 100).toFixed(1)}>
                     {pct(analysis.hands.right)}
                   </span>
                   <span className="ll-lettering-sm text-sub">Right</span>
@@ -569,7 +569,7 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
                 </div>
                 <span aria-hidden className="absolute -top-1.5 -bottom-1.5 left-1/2 w-px bg-line" />
               </div>
-              <p className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4 text-[14px] text-sub">
+              <p className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4 text-md text-sub">
                 <span className="ll-note mx-auto text-sub sm:order-2 sm:mx-0">50 / 50 at the centre mark</span>
                 {base?.hands && (
                   <span>
@@ -600,7 +600,7 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
                       data-letter={ch}
                       data-state={state}
                       className={cx(
-                        "flex aspect-square max-h-10 items-center justify-center border font-mono text-[13px] leading-none font-medium uppercase sm:text-[14px]",
+                        "flex aspect-square max-h-10 items-center justify-center border font-mono text-sm leading-none font-medium uppercase sm:text-md",
                         state === "moved" && "border-line bg-main text-main-fg",
                         state === "same" && "border-border text-text",
                         state === "missing" && "border-dashed border-border text-sub line-through",
@@ -612,7 +612,7 @@ export function LayoutDetail({ entry, baseline, active, onUse, onPractice, onEdi
                   );
                 })}
               </ul>
-              <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px] text-sub">
+              <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-md text-sub">
                 <span className="text-text">
                   <span className="ll-readout font-medium">{movedCount}</span> of 26 moved
                 </span>

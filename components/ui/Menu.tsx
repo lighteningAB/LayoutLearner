@@ -128,7 +128,7 @@ export function Menu({ trigger, items, align = "start", side = "bottom", classNa
         >
           {items.map((item, i) => {
             const cls = cx(
-              "flex h-9 w-full items-center gap-2.5 px-2.5 text-left text-[15px] whitespace-nowrap",
+              "flex h-9 w-full items-center gap-2.5 px-2.5 text-left text-base whitespace-nowrap",
               "outline-none transition-colors duration-100",
               item.disabled
                 ? "cursor-not-allowed text-sub line-through decoration-1"

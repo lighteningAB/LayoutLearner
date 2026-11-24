@@ -30,7 +30,7 @@ export const TONE_TEXT: Record<SyncTone, string> = {
 };
 
 const ITEM =
-  "flex h-9 w-full items-center gap-2.5 px-2.5 text-left text-[15px] whitespace-nowrap text-text outline-none " +
+  "flex h-9 w-full items-center gap-2.5 px-2.5 text-left text-base whitespace-nowrap text-text outline-none " +
   "transition-colors duration-100 hover:bg-text hover:text-bg focus:bg-text focus:text-bg " +
   "aria-disabled:cursor-default aria-disabled:bg-transparent aria-disabled:text-sub aria-disabled:line-through aria-disabled:decoration-1";
 
@@ -179,7 +179,7 @@ function SignedIn({ name, image }: { name: string; image: string | null }) {
             <div
               aria-live="polite"
               data-testid="account-menu-status"
-              className={cx("mt-1 text-[13px] leading-snug", TONE_TEXT[summary.tone])}
+              className={cx("mt-1 text-sm leading-snug", TONE_TEXT[summary.tone])}
             >
               {summary.text}
             </div>

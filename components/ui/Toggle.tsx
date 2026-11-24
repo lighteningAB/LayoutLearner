@@ -52,7 +52,7 @@ export function Toggle({ checked, onChange, label, disabled, size = "md", id, cl
   );
   if (!label) return control;
   return (
-    <label className={cx("inline-flex items-center gap-3 text-[15px] text-text", disabled && "text-sub", className)}>
+    <label className={cx("inline-flex items-center gap-3 text-base text-text", disabled && "text-sub", className)}>
       {control}
       <span>{label}</span>
     </label>

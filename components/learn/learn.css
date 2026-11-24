@@ -60,7 +60,7 @@
   visibility: hidden;
 }
 .learn-minikb [data-key-id][data-state="highlight"] > div > span {
-  font-size: 12px !important;
+  font-size: var(--fs-xs) !important;
 }
 
 /* ── lesson player ── */

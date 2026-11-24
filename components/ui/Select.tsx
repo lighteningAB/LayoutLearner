@@ -157,7 +157,7 @@ export function Select<T extends string = string>({
           "inline-flex w-full min-w-36 items-center justify-between gap-3 border border-border bg-fill text-text",
           "transition-colors duration-150 hover:border-line aria-expanded:border-line",
           "disabled:cursor-not-allowed disabled:border-dashed disabled:bg-transparent disabled:text-sub disabled:hover:border-border",
-          size === "sm" ? "h-8 pr-2 pl-2.5 text-[14px]" : "h-10 pr-2.5 pl-3 text-[15px]",
+          size === "sm" ? "h-8 pr-2 pl-2.5 text-md" : "h-10 pr-2.5 pl-3 text-base",
         )}
         {...rest}
       >
@@ -201,7 +201,7 @@ export function Select<T extends string = string>({
                 onPointerMove={() => !o.disabled && active !== i && setActive(i)}
                 onClick={() => choose(i)}
                 className={cx(
-                  "flex items-center gap-2.5 px-2.5 text-[15px] whitespace-nowrap",
+                  "flex items-center gap-2.5 px-2.5 text-base whitespace-nowrap",
                   size === "sm" ? "h-8" : "h-9",
                   o.disabled ? "cursor-not-allowed text-sub line-through decoration-1" : i === active ? "bg-text text-bg" : "text-text",
                 )}

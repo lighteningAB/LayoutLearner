@@ -21,7 +21,7 @@ function Spec({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 border-hairline px-3 py-2.5 max-sm:[&:nth-child(even)]:border-l max-sm:[&:nth-child(n+3)]:border-t sm:border-l sm:first:border-l-0">
       <dt className="ll-lettering-sm truncate text-sub">{label}</dt>
-      <dd className="ll-readout mt-1.5 truncate text-[14px] leading-none text-text">{value}</dd>
+      <dd className="ll-readout mt-1.5 truncate text-md leading-none text-text">{value}</dd>
     </div>
   );
 }
@@ -146,7 +146,7 @@ export const LayoutCard = memo(function LayoutCard({ entry, selected, inspected,
         )}
       </div>
 
-      <p className="line-clamp-2 min-h-[52px] px-3 pb-3 text-[14px] leading-[20px] text-sub sm:px-4">
+      <p className="line-clamp-2 min-h-[52px] px-3 pb-3 text-md leading-[20px] text-sub sm:px-4">
         {broken ? entry.error : entry.description}
       </p>
 

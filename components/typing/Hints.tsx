@@ -66,7 +66,7 @@ export function MobileNotice() {
     <div
       role="note"
       data-testid="mobile-notice"
-      className="animate-rise-in mb-4 flex w-full items-center gap-2.5 border border-line bg-bg py-1 pr-1 pl-3 text-[14px] leading-snug text-text"
+      className="animate-rise-in mb-4 flex w-full items-center gap-2.5 border border-line bg-bg py-1 pr-1 pl-3 text-md leading-snug text-text"
     >
       <Icon name="keyboard" size={16} className="shrink-0 text-main" />
       <span className="min-w-0 flex-1 py-1">Best with a physical keyboard. A Bluetooth keyboard works too.</span>
@@ -91,7 +91,7 @@ export function WelcomeHint({ suppressed }: { suppressed: boolean }) {
   if (dismissed !== false || !fresh || suppressed) return null;
   const link = "font-medium text-main underline underline-offset-[3px] hover:text-text";
   return (
-    <div role="status" data-testid="welcome-hint" className="animate-rise-in border border-dashed border-border bg-bg text-[13px] leading-snug text-sub">
+    <div role="status" data-testid="welcome-hint" className="animate-rise-in border border-dashed border-border bg-bg text-sm leading-snug text-sub">
       <div className="flex items-center justify-between border-b border-dashed border-border pl-2.5">
         <span className="ll-lettering-sm text-text">New here</span>
         <button type="button" data-testid="welcome-hint-dismiss" aria-label="Dismiss" onClick={dismiss} className={dismissButton}>

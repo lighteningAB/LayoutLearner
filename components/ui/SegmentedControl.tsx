@@ -93,7 +93,7 @@ export function SegmentedControl<T extends string | number>({
             className={cx(
               "inline-flex items-center justify-center gap-1.5 font-medium whitespace-nowrap transition-colors duration-150",
               "disabled:cursor-not-allowed disabled:line-through disabled:decoration-1",
-              size === "sm" ? "h-7 px-2.5 text-[14px]" : "h-8 px-3 text-[15px]",
+              size === "sm" ? "h-7 px-2.5 text-md" : "h-8 px-3 text-base",
               variant === "pill"
                 ? cx(
                     "grow border-l border-border first:border-l-0 focus-visible:outline-offset-[-2px]",

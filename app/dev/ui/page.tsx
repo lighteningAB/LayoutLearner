@@ -53,16 +53,15 @@ const COLOR_TOKENS = [
 
 const TYPE_SCALE: [string, string, string][] = [
   ["ll-title", "Page title", "ll-title · Josefin 300"],
-  ["ll-numeral text-7xl", "0:30", "ll-numeral · Josefin 300 figures"],
+  ["ll-numeral text-6xl", "0:30", "ll-numeral · Josefin 300 figures"],
   ["ll-heading", "Section heading", "ll-heading · Josefin 600 / 20"],
   ["ll-lettering-lg", "Tabs, card and dialog titles", "ll-lettering-lg · 14"],
   ["ll-lettering", "Labels and buttons", "ll-lettering · 12"],
   ["ll-lettering-sm text-sub", "Tags and table heads", "ll-lettering-sm · 11"],
   ["ll-readout text-4xl font-medium", "74.2", "ll-readout · Plex Mono tabular"],
-  ["text-[17px]", "Lead copy under a page title.", "Barlow 17 / 400"],
-  ["text-base", "Body copy, setting labels and longer prose.", "Barlow 16 / 400"],
-  ["text-[15px]", "Controls, rows and menu items.", "Barlow 15 / 400"],
-  ["text-[14px] text-sub", "Secondary descriptions under labels.", "Barlow 14 / sub"],
+  ["text-lg", "Lead copy under a page title.", "Barlow 18 / 400"],
+  ["text-base", "Body copy, controls, rows and menu items.", "Barlow 16 / 400"],
+  ["text-md text-sub", "Secondary descriptions under labels.", "Barlow 14 / sub"],
   ["ll-note text-sub", "SCALE 1:1 · KEYS IN u", "ll-note · Plex Mono 11"],
   ["font-mono text-2xl", "the quick brown fox", "typing text · Plex Mono 24"],
 ];
@@ -102,7 +101,7 @@ function ThemeTokens({ theme }: { theme: (typeof THEMES)[number] }) {
           {theme.id} · {theme.scheme}
         </div>
       </div>
-      <p className="mt-1 text-[14px] text-sub">{theme.description}</p>
+      <p className="mt-1 text-md text-sub">{theme.description}</p>
       <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">
         {COLOR_TOKENS.map((t) => (
           <div key={t} className="min-w-0">
@@ -116,7 +115,7 @@ function ThemeTokens({ theme }: { theme: (typeof THEMES)[number] }) {
           <div
             key={`tint-${i}`}
             title={`--finger-${i} (${fingerName(i)}) as a keycap tint`}
-            className="flex size-9 items-center justify-center border border-key-border font-mono text-[13px] text-key-text"
+            className="flex size-9 items-center justify-center border border-key-border font-mono text-sm text-key-text"
             style={{ backgroundColor: `color-mix(in srgb, var(--finger-${i}) var(--finger-tint), var(--key-tint-base))` }}
           >
             {i}
@@ -128,14 +127,14 @@ function ThemeTokens({ theme }: { theme: (typeof THEMES)[number] }) {
           <div
             key={`solid-${i}`}
             title={`--finger-${i} (${fingerName(i)}) solid`}
-            className="flex size-9 items-center justify-center border border-key-border font-mono text-[13px] font-medium text-finger-fg"
+            className="flex size-9 items-center justify-center border border-key-border font-mono text-sm font-medium text-finger-fg"
             style={{ backgroundColor: `var(--finger-${i})` }}
           >
             {"asdf  jkl;"[i] === " " ? "␣" : "asdf  jkl;"[i]}
           </div>
         ))}
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-md">
         <span className="font-mono">
           typed<span className="mx-px inline-block h-[1.1em] w-[2px] bg-caret align-[-0.2em]" />
           <span className="text-sub">upcoming </span>
@@ -143,7 +142,7 @@ function ThemeTokens({ theme }: { theme: (typeof THEMES)[number] }) {
           <span className="text-error-alt">extra</span>
         </span>
         <span className="ll-lettering-sm bg-main px-2 py-1 text-main-fg">action</span>
-        <span className="text-[14px] text-success">success</span>
+        <span className="text-md text-success">success</span>
         <Kbd>esc</Kbd>
       </div>
     </div>
@@ -273,7 +272,7 @@ export default function UiKitchenSink() {
         </Row>
         <Row label="slider">
           <Slider aria-label="Demo slider" value={slider} onChange={setSlider} data-testid="ui-slider" />
-          <span className="ll-readout text-[15px] text-main">{slider}</span>
+          <span className="ll-readout text-base text-main">{slider}</span>
           <Slider aria-label="Disabled slider" value={30} onChange={() => {}} disabled />
         </Row>
         <Row label="input">
@@ -293,9 +292,9 @@ export default function UiKitchenSink() {
           value={tab}
           onChange={setTab}
           items={[
-            { value: "overview", label: "Overview", icon: "chart", content: <p className="text-[15px] text-sub">Overview panel. Arrow keys move between tabs.</p> },
-            { value: "keys", label: "Per key", icon: "keyboard", content: <p className="text-[15px] text-sub">Per-key panel.</p> },
-            { value: "history", label: "History", icon: "clock", content: <p className="text-[15px] text-sub">History panel.</p> },
+            { value: "overview", label: "Overview", icon: "chart", content: <p className="text-base text-sub">Overview panel. Arrow keys move between tabs.</p> },
+            { value: "keys", label: "Per key", icon: "keyboard", content: <p className="text-base text-sub">Per-key panel.</p> },
+            { value: "history", label: "History", icon: "clock", content: <p className="text-base text-sub">History panel.</p> },
             { value: "off", label: "Disabled", disabled: true },
           ]}
         />
@@ -333,7 +332,7 @@ export default function UiKitchenSink() {
               <Badge tone="success" icon="check">done</Badge>
               <Badge tone="error" icon="alert">3 weak keys</Badge>
             </div>
-            <div className="mt-5 flex flex-wrap items-center gap-2 text-[13px] text-sub">
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-sm text-sub">
               <Kbd>tab</Kbd>+<Kbd>enter</Kbd><span className="mx-2">·</span><Kbd>esc</Kbd><span className="mx-2">·</span><Kbd size="sm">⌘</Kbd><Kbd size="sm">K</Kbd>
             </div>
             <div className="mt-5 space-y-2">

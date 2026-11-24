@@ -43,7 +43,7 @@ function Step({ n, title, state, children }: { n: number; title: string; state: 
         <span
           aria-hidden
           className={cx(
-            "ll-readout flex size-6 shrink-0 items-center justify-center border text-[13px] font-medium",
+            "ll-readout flex size-6 shrink-0 items-center justify-center border text-sm font-medium",
             state === "done" && "border-line bg-text text-bg",
             state === "now" && "border-line text-text",
             state === "error" && "border-error text-error",
@@ -128,7 +128,7 @@ export function KeymapImportDialog({ open, onClose, layout, onApply }: KeymapImp
       </div>
 
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-        <p className="border-b border-border px-4 py-3 text-[15px] leading-snug text-sub sm:px-5">
+        <p className="border-b border-border px-4 py-3 text-base leading-snug text-sub sm:px-5">
           Paste your firmware keymap or choose its file. You will see the layers before anything changes.
         </p>
 
@@ -149,7 +149,7 @@ export function KeymapImportDialog({ open, onClose, layout, onApply }: KeymapImp
               placeholder="Paste a keymap.json, keymap.c, .keymap or .vil here"
               className={cx(
                 styles.code,
-                "h-32 w-full resize-y border bg-fill p-3 font-mono text-[13px] leading-[20px] text-text outline-2 -outline-offset-2 outline-transparent transition-colors duration-150 placeholder:text-sub hover:border-line focus:bg-transparent",
+                "h-32 w-full resize-y border bg-fill p-3 font-mono text-sm leading-[20px] text-text outline-2 -outline-offset-2 outline-transparent transition-colors duration-150 placeholder:text-sub hover:border-line focus:bg-transparent",
                 errorText ? "border-error focus:outline-error" : "border-border focus:outline-main",
               )}
             />
@@ -171,7 +171,7 @@ export function KeymapImportDialog({ open, onClose, layout, onApply }: KeymapImp
                 }}
               />
               {format ? (
-                <span className="text-[14px] text-text" data-testid="layer-import-format" data-format={format}>
+                <span className="text-md text-text" data-testid="layer-import-format" data-format={format}>
                   Looks like {FORMAT_NAME[format]}.
                 </span>
               ) : (
@@ -206,7 +206,7 @@ export function KeymapImportDialog({ open, onClose, layout, onApply }: KeymapImp
                   No hold-to-activate layers were found in this keymap, so there is nothing to import.
                 </Note>
               ) : (
-                <p className="text-[14px] leading-snug text-sub">
+                <p className="text-md leading-snug text-sub">
                   {mapping.layers.length} {mapping.layers.length === 1 ? "layer" : "layers"} found. Replace layers swaps the layers below in for the ones you
                   have now; you still need to save.
                 </p>
@@ -224,7 +224,7 @@ export function KeymapImportDialog({ open, onClose, layout, onApply }: KeymapImp
                   </div>
                 ))}
               {mapping.warnings.length > 0 && (
-                <ul className="list-disc space-y-1 pl-5 text-[14px] leading-snug text-sub marker:text-border" data-testid="layer-import-warnings">
+                <ul className="list-disc space-y-1 pl-5 text-md leading-snug text-sub marker:text-border" data-testid="layer-import-warnings">
                   {mapping.warnings.map((w, i) => (
                     <li key={i} className="break-words">
                       {w}
@@ -234,14 +234,14 @@ export function KeymapImportDialog({ open, onClose, layout, onApply }: KeymapImp
               )}
             </div>
           ) : (
-            <p className="ll-hatch border border-dashed border-border px-3 py-5 text-center text-[14px] text-sub">
+            <p className="ll-hatch border border-dashed border-border px-3 py-5 text-center text-md text-sub">
               The layers this keymap gives your board are drawn here once it can be read.
             </p>
           )}
         </Step>
 
         <Step n={3} title="Replace layers" state={canApply ? "now" : "todo"}>
-          <p className="text-[14px] leading-snug text-sub">
+          <p className="text-md leading-snug text-sub">
             {canApply
               ? "Swaps the layers you have now for the ones above. Nothing is stored until you save the layout."
               : "Available once step 2 shows at least one layer."}

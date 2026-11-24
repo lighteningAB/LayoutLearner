@@ -16,7 +16,7 @@ export function Footer() {
   const other = THEMES.find((t) => t.id !== current.id) ?? THEMES[0];
   return (
     <footer className={cx(SHEET_COLUMN, "relative pt-8 pb-3 md:pb-4")} data-testid="footer">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-border pt-3 text-sm text-sub">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-border pt-3 text-md text-sub">
         <div className="hidden flex-wrap items-center gap-x-6 gap-y-2 sm:flex">
           <span className="inline-flex items-center gap-1.5">
             <Kbd>tab</Kbd>

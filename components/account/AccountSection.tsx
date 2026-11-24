@@ -116,11 +116,11 @@ function SignedIn({ name }: { name: string }) {
         </SettingRow>
 
         <div className="py-4" data-testid="account-what-syncs">
-          <h3 className="text-[16px] font-medium text-text">What syncs</h3>
-          <p className="mt-0.5 max-w-[62ch] text-[14px] leading-snug text-sub">
+          <h3 className="text-base font-medium text-text">What syncs</h3>
+          <p className="mt-0.5 max-w-[62ch] text-md leading-snug text-sub">
             Lesson progress, settings (theme, layout, test preferences…) and custom layouts follow your account.
           </p>
-          <p className="mt-1.5 max-w-[62ch] text-[14px] leading-snug text-sub" data-testid="account-local-only">
+          <p className="mt-1.5 max-w-[62ch] text-md leading-snug text-sub" data-testid="account-local-only">
             <span className="font-medium text-text">Stays on this device:</span> Emulate layout (it depends on this
             device&rsquo;s keyboard), Show 3D hands (graphics power varies) and text size (screens differ).
           </p>

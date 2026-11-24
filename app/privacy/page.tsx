@@ -9,7 +9,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="border-t border-border pt-5 pb-10 first:border-t-line">
       <h2 className="ll-heading text-text">{title}</h2>
-      <div className="mt-4 space-y-3.5 text-[17px] leading-[1.6] text-text">{children}</div>
+      <div className="mt-4 space-y-3.5 text-lg leading-[1.6] text-text">{children}</div>
     </section>
   );
 }
@@ -30,7 +30,7 @@ export default function PrivacyPage() {
   return (
     <>
       <PageHeader title="Privacy" description="What LayoutLearner stores, where, and how to get rid of it." />
-      <div className="max-w-[70ch] text-[17px]" data-testid="privacy-page">
+      <div className="max-w-[70ch] text-lg" data-testid="privacy-page">
         <Block title="Without an account">
           <p>
             Your settings, custom layouts and lesson progress stay in this browser&rsquo;s localStorage. They are not sent
@@ -142,7 +142,7 @@ export default function PrivacyPage() {
           <p>Accounts and sync add no analytics, advertising or tracking.</p>
         </Block>
 
-        <p className="border-t border-line pt-5 text-[17px]">
+        <p className="border-t border-line pt-5 text-lg">
           <Link href="/settings#account" className="text-text underline decoration-main decoration-2 underline-offset-4 hover:text-main">
             Go to Account &amp; sync settings
           </Link>
