@@ -32,7 +32,7 @@ export function LearnCommands() {
             label: `Lesson: ${l.lesson.title}`,
             icon: l.passed ? "check" : "play",
             keywords: `learn ${l.number} ${l.lesson.stage} ${l.lesson.newChars.join(" ")}`,
-            hint: l.passed ? "★".repeat(l.stars) || "passed" : l.state === "current" ? "next up" : undefined,
+            hint: l.passed ? (l.stars > 0 ? `${l.stars} of 3 stars` : "passed") : l.state === "current" ? "next up" : undefined,
             run: () => router.push(lessonHref(l.lesson.id)),
           }),
         ),

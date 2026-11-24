@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { guideForChar } from "@/components/typing/KeyboardGuide";
 import { weakCharsOfResult } from "@/components/typing/practice";
-import { Button, Icon, Kbd, cx } from "@/components/ui";
+import { Badge, Button, Icon, Kbd, cx } from "@/components/ui";
 import type { Lesson, LessonGrade } from "@/lib/lessons/curriculum";
 import type { TestResult } from "@/lib/typing/engine";
 import type { ParsedLayout } from "@/lib/types";
-import { Stars, charLabel } from "./bits";
+import { KeyChip, Stars, charLabel } from "./bits";
 import type { CourseLesson } from "./course";
 
 export interface LessonOutcome {
@@ -56,17 +56,29 @@ function verdict(lesson: Lesson, o: LessonOutcome): { title: string; message: st
   return { title: "Lesson passed", message: `For the ${need.label} star you need ${missing.join(" and ")}.` };
 }
 
+/** "met" / "under" with its drawn mark: goal state in text and shape, not only colour. */
+function GoalMark({ met, className }: { met: boolean; className?: string }) {
+  return (
+    <span className={cx("inline-flex items-center gap-1 whitespace-nowrap", met ? "text-text" : "text-error", className)}>
+      <Icon name={met ? "check" : "x"} size={13} strokeWidth={2.2} />
+      {met ? "met" : "under"}
+    </span>
+  );
+}
+
 function GoalStat({ label, value, unit, goal, met, testId, i }: { label: string; value: string; unit?: string; goal: string; met: boolean; testId: string; i: number }) {
   return (
-    <div className="tt-rise" style={{ "--i": i } as CSSProperties}>
-      <div className="text-sm text-sub">{label}</div>
-      <div className={cx("mt-1 font-mono text-[56px] leading-none font-medium tracking-tight tabular-nums sm:text-[64px]", met ? "text-main" : "text-error")} data-testid={testId}>
+    <div className="tt-rise min-w-0 px-3 py-4 first:pl-0 sm:px-5" style={{ "--i": i } as CSSProperties}>
+      <div className="ll-lettering text-sub">{label}</div>
+      <div className={cx("ll-numeral mt-3 text-[60px] sm:text-[104px]", met ? "text-text" : "text-error")} data-testid={testId}>
         {value}
-        {unit && <span className="ml-0.5 text-[0.45em] font-normal text-sub">{unit}</span>}
+        {unit && <span className="ml-1 text-[0.4em] text-sub">{unit}</span>}
       </div>
-      <div className={cx("mt-2 inline-flex items-center gap-1 text-xs", met ? "text-sub" : "text-error")}>
-        <Icon name={met ? "check" : "x"} size={12} strokeWidth={2.2} className={met ? "text-success" : undefined} />
-        goal {goal}
+      <div className="ll-lettering-sm mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sub">
+        <span>
+          goal <span className="ll-readout text-[13px] tracking-normal text-text normal-case">{goal}</span>
+        </span>
+        <GoalMark met={met} />
       </div>
     </div>
   );
@@ -111,10 +123,12 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
   const nextUp = grade.passed && !outcome.wasPassed && nextLesson;
   const improved = grade.passed && outcome.wasPassed && grade.stars > outcome.previousStars;
   const primaryLabel = canNext ? "next lesson" : grade.passed ? "back to the course" : "retry";
+  const goalAcc = lesson.goal.accuracy;
+  const goalWpm = lesson.goal.wpm;
 
   return (
     <section
-      className="mx-auto w-full max-w-[760px] text-center"
+      className="grid w-full items-start gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1fr)_440px]"
       data-testid="lesson-summary"
       data-passed={grade.passed ? "true" : "false"}
       data-stars={grade.stars}
@@ -122,52 +136,144 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
       data-accuracy={result.accuracy}
       aria-label="Lesson result"
     >
-      <Stars value={grade.stars} size={52} animate className="justify-center" data-testid="lesson-stars" />
-      <h2 className="tt-rise mt-5 text-2xl font-semibold tracking-tight text-text" style={{ "--i": 1 } as CSSProperties} data-testid="lesson-verdict">
-        {title}
-      </h2>
-      <p className="tt-rise mx-auto mt-1.5 max-w-md text-[15px] text-sub" style={{ "--i": 2 } as CSSProperties}>
-        {message}
-      </p>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+          <Stars value={grade.stars} size={44} animate data-testid="lesson-stars" />
+          <Badge tone={grade.passed ? "main" : "neutral"} icon={grade.passed ? "check" : "x"} className={grade.passed ? undefined : "border-dashed text-text"}>
+            {grade.passed ? `${grade.stars} of 3 stars` : "not passed"}
+          </Badge>
+        </div>
+        <h2 className="tt-rise ll-title mt-5 text-text" style={{ "--i": 1 } as CSSProperties} data-testid="lesson-verdict">
+          {title}
+        </h2>
+        <p className="tt-rise mt-3 max-w-[52ch] text-[17px] leading-[1.45] text-sub" style={{ "--i": 2 } as CSSProperties}>
+          {message}
+        </p>
 
-      <div className="mx-auto mt-7 grid max-w-md grid-cols-2 gap-6">
-        <GoalStat i={3} label="wpm" value={fmt(result.wpm)} goal={`${lesson.goal.wpm} wpm`} met={result.wpm >= lesson.goal.wpm} testId="summary-wpm" />
-        <GoalStat
-          i={4}
-          label="accuracy"
-          value={String(Math.floor(result.accuracy))}
-          unit="%"
-          goal={`${lesson.goal.accuracy}%`}
-          met={result.accuracy >= lesson.goal.accuracy}
-          testId="summary-acc"
-        />
+        <div className="mt-6 grid grid-cols-2 divide-x divide-border border-y border-border">
+          <GoalStat i={3} label="speed" value={fmt(result.wpm)} unit="wpm" goal={`${goalWpm} wpm`} met={result.wpm >= goalWpm} testId="summary-wpm" />
+          <GoalStat i={4} label="accuracy" value={String(Math.floor(result.accuracy))} unit="%" goal={`${goalAcc}%`} met={result.accuracy >= goalAcc} testId="summary-acc" />
+        </div>
+
+        {(nextUp || improved || (grade.passed && !nextLesson)) && (
+          <p className="tt-rise mt-5 flex items-center gap-2 text-[15px] text-text" style={{ "--i": 6 } as CSSProperties} data-testid="summary-note">
+            <Icon name={nextUp ? "arrow-right" : "trophy"} size={15} className="shrink-0 text-main" />
+            {nextUp
+              ? `Next up: lesson ${nextUp.number}, ${nextUp.lesson.title}`
+              : !nextLesson
+                ? "That was the last lesson. You know the whole layout."
+                : `New best: ${grade.stars} stars (was ${outcome.previousStars})`}
+          </p>
+        )}
+
+        <div className="tt-rise mt-6 flex flex-wrap items-center gap-2" style={{ "--i": 7 } as CSSProperties}>
+          {canNext && (
+            <Button ref={primaryRef} variant="primary" size="lg" iconRight="arrow-right" onClick={onNext} data-testid="lesson-next">
+              Next lesson
+            </Button>
+          )}
+          <Button
+            ref={canNext || grade.passed ? undefined : primaryRef}
+            variant={grade.passed ? "subtle" : "primary"}
+            size="lg"
+            icon="restart"
+            onClick={onRetry}
+            data-testid="lesson-retry"
+          >
+            {grade.passed ? "Retry" : "Try again"}
+          </Button>
+          <Button
+            ref={!canNext && grade.passed ? primaryRef : undefined}
+            variant={!canNext && grade.passed ? "primary" : "ghost"}
+            size="lg"
+            icon="graduation"
+            onClick={onCourse}
+            data-testid="lesson-course"
+          >
+            Back to course
+          </Button>
+        </div>
+        <p className="tt-rise mt-4 hidden items-center gap-1.5 text-[13px] text-sub sm:flex" style={{ "--i": 8 } as CSSProperties}>
+          <Kbd size="sm">enter</Kbd>
+          <span className="mr-3">{primaryLabel}</span>
+          <Kbd size="sm">esc</Kbd>
+          <span>course</span>
+        </p>
       </div>
 
-      <div className="tt-rise mt-7 grid gap-x-8 gap-y-5 border-t border-border pt-5 text-left sm:grid-cols-2" style={{ "--i": 5 } as CSSProperties}>
-        <div data-testid="summary-weak-keys">
-          <div className="text-xs text-sub">Keys to work on</div>
+      <div className="tt-rise min-w-0 border border-line bg-bg-alt" style={{ "--i": 5 } as CSSProperties}>
+        <div className="flex h-10 items-center justify-between gap-3 border-b border-line px-4">
+          <span className="ll-lettering text-text">Run log</span>
+          <span className="ll-lettering-sm text-sub">
+            goal{" "}
+            <span className="ll-readout text-[13px] tracking-normal text-text normal-case">
+              {goalAcc}% · {goalWpm} wpm
+            </span>
+          </span>
+        </div>
+        <table className="w-full border-collapse text-left" data-testid="summary-drills">
+          <thead>
+            <tr className="ll-lettering-sm border-b border-border text-sub">
+              <th scope="col" className="px-4 py-2 font-semibold">
+                Drill
+              </th>
+              <th scope="col" className="px-2 py-2 text-right font-semibold">
+                Accuracy
+              </th>
+              <th scope="col" className="px-2 py-2 text-right font-semibold">
+                Speed
+              </th>
+              <th scope="col" className="px-4 py-2 text-right font-semibold">
+                Goal
+              </th>
+            </tr>
+          </thead>
+          <tbody className="ll-readout text-[15px]">
+            {drills.map((d, i) => (
+              <tr key={i} className="border-b border-hairline">
+                <th scope="row" className="px-4 py-2 font-medium text-sub">
+                  {i + 1}
+                </th>
+                <td className={cx("px-2 py-2 text-right", d.accuracy >= goalAcc ? "text-text" : "text-error")}>{Math.floor(d.accuracy)}%</td>
+                <td className={cx("px-2 py-2 text-right", d.wpm >= goalWpm ? "text-text" : "text-error")}>{fmt(d.wpm)} wpm</td>
+                <td className="px-4 py-2">
+                  <GoalMark met={d.accuracy >= goalAcc && d.wpm >= goalWpm} className="ll-lettering-sm w-full justify-end" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="ll-readout text-[15px] font-medium text-text">
+            <tr className="border-t border-line">
+              <th scope="row" className="ll-lettering-sm px-4 py-2.5 text-text">
+                All
+              </th>
+              <td className="px-2 py-2.5 text-right">{Math.floor(result.accuracy)}%</td>
+              <td className="px-2 py-2.5 text-right">{fmt(result.wpm)} wpm</td>
+              <td className="px-4 py-2.5">
+                <GoalMark met={grade.passed} className="ll-lettering-sm w-full justify-end" />
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div className="border-t border-line p-4" data-testid="summary-weak-keys">
+          <div className="ll-lettering-sm text-sub">Keys to work on</div>
           {weak.length === 0 ? (
-            <div className="mt-2 text-sm text-text">None this time: a clean, even run.</div>
+            <div className="mt-2 text-[15px] text-text">None this time: a clean, even run.</div>
           ) : (
-            <ul className="mt-2 flex flex-wrap items-center gap-2">
+            <ul className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
               {weak.map((k) => {
                 const g = guideForChar(layout, k.char);
-                const fc = fingerColors && g && g.fingerIndex >= 0 ? `var(--finger-${g.fingerIndex})` : "var(--key-border)";
                 return (
                   <li
                     key={k.char}
                     data-testid="weak-key"
                     data-char={k.char}
                     title={`${charLabel(k.char)}: ${k.misses} ${k.misses === 1 ? "miss" : "misses"} in ${k.hits + k.misses}${g?.fingerName ? ` (${g.fingerName})` : ""}`}
-                    className="flex items-center gap-1.5 rounded-ui-sm bg-text/[0.05] py-1 pr-2 pl-1"
+                    className="flex items-center gap-2"
                   >
-                    <span
-                      className="inline-flex size-7 items-center justify-center rounded-[6px] border border-b-[3px] border-key-border bg-key-bg font-mono text-sm font-medium text-text"
-                      style={{ borderBottomColor: fc }}
-                    >
-                      {charLabel(k.char)}
-                    </span>
-                    <span className={cx("font-mono text-xs tabular-nums", k.misses > 0 ? "text-error" : "text-sub")}>
+                    <KeyChip char={k.char} layout={layout} fingerColors={fingerColors} size="md" />
+                    <span className="ll-readout text-[13px] text-text">
                       {k.misses > 0 ? `${Math.round(k.accuracy)}%` : k.avgMs != null ? `${k.avgMs}ms` : ""}
                     </span>
                   </li>
@@ -176,50 +282,7 @@ export function LessonSummary({ lesson, outcome, layout, fingerColors, nextLesso
             </ul>
           )}
         </div>
-        <div data-testid="summary-drills">
-          <div className="text-xs text-sub">Drills</div>
-          <ol className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5">
-            {drills.map((d, i) => (
-              <li key={i} className="flex items-baseline gap-2 font-mono text-sm tabular-nums">
-                <span className="text-xs text-sub">{i + 1}</span>
-                <span className={d.accuracy >= lesson.goal.accuracy ? "text-text" : "text-error"}>{Math.floor(d.accuracy)}%</span>
-                <span className="text-sub">{fmt(d.wpm)} wpm</span>
-              </li>
-            ))}
-          </ol>
-        </div>
       </div>
-
-      {(nextUp || improved || (grade.passed && !nextLesson)) && (
-        <p className="tt-rise mt-5 inline-flex items-center gap-2 rounded-full bg-main/[0.12] px-3.5 py-1.5 text-[13px] text-main" style={{ "--i": 6 } as CSSProperties} data-testid="summary-note">
-          <Icon name={nextUp ? "zap" : "trophy"} size={14} />
-          {nextUp
-            ? `Next up: lesson ${nextUp.number}, ${nextUp.lesson.title}`
-            : !nextLesson
-              ? "That was the last lesson. You know the whole layout."
-              : `New best: ${grade.stars} stars (was ${outcome.previousStars})`}
-        </p>
-      )}
-
-      <div className="tt-rise mt-6 flex flex-wrap items-center justify-center gap-2" style={{ "--i": 7 } as CSSProperties}>
-        {canNext && (
-          <Button ref={primaryRef} variant="primary" iconRight="arrow-right" onClick={onNext} data-testid="lesson-next">
-            Next lesson
-          </Button>
-        )}
-        <Button ref={canNext || grade.passed ? undefined : primaryRef} variant={grade.passed ? "ghost" : "primary"} icon="restart" onClick={onRetry} data-testid="lesson-retry">
-          {grade.passed ? "Retry" : "Try again"}
-        </Button>
-        <Button ref={!canNext && grade.passed ? primaryRef : undefined} variant={!canNext && grade.passed ? "primary" : "ghost"} icon="graduation" onClick={onCourse} data-testid="lesson-course">
-          Back to course
-        </Button>
-      </div>
-      <p className="tt-rise mt-4 hidden items-center justify-center gap-1.5 text-xs text-sub sm:flex" style={{ "--i": 8 } as CSSProperties}>
-        <Kbd size="sm">enter</Kbd>
-        <span className="mr-3">{primaryLabel}</span>
-        <Kbd size="sm">esc</Kbd>
-        <span>course</span>
-      </p>
     </section>
   );
 }
