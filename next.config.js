@@ -7,8 +7,9 @@ const nextConfig = {
   serverExternalPackages: ["@electric-sql/pglite"],
   // Conservative security headers on every response (pages, assets and API).
   // Nothing in the app frames itself, so framing is denied outright.
-  // The CSP is REPORT-ONLY on purpose: it logs violations in the console
-  // without blocking anything, so it can be tightened from real data first.
+  // The CSP is ENFORCED in production builds (the report-only run showed no
+  // violations on any route). Development stays report-only: Next's dev tooling
+  // needs more than this policy allows and a blocked overlay helps nobody.
   async headers() {
     const dev = process.env.NODE_ENV !== "production";
     const csp = [
@@ -24,8 +25,9 @@ const nextConfig = {
       "base-uri 'none'",
       "form-action 'self'",
       "frame-ancestors 'none'",
-      // upgrade-insecure-requests is left out while the policy is report-only: browsers ignore it there
-      // and log an error on every page. Add it back when the policy becomes enforcing.
+      // Browsers ignore upgrade-insecure-requests in a report-only policy and log an error, so
+      // it is only sent with the enforcing (production) policy.
+      ...(dev ? [] : ["upgrade-insecure-requests"]),
     ].join("; ");
     return [
       {
@@ -35,7 +37,7 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
-          { key: "Content-Security-Policy-Report-Only", value: csp },
+          { key: dev ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy", value: csp },
         ],
       },
       {
