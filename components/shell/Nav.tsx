@@ -59,7 +59,9 @@ export function Nav() {
             className="ll-lettering mr-1 inline-flex h-8 max-w-44 items-center gap-2 rounded-ui border border-line px-3 text-text transition-colors duration-150 hover:bg-text hover:text-bg"
           >
             <Icon name="keyboard" size={15} className="max-sm:hidden" />
-            <span className="ll-trim truncate">{layoutLabel(settings.layoutId, settings.customLayouts)}</span>
+            {/* The trimmed text box is only cap-height tall, so `truncate` would clip the tail of a Q (and any
+                descender). The padding gives the clip box room; the negative margin keeps the layout as it was. */}
+            <span className="ll-trim -my-1.5 truncate py-1.5">{layoutLabel(settings.layoutId, settings.customLayouts)}</span>
           </Link>
           <IconButton
             icon="search"

@@ -104,7 +104,7 @@ export function LayersPanel({ layout, layers, onChange, activeId, onActiveId, se
                 on ? "border-main text-text" : "border-transparent text-sub hover:border-border hover:text-text",
               )}
             >
-              <span className="ll-trim truncate">{l.name}</span>
+              <span className="ll-trim -my-1.5 truncate py-1.5">{l.name}</span>
               <span className={cx("ll-readout text-xs font-normal tracking-normal", on ? "text-text" : "text-sub")}>{Object.keys(l.keys).length}</span>
             </button>
           );

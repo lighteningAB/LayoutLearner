@@ -100,7 +100,7 @@ export const LayoutCard = memo(function LayoutCard({ entry, selected, inspected,
           selected ? "border-main text-text" : "border-hairline text-text",
         )}
       >
-        <h3 className="ll-lettering-lg ll-trim min-w-0 truncate">{entry.name}</h3>
+        <h3 className="ll-lettering-lg ll-trim -my-1.5 min-w-0 truncate py-1.5">{entry.name}</h3>
         {selected && (
           <span
             className="ll-lettering-sm inline-flex h-[22px] shrink-0 items-center gap-1 rounded-ui border border-main bg-main px-1.5 text-main-fg"
